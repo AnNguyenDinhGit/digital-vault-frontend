@@ -20,8 +20,9 @@ export function getMockLatency() {
   return config.latencyMs
 }
 
-function doc(documentId, fileName, fileType, signatureValid) {
-  return { documentId, fileName, fileType, isEncrypted: true, signatureValid }
+// Owner endpoint của BE không tính chữ ký nên signatureValid luôn là null
+function doc(documentId, fileName, fileType) {
+  return { documentId, fileName, fileType, isEncrypted: true, signatureValid: null }
 }
 
 // Dữ liệu khởi tạo: 1 chủ sở hữu demo, 2 người thụ hưởng đã đăng ký, 1 kho và 6 tài sản
@@ -60,7 +61,7 @@ function createSeed() {
         type: 'BankAccount',
         description: 'Số tài khoản có hợp đồng tiền gửi đính kèm để xác thực công chứng.',
         status: 'Active',
-        documents: [doc(11, 'SoTietKiem_Signed.pdf', 'application/pdf', true)],
+        documents: [doc(11, 'SoTietKiem_Signed.pdf', 'application/pdf')],
       },
       {
         assetId: 3,
@@ -70,8 +71,8 @@ function createSeed() {
         description: 'Kho nén 4.2GB hình ảnh gia đình, video nhắn nhủ và tài liệu bản quyền di chúc số.',
         status: 'Active',
         documents: [
-          doc(12, 'ThuDiNguyen.pdf', 'application/pdf', true),
-          doc(13, 'AnhGiaDinh.png', 'image/png', false),
+          doc(12, 'ThuDiNguyen.pdf', 'application/pdf'),
+          doc(13, 'AnhGiaDinh.png', 'image/png'),
         ],
       },
       {
@@ -90,7 +91,7 @@ function createSeed() {
         type: 'BankAccount',
         description: 'Danh mục cổ phiếu và trái phiếu doanh nghiệp.',
         status: 'Active',
-        documents: [doc(14, 'SSI_HopDong.pdf', 'application/pdf', true)],
+        documents: [doc(14, 'SSI_HopDong.pdf', 'application/pdf')],
       },
       {
         assetId: 6,
