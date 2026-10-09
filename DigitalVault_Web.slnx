@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="DigitalVault_Web/digitalvault_web.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>

@@ -1,0 +1,13 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+
+# Node
+node_modules/
+dist/
+
+# Biến môi trường
+.env
+.env.*
+!.env.example
