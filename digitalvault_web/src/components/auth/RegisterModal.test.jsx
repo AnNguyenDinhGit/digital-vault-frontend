@@ -44,6 +44,13 @@ describe('RegisterModal', () => {
     expect(screen.queryByLabelText(/CCCD/)).not.toBeInTheDocument()
   })
 
+  it('render_PhoneField_IsContactOnlyWithoutOtpMention', () => {
+    renderModal()
+    // OTP chỉ gửi qua email, số điện thoại chỉ dùng để liên lạc
+    expect(screen.getByLabelText(/^Số điện thoại liên lạc/)).toBeInTheDocument()
+    expect(screen.queryByText(/Nhận OTP/)).not.toBeInTheDocument()
+  })
+
   it('submit_EmptyForm_ShowsErrorsAndDoesNotCallApi', async () => {
     renderModal()
     await submit()
