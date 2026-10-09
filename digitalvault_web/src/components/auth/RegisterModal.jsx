@@ -129,7 +129,7 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
               id="register-phone"
               name="phone"
               type="tel"
-              label="Số điện thoại (Nhận OTP)"
+              label="Số điện thoại liên lạc"
               required
               autoComplete="tel"
               placeholder="0901 234 567"

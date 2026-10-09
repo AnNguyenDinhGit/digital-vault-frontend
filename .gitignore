@@ -11,3 +11,7 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Build output của Visual Studio
+obj/
+bin/
