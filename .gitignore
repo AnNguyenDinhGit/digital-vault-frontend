@@ -1,0 +1,17 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+
+# Node
+node_modules/
+dist/
+
+# Biến môi trường
+.env
+.env.*
+!.env.example
+
+# Build output của Visual Studio
+obj/
+bin/
