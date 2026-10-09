@@ -1,4 +1,11 @@
-import { isValidEmail, validateLogin, validateRegister } from './validators'
+import {
+  isValidEmail,
+  validateAsset,
+  validateBeneficiary,
+  validateLogin,
+  validateRegister,
+  validateVault,
+} from './validators'
 
 describe('validators', () => {
   it('isValidEmail_ValidAddress_ReturnsTrue', () => {
@@ -84,5 +91,95 @@ describe('validateRegister', () => {
     expect(validateRegister({ ...valid, acceptTerms: false })).toEqual({
       acceptTerms: 'Bạn cần đồng ý với Điều khoản dịch vụ.',
     })
+  })
+})
+
+describe('validateVault', () => {
+  it('validateVault_EmptyName_ReturnsNameError', () => {
+    expect(validateVault({ name: '  ', description: '' })).toEqual({ name: 'Vui lòng nhập tên kho.' })
+  })
+
+  it('validateVault_NameTooLong_ReturnsNameError', () => {
+    expect(validateVault({ name: 'x'.repeat(101), description: '' })).toEqual({ name: 'Tên kho tối đa 100 ký tự.' })
+  })
+
+  it('validateVault_DescriptionTooLong_ReturnsDescriptionError', () => {
+    expect(validateVault({ name: 'Kho', description: 'x'.repeat(4001) })).toEqual({
+      description: 'Mô tả tối đa 4000 ký tự.',
+    })
+  })
+
+  it('validateVault_ValidInput_ReturnsEmptyObject', () => {
+    expect(validateVault({ name: 'Kho', description: '' })).toEqual({})
+  })
+})
+
+describe('validateBeneficiary', () => {
+  const valid = { email: 'long@example.com', allocation: '40' }
+
+  it('validateBeneficiary_EmptyFields_ReturnsBothErrors', () => {
+    expect(validateBeneficiary({ email: '', allocation: '' }, 100)).toEqual({
+      email: 'Vui lòng nhập email.',
+      allocation: 'Vui lòng nhập tỷ lệ phân bổ.',
+    })
+  })
+
+  it('validateBeneficiary_InvalidEmail_ReturnsEmailError', () => {
+    expect(validateBeneficiary({ ...valid, email: 'abc' }, 100)).toEqual({ email: 'Email không hợp lệ.' })
+  })
+
+  it('validateBeneficiary_AllocationOutOfRange_ReturnsRangeError', () => {
+    const message = 'Tỷ lệ phải từ 0,01 đến 100.'
+    expect(validateBeneficiary({ ...valid, allocation: '0' }, 100)).toEqual({ allocation: message })
+    expect(validateBeneficiary({ ...valid, allocation: '101' }, 100)).toEqual({ allocation: message })
+    expect(validateBeneficiary({ ...valid, allocation: 'abc' }, 100)).toEqual({ allocation: message })
+  })
+
+  it('validateBeneficiary_ThreeDecimals_ReturnsDecimalError', () => {
+    expect(validateBeneficiary({ ...valid, allocation: '10.123' }, 100)).toEqual({
+      allocation: 'Tỷ lệ tối đa 2 chữ số thập phân.',
+    })
+  })
+
+  it('validateBeneficiary_ExceedsRemaining_ReturnsRemainingError', () => {
+    expect(validateBeneficiary({ ...valid, allocation: '70' }, 60)).toEqual({
+      allocation: 'Chỉ còn 60% có thể phân bổ.',
+    })
+  })
+
+  it('validateBeneficiary_ValidInput_ReturnsEmptyObject', () => {
+    expect(validateBeneficiary(valid, 100)).toEqual({})
+  })
+})
+
+describe('validateAsset', () => {
+  const valid = { name: 'Tài khoản', type: 'BankAccount', description: '' }
+
+  it('validateAsset_EmptyName_ReturnsNameError', () => {
+    expect(validateAsset({ ...valid, name: '' })).toEqual({ name: 'Vui lòng nhập tên tài sản.' })
+  })
+
+  it('validateAsset_NameTooLong_ReturnsNameError', () => {
+    expect(validateAsset({ ...valid, name: 'x'.repeat(101) })).toEqual({ name: 'Tên tài sản tối đa 100 ký tự.' })
+  })
+
+  it('validateAsset_EmptyType_ReturnsTypeError', () => {
+    expect(validateAsset({ ...valid, type: '' })).toEqual({ type: 'Vui lòng chọn loại tài sản.' })
+  })
+
+  it('validateAsset_NonAsciiType_ReturnsTypeError', () => {
+    expect(validateAsset({ ...valid, type: 'Ngân hàng' })).toEqual({
+      type: 'Loại tài sản chỉ gồm ký tự ASCII, tối đa 50 ký tự.',
+    })
+  })
+
+  it('validateAsset_DescriptionTooLong_ReturnsDescriptionError', () => {
+    expect(validateAsset({ ...valid, description: 'x'.repeat(4001) })).toEqual({
+      description: 'Mô tả tối đa 4000 ký tự.',
+    })
+  })
+
+  it('validateAsset_ValidInput_ReturnsEmptyObject', () => {
+    expect(validateAsset(valid)).toEqual({})
   })
 })
