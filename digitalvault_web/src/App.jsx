@@ -8,6 +8,8 @@ import ProtectedRoute from './components/routing/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthContext'
 import LandingPage from './pages/LandingPage'
 import RolePlaceholderPage from './pages/common/RolePlaceholderPage'
+import OwnerAssetsPage from './pages/owner/OwnerAssetsPage'
+import OwnerBeneficiariesPage from './pages/owner/OwnerBeneficiariesPage'
 
 // Component gốc: khai báo provider và các route theo từng vai trò của hệ thống
 function App() {
@@ -21,10 +23,12 @@ function App() {
           <Route element={<ProtectedRoute role="Owner" />}>
             <Route path="/owner" element={<OwnerLayout />}>
               <Route index element={<Navigate to="assets" replace />} />
-              <Route path="assets" element={<RolePlaceholderPage title="Danh mục tài sản số" />} />
-              <Route path="beneficiaries" element={<RolePlaceholderPage title="Người thụ hưởng" />} />
+              <Route path="assets" element={<OwnerAssetsPage />} />
+              {/* <Route path="beneficiaries" element={<RolePlaceholderPage title="Người thụ hưởng" />} /> */}
+              <Route path="beneficiaries" element={<OwnerBeneficiariesPage />} />
             </Route>
           </Route>
+
 
           {/* 2. Khu vực Người Thi Hành (Executor) */}
           <Route element={<ProtectedRoute role="Executor" />}>
