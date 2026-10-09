@@ -18,12 +18,12 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-page">
+    <div className="d-flex min-vh-100 flex-column bg-page">
       <LandingHeader />
-      <main className="flex flex-1 items-center">
-        <div className="mx-auto grid w-full max-w-[1280px] items-center gap-12 px-8 py-16 lg:grid-cols-[minmax(0,1fr)_480px]">
+      <main className="d-flex flex-grow-1 align-items-center">
+        <div className="av-container av-landing-grid">
           <LandingHero />
-          <div className="flex justify-center lg:justify-end">
+          <div className="d-flex justify-content-center justify-content-lg-end">
             <LoginForm
               key={registeredEmail}
               initialEmail={registeredEmail}

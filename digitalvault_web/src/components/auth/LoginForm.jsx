@@ -1,5 +1,6 @@
 import { ArrowRight, Check, Eye, EyeOff, Info, Lock, Mail, UserRound } from 'lucide-react'
 import { useState } from 'react'
+import { Alert, Button } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { validateLogin } from '../../utils/validators'
@@ -51,30 +52,26 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
   }
 
   return (
-    <section
-      id="login"
-      className="w-full max-w-[480px] rounded-2xl border border-slate-200 bg-white px-8 pb-8 pt-9 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.18)]"
-    >
-      <div className="flex flex-col items-center text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary-tint text-primary">
-          <UserRound className="h-5 w-5" aria-hidden="true" />
+    <section id="login" className="av-login-card">
+      <div className="d-flex flex-column align-items-center text-center">
+        <span className="av-icon-tile">
+          <UserRound size={20} aria-hidden="true" />
         </span>
-        <h2 className="mt-4 text-[22px] font-bold tracking-tight text-ink">Đăng Nhập Cổng An Toàn</h2>
-        <p className="mt-1.5 max-w-[360px] text-[13px] leading-relaxed text-slate-500">
+        <h2 className="mt-3 mb-0 fw-bold text-ink" style={{ fontSize: 22, letterSpacing: '-0.025em' }}>
+          Đăng Nhập Cổng An Toàn
+        </h2>
+        <p className="mt-2 mb-0 fs-13 text-slate-500" style={{ maxWidth: 360, lineHeight: 1.6 }}>
           Hệ thống tự động xác định vai trò và điều hướng đến không gian làm việc của bạn
         </p>
       </div>
 
       {notice && (
-        <p
-          role="status"
-          className="mt-6 rounded-lg border border-primary/20 bg-primary-tint px-3.5 py-2.5 text-[13px] text-primary"
-        >
+        <p role="status" className="av-notice mt-4">
           {notice}
         </p>
       )}
 
-      <form className="mt-7 space-y-5" onSubmit={handleSubmit} noValidate>
+      <form className="mt-4 d-flex flex-column gap-4" onSubmit={handleSubmit} noValidate>
         <TextField
           id="login-email"
           name="email"
@@ -102,12 +99,7 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
           onChange={handleChange}
           error={errors.password}
           labelAside={
-            <button
-              type="button"
-              disabled
-              title={COMING_SOON}
-              className="text-[12px] font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
+            <button type="button" disabled title={COMING_SOON} className="av-link-btn fs-12">
               Quên mật khẩu?
             </button>
           }
@@ -116,65 +108,55 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:text-slate-600"
+              className="av-icon-btn"
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           }
         />
 
-        <div className="flex items-center justify-between">
+        <div className="d-flex align-items-center justify-content-between">
           <label
             htmlFor="login-remember"
             title={COMING_SOON}
-            className="flex cursor-not-allowed items-center gap-2 text-[12px] text-slate-500"
+            className="d-flex align-items-center gap-2 fs-12 text-slate-500"
+            style={{ cursor: 'not-allowed' }}
           >
             {/* Checkbox tuỳ biến để giữ màu teal như thiết kế dù đang vô hiệu hoá */}
-            <input id="login-remember" type="checkbox" disabled defaultChecked className="peer sr-only" />
-            <span
-              aria-hidden="true"
-              className="flex h-3.5 w-3.5 items-center justify-center rounded-[3px] bg-primary text-white"
-            >
-              <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+            <input id="login-remember" type="checkbox" disabled defaultChecked className="visually-hidden" />
+            <span aria-hidden="true" className="av-fake-check">
+              <Check size={10} strokeWidth={3.5} />
             </span>
             Ghi nhớ phiên đăng nhập này
           </label>
-          <span title={COMING_SOON} className="flex items-center gap-1 text-[12px] font-medium text-primary/70">
-            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+          <span title={COMING_SOON} className="d-flex align-items-center gap-1 fs-12 fw-medium text-brand opacity-75">
+            <Check size={14} aria-hidden="true" />
             2FA Enforced
           </span>
         </div>
 
-        {submitError && (
-          <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-700">
-            {submitError}
-          </p>
-        )}
+        {submitError && <Alert variant="danger" className="av-alert">{submitError}</Alert>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
-        >
+        <Button type="submit" variant="primary" disabled={isSubmitting} className="av-btn av-btn-lg">
           {isSubmitting ? 'Đang đăng nhập...' : 'Đăng Nhập Ngay'}
-          {!isSubmitting && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
-        </button>
+          {!isSubmitting && <ArrowRight size={16} aria-hidden="true" />}
+        </Button>
       </form>
 
-      <div className="mt-6 rounded-xl border border-primary/15 bg-primary-tint/70 px-4 py-3.5">
-        <p className="flex items-center gap-2 font-mono text-[10px] font-semibold tracking-[0.12em] text-primary">
-          <Info className="h-3.5 w-3.5" aria-hidden="true" />
+      <div className="av-info-box mt-4">
+        <p className="d-flex align-items-center gap-2 mb-0 fs-10 av-mono-tag">
+          <Info size={14} aria-hidden="true" />
           ROLE-BASED AUTOMATIC REDIRECT
         </p>
-        <p className="mt-1.5 text-[12px] leading-relaxed text-slate-500">
+        <p className="mt-2 mb-0 fs-12 text-slate-500" style={{ lineHeight: 1.6 }}>
           Tùy theo tài khoản được cấp quyền: Vault Owner (quản trị di sản), Beneficiary (người nhận), Executor (bàn
           giao) hoặc Verifier (thẩm định pháp lý).
         </p>
       </div>
 
-      <p className="mt-6 text-center text-[13px] text-slate-500">
+      <p className="mt-4 mb-0 text-center fs-13 text-slate-500">
         Chưa có kho lưu trữ di sản?{' '}
-        <button type="button" onClick={onOpenRegister} className="font-semibold text-primary hover:underline">
+        <button type="button" onClick={onOpenRegister} className="av-link-btn">
           Đăng ký tạo Vault mới
         </button>
       </p>

@@ -24,32 +24,36 @@ const FEATURES = [
 // Khối giới thiệu bên trái landing page
 export default function LandingHero() {
   return (
-    <div className="max-w-[680px]">
-      <span className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3.5 py-1.5 font-mono text-[10px] font-semibold tracking-[0.1em] text-primary">
-        <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+    <div style={{ maxWidth: 680 }}>
+      <span className="av-pill">
+        <span className="av-pill-dot" aria-hidden="true" />
         ZERO-KNOWLEDGE ENCRYPTION &amp; LEGAL BINDING
       </span>
 
-      <h1 className="mt-6 text-[36px] font-extrabold leading-[1.25] tracking-tight text-ink">
+      <h1 className="av-hero-title text-ink">
         Bảo Vệ &amp; Chuyển Giao
         <br />
-        <span className="whitespace-nowrap"><span className="text-primary">Di Sản Kỹ Thuật Số</span> An Toàn Tuyệt Đối</span>
+        <span className="text-nowrap">
+          <span className="text-brand">Di Sản Kỹ Thuật Số</span> An Toàn Tuyệt Đối
+        </span>
       </h1>
 
-      <p className="mt-5 text-[14px] leading-relaxed text-slate-500">
+      <p className="mt-4 mb-0 fs-14 text-slate-500" style={{ lineHeight: 1.65 }}>
         Nền tảng ủy thác và phân quyền thừa kế tài sản số có giá trị pháp lý đầu tiên. Tự động chuyển giao quyền truy
         cập ví crypto, tài khoản tài chính và tài liệu nhạy cảm thông qua cơ chế Dead Man's Switch và chữ ký số.
       </p>
 
-      <ul className="mt-8 space-y-5">
+      <ul className="list-unstyled mt-4 mb-0 d-flex flex-column gap-4 pt-2">
         {FEATURES.map(({ icon: Icon, title, description }) => (
-          <li key={title} className="flex gap-4">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-white text-primary">
-              <Icon className="h-4 w-4" aria-hidden="true" />
+          <li key={title} className="d-flex gap-3">
+            <span className="av-feature-icon">
+              <Icon size={16} aria-hidden="true" />
             </span>
             <div>
-              <p className="text-[13px] font-bold text-ink">{title}</p>
-              <p className="mt-0.5 text-[12px] leading-relaxed text-slate-500">{description}</p>
+              <p className="mb-0 fs-13 fw-bold text-ink">{title}</p>
+              <p className="mt-1 mb-0 fs-12 text-slate-500" style={{ lineHeight: 1.6 }}>
+                {description}
+              </p>
             </div>
           </li>
         ))}

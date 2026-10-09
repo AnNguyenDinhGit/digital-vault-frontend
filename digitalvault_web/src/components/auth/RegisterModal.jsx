@@ -1,5 +1,6 @@
 import { HardDrive, UserPlus, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { Alert, Button, Modal } from 'react-bootstrap'
 import { register } from '../../callapi/authApi'
 import { validateRegister } from '../../utils/validators'
 import TextField from '../common/TextField'
@@ -19,18 +20,6 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Đóng modal bằng phím Esc
-  useEffect(() => {
-    if (!open) return undefined
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose])
-
-  if (!open) return null
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
@@ -65,40 +54,36 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
     }
   }
 
+  // Modal của react-bootstrap tự xử lý phím Esc, focus trap và aria-modal
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[2px]">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="register-title"
-        className="w-full max-w-[680px] overflow-hidden rounded-2xl bg-white shadow-[0_30px_80px_-20px_rgba(15,23,42,0.45)]"
-      >
-        <div className="flex items-start justify-between border-b border-slate-100 px-8 py-6">
-          <div className="flex items-center gap-4">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary-tint text-primary">
-              <UserPlus className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <div>
-              <span className="inline-block rounded-md bg-primary-soft px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.12em] text-primary">
-                VAULT OWNER SETUP
-              </span>
-              <h2 id="register-title" className="mt-1 text-[19px] font-bold tracking-tight text-ink">
-                Đăng Ký Tạo Kho Di Sản Số Mới
-              </h2>
-            </div>
+    <Modal
+      show={open}
+      onHide={onClose}
+      centered
+      animation={false}
+      dialogClassName="av-modal"
+      aria-labelledby="register-title"
+    >
+      <div className="av-modal-head">
+        <div className="d-flex align-items-center gap-3">
+          <span className="av-icon-tile">
+            <UserPlus size={20} aria-hidden="true" />
+          </span>
+          <div>
+            <span className="av-modal-tag av-mono-tag">VAULT OWNER SETUP</span>
+            <h2 id="register-title" className="mt-1 mb-0 fw-bold text-ink" style={{ fontSize: 19, letterSpacing: '-0.025em' }}>
+              Đăng Ký Tạo Kho Di Sản Số Mới
+            </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Đóng"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-ink"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
+        <button type="button" onClick={onClose} aria-label="Đóng" className="av-close-btn">
+          <X size={16} />
+        </button>
+      </div>
 
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="grid grid-cols-1 gap-x-5 gap-y-5 px-8 py-6 sm:grid-cols-2">
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="av-modal-body">
+          <div className="row g-4">
             <TextField
               id="register-fullName"
               name="fullName"
@@ -108,9 +93,9 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
               placeholder="Ví dụ: Nguyễn Văn An"
               value={form.fullName}
               onChange={handleChange}
-              inputClassName="h-10! text-[13px]!"
+              inputClassName="av-input-sm"
               error={errors.fullName}
-              className="sm:col-span-2"
+              className="col-12"
             />
             <TextField
               id="register-email"
@@ -122,8 +107,9 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
               placeholder="an.nguyen@example.com"
               value={form.email}
               onChange={handleChange}
-              inputClassName="h-10! text-[13px]!"
+              inputClassName="av-input-sm"
               error={errors.email}
+              className="col-12 col-sm-6"
             />
             <TextField
               id="register-phone"
@@ -135,8 +121,9 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
               placeholder="0901 234 567"
               value={form.phone}
               onChange={handleChange}
-              inputClassName="h-10! text-[13px]!"
+              inputClassName="av-input-sm"
               error={errors.phone}
+              className="col-12 col-sm-6"
             />
             <TextField
               id="register-password"
@@ -148,8 +135,9 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
               placeholder="Tối thiểu 12 ký tự, có số & ký tự đặc biệt"
               value={form.password}
               onChange={handleChange}
-              inputClassName="h-10! text-[13px]!"
+              inputClassName="av-input-sm"
               error={errors.password}
+              className="col-12 col-sm-6"
             />
             <TextField
               id="register-confirmPassword"
@@ -161,59 +149,49 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
               placeholder="Nhập lại mật khẩu"
               value={form.confirmPassword}
               onChange={handleChange}
-              inputClassName="h-10! text-[13px]!"
+              inputClassName="av-input-sm"
               error={errors.confirmPassword}
+              className="col-12 col-sm-6"
             />
 
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="register-acceptTerms"
-                className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-[13px] leading-relaxed text-slate-600"
-              >
+            <div className="col-12">
+              <label htmlFor="register-acceptTerms" className="av-terms">
                 <input
                   id="register-acceptTerms"
                   name="acceptTerms"
                   type="checkbox"
                   checked={form.acceptTerms}
                   onChange={handleChange}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded accent-primary"
                 />
                 <span>
-                  Tôi đồng ý với <span className="font-semibold text-primary">Điều khoản dịch vụ</span> và xác nhận chịu
+                  Tôi đồng ý với <span className="fw-semibold text-brand">Điều khoản dịch vụ</span> và xác nhận chịu
                   trách nhiệm pháp lý về quyền sở hữu đối với các tài sản số lưu trữ trong kho.
                 </span>
               </label>
-              {errors.acceptTerms && <p className="mt-1.5 text-[12px] text-red-600">{errors.acceptTerms}</p>}
+              {errors.acceptTerms && <p className="av-error">{errors.acceptTerms}</p>}
             </div>
 
             {submitError && (
-              <p
-                role="alert"
-                className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-700 sm:col-span-2"
-              >
-                {submitError}
-              </p>
+              <div className="col-12">
+                <Alert variant="danger" className="av-alert">{submitError}</Alert>
+              </div>
             )}
           </div>
+        </div>
 
-          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-8 py-5">
-            <p className="text-[13px] text-slate-500">
-              Đã có tài khoản?{' '}
-              <button type="button" onClick={onSwitchToLogin} className="font-semibold text-primary hover:underline">
-                Đăng nhập ngay
-              </button>
-            </p>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isSubmitting ? 'Đang tạo...' : 'Tạo Kho Di Sản Ngay'}
-              {!isSubmitting && <HardDrive className="h-4 w-4" aria-hidden="true" />}
+        <div className="av-modal-foot">
+          <p className="mb-0 fs-13 text-slate-500">
+            Đã có tài khoản?{' '}
+            <button type="button" onClick={onSwitchToLogin} className="av-link-btn">
+              Đăng nhập ngay
             </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          </p>
+          <Button type="submit" variant="primary" disabled={isSubmitting} className="av-btn av-btn-md">
+            {isSubmitting ? 'Đang tạo...' : 'Tạo Kho Di Sản Ngay'}
+            {!isSubmitting && <HardDrive size={16} aria-hidden="true" />}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
