@@ -3,6 +3,8 @@ import OwnerLayout from './components/layout/OwnerLayout'
 import ProtectedRoute from './components/routing/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthContext'
 import LandingPage from './pages/LandingPage'
+import AssetCatalogPage from './pages/owner/AssetCatalogPage'
+import AssetDetailPage from './pages/owner/AssetDetailPage'
 import OwnerPlaceholderPage from './pages/owner/OwnerPlaceholderPage'
 
 // Component gốc: khai báo provider và các route của ứng dụng
@@ -15,7 +17,8 @@ function App() {
           <Route element={<ProtectedRoute role="Owner" />}>
             <Route path="/owner" element={<OwnerLayout />}>
               <Route index element={<Navigate to="assets" replace />} />
-              <Route path="assets" element={<OwnerPlaceholderPage title="Danh mục tài sản số" />} />
+              <Route path="assets" element={<AssetCatalogPage />} />
+              <Route path="assets/:assetId" element={<AssetDetailPage />} />
               <Route path="beneficiaries" element={<OwnerPlaceholderPage title="Người thụ hưởng" />} />
             </Route>
           </Route>
