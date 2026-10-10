@@ -14,7 +14,7 @@ function hasUnknownFields(body, allowed) {
 const isBlank = (value) => typeof value !== 'string' || value.trim() === ''
 
 // Bọc handler: độ trễ giả, kiểm tra header chống CSRF cho request thay đổi dữ liệu, kiểm tra phiên
-function route(handler, { auth = true } = {}) {
+function route(handler, { auth = true, role = null } = {}) {
   return async (info) => {
     await delay(getMockLatency())
     const { request } = info
@@ -25,6 +25,9 @@ function route(handler, { auth = true } = {}) {
     if (auth) {
       userId = getSessionUserId()
       if (userId === null) return problem(401, 'Authentication required.')
+      // BE kiểm tra role ở tầng service: đã đăng nhập nhưng sai role thì trả 403
+      const account = getDb().users.find((u) => u.userId === userId)
+      if (role && !account?.roles.includes(role)) return problem(403, `Role ${role} required.`)
     }
     let body = null
     if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
@@ -37,6 +40,9 @@ function route(handler, { auth = true } = {}) {
     return handler({ ...info, userId, body })
   }
 }
+
+// Endpoint của Owner: BE yêu cầu role Owner, sai role trả 403
+const ownerRoute = (handler) => route(handler, { role: 'Owner' })
 
 const vaultDto = ({ vaultId, name, description, status }) => ({ vaultId, name, description, status })
 const assetDto = ({ assetId, name, type, description, status, documents }) => ({
@@ -126,12 +132,12 @@ export const handlers = [
 
   http.get(
     '*/api/owner/vaults',
-    route(({ userId }) => HttpResponse.json(ownedVaults(getDb(), userId).map(vaultDto))),
+    ownerRoute(({ userId }) => HttpResponse.json(ownedVaults(getDb(), userId).map(vaultDto))),
   ),
 
   http.get(
     '*/api/owner/vaults/:vaultId',
-    route(({ userId, params }) => {
+    ownerRoute(({ userId, params }) => {
       const vault = ownedVaults(getDb(), userId).find((v) => v.vaultId === Number(params.vaultId))
       return vault ? HttpResponse.json(vaultDto(vault)) : problem(404, 'Vault not found.')
     }),
@@ -139,7 +145,7 @@ export const handlers = [
 
   http.post(
     '*/api/owner/vaults',
-    route(({ userId, body }) => {
+    ownerRoute(({ userId, body }) => {
       if (hasUnknownFields(body, ['name', 'description'])) return problem(400, 'Request contains fields outside the contract.')
       if (isBlank(body?.name) || body.name.trim().length > 100) return problem(400, 'Name is required (max 100).')
       if (typeof body.description === 'string' && body.description.length > 4000) {
@@ -164,12 +170,12 @@ export const handlers = [
 
   http.get(
     '*/api/owner/assets',
-    route(({ userId }) => HttpResponse.json(ownedAssets(getDb(), userId).map(assetDto))),
+    ownerRoute(({ userId }) => HttpResponse.json(ownedAssets(getDb(), userId).map(assetDto))),
   ),
 
   http.get(
     '*/api/owner/assets/:assetId',
-    route(({ userId, params }) => {
+    ownerRoute(({ userId, params }) => {
       const asset = ownedAssets(getDb(), userId).find((a) => a.assetId === Number(params.assetId))
       return asset ? HttpResponse.json(assetDto(asset)) : problem(404, 'Asset not found.')
     }),
@@ -177,7 +183,7 @@ export const handlers = [
 
   http.post(
     '*/api/owner/assets',
-    route(({ userId, body }) => {
+    ownerRoute(({ userId, body }) => {
       if (hasUnknownFields(body, ['vaultId', 'name', 'type', 'description'])) {
         return problem(400, 'Request contains fields outside the contract.')
       }
@@ -215,7 +221,7 @@ export const handlers = [
 
   http.get(
     '*/api/owner/beneficiaries',
-    route(({ userId, request }) => {
+    ownerRoute(({ userId, request }) => {
       const db = getDb()
       const assets = ownedAssets(db, userId)
       const assetIdParam = new URL(request.url).searchParams.get('assetId')
@@ -233,7 +239,7 @@ export const handlers = [
 
   http.post(
     '*/api/owner/assets/:assetId/beneficiaries',
-    route(({ userId, params, body }) => {
+    ownerRoute(({ userId, params, body }) => {
       if (hasUnknownFields(body, ['email', 'allocation'])) return problem(400, 'Request contains fields outside the contract.')
       const db = getDb()
       const asset = ownedAssets(db, userId).find((a) => a.assetId === Number(params.assetId))

@@ -1,6 +1,6 @@
 import { setupServer } from 'msw/node'
 import axiosClient from '../callapi/axiosClient'
-import { resetMockDb, DEMO_ACCOUNT } from './db'
+import { resetMockDb, DEMO_ACCOUNT, ROLE_ACCOUNTS } from './db'
 import { handlers } from './handlers'
 
 const server = setupServer(...handlers)
@@ -182,5 +182,30 @@ describe('mock owner beneficiaries', () => {
       axiosClient.post(`/owner/assets/${asset.assetId}/beneficiaries`, { email: 'mai.nguyen@example.com', allocation: 40 }),
     )
     expect(second.status).toBe(409)
+  })
+})
+
+describe('mock role accounts', () => {
+  it.each(ROLE_ACCOUNTS)('login_$role_ReturnsOnlyThatRole', async ({ role, email, password }) => {
+    const result = await call(axiosClient.post('/auth/login', { email, password }))
+    expect(result.status).toBe(200)
+    expect(result.data.roles).toEqual([role])
+  })
+
+  it('roleAccounts_Defined_CoverFourNonOwnerRolesWithUniqueEmails', () => {
+    expect(ROLE_ACCOUNTS.map((a) => a.role).sort()).toEqual(['Admin', 'Beneficiary', 'Executor', 'LegalVerifier'])
+    expect(new Set(ROLE_ACCOUNTS.map((a) => a.email)).size).toBe(4)
+  })
+
+  it.each(ROLE_ACCOUNTS)('getVaults_$role_Returns403BecauseOwnerRoleRequired', async ({ email, password }) => {
+    await axiosClient.post('/auth/login', { email, password })
+    expect((await call(axiosClient.get('/owner/vaults'))).status).toBe(403)
+  })
+
+  it('createAsset_NonOwnerRole_Returns403', async () => {
+    const [{ email, password }] = ROLE_ACCOUNTS
+    await axiosClient.post('/auth/login', { email, password })
+    const result = await call(axiosClient.post('/owner/assets', { vaultId: 1, name: 'A', type: 'Other' }))
+    expect(result.status).toBe(403)
   })
 })

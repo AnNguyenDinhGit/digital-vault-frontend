@@ -10,6 +10,17 @@ export const DEMO_ACCOUNT = {
   password: 'Owner@123456',
 }
 
+// Mỗi role còn lại có một tài khoản demo riêng để thử phân quyền (mật khẩu dùng chung với tài khoản Owner)
+export const ROLE_ACCOUNTS = [
+  { userId: 5, role: 'Executor', fullName: 'LS. Lê Hoàng Nam', email: 'executor@example.com', password: DEMO_ACCOUNT.password },
+  { userId: 6, role: 'LegalVerifier', fullName: 'CCV. Nguyễn Văn Cường', email: 'verifier@example.com', password: DEMO_ACCOUNT.password },
+  { userId: 7, role: 'Beneficiary', fullName: 'Nguyễn Văn An', email: 'beneficiary@example.com', password: DEMO_ACCOUNT.password },
+  { userId: 8, role: 'Admin', fullName: 'Quản trị viên hệ thống', email: 'admin@example.com', password: DEMO_ACCOUNT.password },
+]
+
+// Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
+const DB_VERSION = 2
+
 const config = { latencyMs: 0 }
 
 export function setMockLatency(ms) {
@@ -28,12 +39,14 @@ function doc(documentId, fileName, fileType) {
 // Dữ liệu khởi tạo: 1 chủ sở hữu demo, 2 người thụ hưởng đã đăng ký, 1 kho và 6 tài sản
 function createSeed() {
   return {
-    nextIds: { user: 5, vault: 2, asset: 7, document: 20 },
+    version: DB_VERSION,
+    nextIds: { user: 9, vault: 2, asset: 7, document: 20 },
     users: [
       { userId: 1, fullName: DEMO_ACCOUNT.fullName, email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password, roles: ['Owner'] },
       { userId: 2, fullName: 'Trần Bảo Long', email: 'long.tran@example.com', password: 'Owner@123456', roles: ['Owner'] },
       { userId: 3, fullName: 'Nguyễn Thị Mai', email: 'mai.nguyen@example.com', password: 'Owner@123456', roles: ['Owner'] },
       { userId: 4, fullName: 'Lê Minh Quân', email: 'quan.le@example.com', password: 'Owner@123456', roles: ['Owner'] },
+      ...ROLE_ACCOUNTS.map(({ userId, fullName, email, password, role }) => ({ userId, fullName, email, password, roles: [role] })),
     ],
     vaults: [
       {
@@ -117,7 +130,9 @@ function createSeed() {
 function loadState() {
   try {
     const raw = localStorage.getItem(DB_STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
+    const stored = raw ? JSON.parse(raw) : null
+    // Dữ liệu lưu từ phiên bản cũ thiếu tài khoản mới nên bỏ đi để seed lại
+    return stored?.version === DB_VERSION ? stored : null
   } catch {
     return null
   }
