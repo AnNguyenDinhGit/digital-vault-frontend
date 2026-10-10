@@ -13,7 +13,13 @@ vi.mock('../../callapi/authApi', () => ({
 
 const renderForm = () =>
   renderWithProviders(<LoginForm onOpenRegister={vi.fn()} />, {
-    extraRoutes: [{ path: '/owner/assets', element: <p>owner-assets-page</p> }],
+    extraRoutes: [
+      { path: '/owner/assets', element: <p>owner-assets-page</p> },
+      { path: '/executor', element: <p>executor-portal-page</p> },
+      { path: '/verifier', element: <p>verifier-portal-page</p> },
+      { path: '/beneficiary', element: <p>beneficiary-portal-page</p> },
+      { path: '/admin', element: <p>admin-portal-page</p> },
+    ],
   })
 
 const fillAndSubmit = async (email = 'an.nguyen@aeternavault.io', password = 'Password123456') => {
@@ -57,11 +63,25 @@ describe('LoginForm', () => {
     expect(await screen.findByText('owner-assets-page')).toBeInTheDocument()
   })
 
-  it('submit_NonOwnerRole_ShowsUnsupportedRoleMessage', async () => {
+  it('submit_ExecutorRole_NavigatesToExecutorPortal', async () => {
     authApi.login.mockResolvedValue({ userId: 9, roles: ['Executor'] })
     renderForm()
     await fillAndSubmit()
-    expect(await screen.findByRole('alert')).toHaveTextContent('chưa hỗ trợ vai trò của bạn')
+    expect(await screen.findByText('executor-portal-page')).toBeInTheDocument()
+  })
+
+  it('submit_LegalVerifierRole_NavigatesToVerifierPortal', async () => {
+    authApi.login.mockResolvedValue({ userId: 10, roles: ['LegalVerifier'] })
+    renderForm()
+    await fillAndSubmit()
+    expect(await screen.findByText('verifier-portal-page')).toBeInTheDocument()
+  })
+
+  it('submit_UnassignedRole_ShowsUnsupportedRoleMessage', async () => {
+    authApi.login.mockResolvedValue({ userId: 99, roles: ['UnknownRole'] })
+    renderForm()
+    await fillAndSubmit()
+    expect(await screen.findByRole('alert')).toHaveTextContent('chưa được phân quyền')
   })
 
   it('submit_InvalidCredentials_ShowsFriendlyError', async () => {

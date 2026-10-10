@@ -4,6 +4,7 @@ import { Alert, Button } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { validateLogin } from '../../utils/validators'
+import { getDefaultRouteForRoles } from '../../utils/roleRoutes'
 import TextField from '../common/TextField'
 
 const COMING_SOON = 'Sắp ra mắt'
@@ -41,9 +42,12 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
     setIsSubmitting(true)
     try {
       const user = await login(form.email.trim(), form.password)
-      // Bản v1 chỉ có khu vực Owner; các vai trò khác sẽ bổ sung sau
-      if (user.roles.includes('Owner')) navigate('/owner/assets', { replace: true })
-      else setSubmitError('Phiên bản hiện tại chưa hỗ trợ vai trò của bạn. Vui lòng quay lại sau.')
+      const targetRoute = getDefaultRouteForRoles(user?.roles)
+      if (targetRoute) {
+        navigate(targetRoute, { replace: true })
+      } else {
+        setSubmitError('Tài khoản của bạn chưa được phân quyền trong hệ thống. Vui lòng liên hệ quản trị viên.')
+      }
     } catch (error) {
       setSubmitError(loginErrorMessage(error))
     } finally {
