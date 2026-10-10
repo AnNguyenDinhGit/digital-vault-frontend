@@ -25,6 +25,25 @@ export function formatAllocation(allocation) {
   return `${Number(allocation)}%`
 }
 
+// Chữ cái đầu hiển thị trong avatar: hai từ cuối của họ tên (Trần Bảo Long -> BL)
+export function getInitials(fullName) {
+  const words = (fullName ?? '').trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '?'
+  const letters = words.length === 1 ? Array.from(words[0]).slice(0, 2) : words.slice(-2).map((word) => Array.from(word)[0])
+  return letters.join('').toLocaleUpperCase('vi')
+}
+
+const FILE_TYPE_LABELS = { 'application/pdf': 'PDF', 'image/png': 'PNG', 'image/jpeg': 'JPEG', 'text/plain': 'TXT' }
+
+// Nhãn ngắn cho loại file thay vì hiện nguyên MIME type
+export function fileTypeLabel(mimeType) {
+  if (!mimeType) return 'FILE'
+  const known = FILE_TYPE_LABELS[mimeType]
+  if (known) return known
+  const subtype = mimeType.split('/')[1]
+  return subtype ? subtype.replace(/^x-/, '').toUpperCase() : 'FILE'
+}
+
 // Gắn danh sách người thụ hưởng vào từng tài sản (không sửa dữ liệu gốc)
 export function attachBeneficiaries(assets, beneficiaries) {
   return assets.map((asset) => ({

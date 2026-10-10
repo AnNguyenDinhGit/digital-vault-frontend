@@ -3,8 +3,10 @@ import {
   assetTypeLabel,
   attachBeneficiaries,
   buildStats,
+  fileTypeLabel,
   filterAssets,
   formatAllocation,
+  getInitials,
   getTypeTabs,
   paginate,
 } from './catalog'
@@ -43,6 +45,40 @@ describe('assetCode', () => {
 
   it('assetCode_UnknownType_UsesUppercasePrefix', () => {
     expect(assetCode({ assetId: 3, type: 'Painting' })).toBe('#AST-PAINTI-03')
+  })
+})
+
+describe('getInitials', () => {
+  it('getInitials_FullVietnameseName_UsesLastTwoWords', () => {
+    expect(getInitials('Trần Bảo Long')).toBe('BL')
+    expect(getInitials('Đặng Hoàng Yến')).toBe('HY')
+  })
+
+  it('getInitials_SingleWord_UsesFirstTwoLetters', () => {
+    expect(getInitials('An')).toBe('AN')
+  })
+
+  it('getInitials_EmptyOrBlank_ReturnsPlaceholder', () => {
+    expect(getInitials('')).toBe('?')
+    expect(getInitials('   ')).toBe('?')
+  })
+})
+
+describe('fileTypeLabel', () => {
+  it('fileTypeLabel_KnownMime_ReturnsShortLabel', () => {
+    expect(fileTypeLabel('application/pdf')).toBe('PDF')
+    expect(fileTypeLabel('image/png')).toBe('PNG')
+    expect(fileTypeLabel('image/jpeg')).toBe('JPEG')
+    expect(fileTypeLabel('text/plain')).toBe('TXT')
+  })
+
+  it('fileTypeLabel_UnknownMime_UsesUppercaseSubtype', () => {
+    expect(fileTypeLabel('application/zip')).toBe('ZIP')
+  })
+
+  it('fileTypeLabel_EmptyMime_ReturnsFile', () => {
+    expect(fileTypeLabel('')).toBe('FILE')
+    expect(fileTypeLabel(undefined)).toBe('FILE')
   })
 })
 

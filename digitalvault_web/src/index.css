@@ -199,4 +199,17 @@ body {
 .av-input.av-textarea.form-control { height: auto; padding-top: 10px; padding-bottom: 10px; }
 .av-empty { padding: 2.5rem 1rem; text-align: center; color: var(--av-slate-500); font-size: 13px; }
 
+/* ---------- Trang chi tiết tài sản ---------- */
+.av-avatar-sm { display: inline-flex; width: 32px; height: 32px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid var(--av-primary-line); border-radius: 50%; background: var(--av-primary-tint); font-size: 11px; font-weight: 700; color: var(--bs-primary); }
+.av-progress { display: flex; height: 10px; overflow: hidden; border-radius: 999px; background: var(--av-slate-100); }
+.av-progress-seg { height: 100%; border-right: 2px solid #fff; }
+.av-progress-seg:last-child { border-right: 0; }
+.av-progress-seg.is-0 { background: var(--bs-primary); }
+.av-progress-seg.is-1 { background: #2dd4bf; }
+.av-progress-seg.is-2 { background: #5eead4; }
+.av-progress-seg.is-3 { background: #99f6e4; }
+.av-doc-item { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding: 0.5rem; border: 1px solid var(--av-slate-200); border-radius: 12px; }
+.av-doc-main { flex: 1 1 140px; min-width: 0; }
+.av-badge, .av-ghost-btn { white-space: nowrap; }
+
 .av-denied-icon { display: flex; width: 48px; height: 48px; margin: 0 auto; align-items: center; justify-content: center; border-radius: 12px; background: var(--av-red-50); color: var(--av-red-600); }

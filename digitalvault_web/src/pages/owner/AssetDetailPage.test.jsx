@@ -141,3 +141,69 @@ describe('AssetDetailPage assign beneficiary', () => {
     expect(within(form).getByText('Chỉ còn 30% có thể phân bổ.')).toBeInTheDocument()
   })
 })
+
+describe('AssetDetailPage group A details', () => {
+  it('header_ActiveAsset_ShowsStatusBadgeAndSummaryCounts', async () => {
+    renderDetail(3)
+    await waitForDetail()
+    expect(screen.getByText('Đang hoạt động')).toBeInTheDocument()
+    expect(screen.getByText('2 giấy tờ')).toBeInTheDocument()
+    expect(screen.getByText('2 người thụ hưởng')).toBeInTheDocument()
+  })
+
+  it('header_EditButton_IsDisabledComingSoon', async () => {
+    renderDetail(1)
+    await waitForDetail()
+    expect(screen.getByRole('button', { name: 'Chỉnh sửa' })).toBeDisabled()
+  })
+
+  it('allocation_FullyAllocated_ShowsFullBarAndZeroRemaining', async () => {
+    renderDetail(1)
+    await waitForDetail()
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ đã phân bổ' })).toHaveAttribute('aria-valuenow', '100')
+    expect(screen.getByText('Còn chưa phân bổ 0%')).toBeInTheDocument()
+  })
+
+  it('allocation_NoBeneficiary_ShowsEmptyBarAndFullRemaining', async () => {
+    renderDetail(4)
+    await waitForDetail()
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ đã phân bổ' })).toHaveAttribute('aria-valuenow', '0')
+    expect(screen.getByText('Còn chưa phân bổ 100%')).toBeInTheDocument()
+  })
+
+  it('allocation_AfterAssign_UpdatesBarAndRemaining', async () => {
+    renderDetail(4)
+    await waitForDetail()
+    const form = screen.getByRole('form', { name: 'Chỉ định người thụ hưởng' })
+    await userEvent.type(within(form).getByLabelText(/^Email người thụ hưởng/), 'long.tran@example.com')
+    await userEvent.type(within(form).getByLabelText(/^Tỷ lệ phân bổ/), '50')
+    await userEvent.click(within(form).getByRole('button', { name: 'Chỉ định' }))
+    expect(await screen.findByText('Còn chưa phân bổ 50%')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ đã phân bổ' })).toHaveAttribute('aria-valuenow', '50')
+  })
+
+  it('beneficiaries_Row_ShowsInitialsAvatar', async () => {
+    renderDetail(1)
+    await waitForDetail()
+    const table = screen.getByRole('table', { name: 'Danh sách người thụ hưởng' })
+    expect(within(within(table).getByRole('row', { name: /Trần Bảo Long/ })).getByText('BL')).toBeInTheDocument()
+  })
+
+  it('documents_List_ShowsFileTypeLabelsAndDisabledDownload', async () => {
+    renderDetail(3)
+    await waitForDetail()
+    const list = screen.getByRole('list', { name: 'Giấy tờ đính kèm' })
+    expect(within(list).getByText('PDF')).toBeInTheDocument()
+    expect(within(list).getByText('PNG')).toBeInTheDocument()
+    const downloads = within(list).getAllByRole('button', { name: 'Tải về' })
+    expect(downloads).toHaveLength(2)
+    downloads.forEach((button) => expect(button).toBeDisabled())
+  })
+
+  it('executor_Section_ShowsComingSoonPlaceholder', async () => {
+    renderDetail(1)
+    await waitForDetail()
+    const section = screen.getByRole('region', { name: 'Digital Executor giám sát' })
+    expect(within(section).getByText('Sắp ra mắt')).toBeInTheDocument()
+  })
+})
