@@ -1,10 +1,12 @@
 import {
   isValidEmail,
   normalizeIdentityNumber,
+  validateAssignment,
   validateAsset,
   validateBeneficiary,
   validateLogin,
   validateRegister,
+  validateUpload,
   validateVault,
 } from './validators'
 
@@ -195,6 +197,98 @@ describe('validateBeneficiary', () => {
 
   it('validateBeneficiary_ValidInput_ReturnsEmptyObject', () => {
     expect(validateBeneficiary(valid, 100)).toEqual({})
+  })
+})
+
+describe('validateAssignment', () => {
+  const valid = { assetId: '4', email: 'long@example.com', allocation: '40' }
+
+  it('validateAssignment_NoAssetSelected_ReturnsAssetError', () => {
+    expect(validateAssignment({ ...valid, assetId: '' }, 100)).toEqual({ assetId: 'Vui lòng chọn tài sản.' })
+  })
+
+  it('validateAssignment_EmptyEverything_ReturnsAllThreeErrors', () => {
+    expect(validateAssignment({ assetId: '', email: '', allocation: '' }, 100)).toEqual({
+      assetId: 'Vui lòng chọn tài sản.',
+      email: 'Vui lòng nhập email.',
+      allocation: 'Vui lòng nhập tỷ lệ phân bổ.',
+    })
+  })
+
+  it('validateAssignment_AllocationOverRemaining_ReturnsRemainingError', () => {
+    expect(validateAssignment({ ...valid, allocation: '70' }, 30)).toEqual({ allocation: 'Chỉ còn 30% có thể phân bổ.' })
+  })
+
+  it('validateAssignment_ValidInput_ReturnsEmptyObject', () => {
+    expect(validateAssignment(valid, 100)).toEqual({})
+  })
+})
+
+describe('validateUpload', () => {
+  const file = { name: 'HopDong.pdf', type: 'application/pdf', size: 2048 }
+  const signature = { name: 'HopDong.sig', type: '', size: 256 }
+  const certificate = { name: 'ChungTu.pdf', type: 'application/pdf', size: 1024 }
+  const alive = { file, signature, deathCertificate: null, beneficiaryId: '11', ownerStatus: 'alive' }
+  const dead = { file, signature: null, deathCertificate: certificate, beneficiaryId: '11', ownerStatus: 'dead' }
+
+  it('validateUpload_AliveWithAllFields_ReturnsEmptyObject', () => {
+    expect(validateUpload(alive)).toEqual({})
+  })
+
+  it('validateUpload_DeadWithCertificate_ReturnsEmptyObject', () => {
+    expect(validateUpload(dead)).toEqual({})
+  })
+
+  it('validateUpload_NothingSelected_ReturnsRequiredErrorsForAliveBranch', () => {
+    expect(validateUpload({ file: null, signature: null, deathCertificate: null, beneficiaryId: '', ownerStatus: 'alive' })).toEqual({
+      file: 'Vui lòng chọn file giấy tờ.',
+      signature: 'Vui lòng chọn file chữ ký rời.',
+      beneficiaryId: 'Vui lòng chọn người thụ hưởng.',
+    })
+  })
+
+  it('validateUpload_DeadWithoutCertificate_ReturnsCertificateError', () => {
+    expect(validateUpload({ ...dead, deathCertificate: null })).toEqual({ deathCertificate: 'Vui lòng chọn giấy chứng tử.' })
+  })
+
+  it('validateUpload_DeadBranch_DoesNotRequireSignature', () => {
+    expect(validateUpload({ ...dead, signature: null })).toEqual({})
+  })
+
+  it('validateUpload_AliveBranch_DoesNotRequireCertificate', () => {
+    expect(validateUpload({ ...alive, deathCertificate: null })).toEqual({})
+  })
+
+  it('validateUpload_FileOverTenMegabytes_ReturnsSizeError', () => {
+    expect(validateUpload({ ...alive, file: { ...file, size: 10 * 1024 * 1024 + 1 } })).toEqual({
+      file: 'File phải từ 1 byte đến 10 MB.',
+    })
+  })
+
+  it('validateUpload_EmptyFile_ReturnsSizeError', () => {
+    expect(validateUpload({ ...alive, file: { ...file, size: 0 } })).toEqual({ file: 'File phải từ 1 byte đến 10 MB.' })
+  })
+
+  it('validateUpload_UnsupportedType_ReturnsTypeError', () => {
+    expect(validateUpload({ ...alive, file: { name: 'virus.exe', type: 'application/x-msdownload', size: 10 } })).toEqual({
+      file: 'Chỉ hỗ trợ PDF, PNG, JPEG hoặc văn bản (.txt).',
+    })
+  })
+
+  it('validateUpload_EmptyMimeButKnownExtension_IsAccepted', () => {
+    expect(validateUpload({ ...alive, file: { name: 'scan.JPG', type: '', size: 10 } })).toEqual({})
+  })
+
+  it('validateUpload_SignatureOverSixteenKilobytes_ReturnsSignatureError', () => {
+    expect(validateUpload({ ...alive, signature: { ...signature, size: 16385 } })).toEqual({
+      signature: 'File chữ ký phải từ 1 byte đến 16 KB.',
+    })
+  })
+
+  it('validateUpload_CertificateUnsupportedType_ReturnsCertificateError', () => {
+    expect(validateUpload({ ...dead, deathCertificate: { name: 'a.zip', type: 'application/zip', size: 5 } })).toEqual({
+      deathCertificate: 'Chỉ hỗ trợ PDF, PNG, JPEG hoặc văn bản (.txt).',
+    })
   })
 })
 

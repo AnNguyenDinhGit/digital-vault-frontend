@@ -67,6 +67,54 @@ export function validateRegister({ fullName, email, phone, identityNumber = '', 
   return errors
 }
 
+// Validate form chỉ định người thụ hưởng khi phải chọn tài sản trước (trang Người thụ hưởng)
+export function validateAssignment({ assetId, email, allocation }, remaining) {
+  const errors = validateBeneficiary({ email, allocation }, remaining)
+  if (!assetId) errors.assetId = 'Vui lòng chọn tài sản.'
+  return errors
+}
+
+// Giới hạn upload theo BE: file giấy tờ tối đa 10 MB, chữ ký rời tối đa 16 KB, chỉ nhận PDF/PNG/JPEG/text
+export const UPLOAD_LIMITS = { maxFileBytes: 10 * 1024 * 1024, maxSignatureBytes: 16384 }
+const ALLOWED_DOCUMENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'text/plain']
+const ALLOWED_DOCUMENT_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.txt']
+const DOCUMENT_TYPE_MESSAGE = 'Chỉ hỗ trợ PDF, PNG, JPEG hoặc văn bản (.txt).'
+
+// Ưu tiên MIME type của trình duyệt, nếu trống thì dựa vào đuôi file
+function isAllowedDocumentType(file) {
+  const type = (file.type ?? '').toLowerCase()
+  if (type) return ALLOWED_DOCUMENT_TYPES.includes(type)
+  const name = (file.name ?? '').toLowerCase()
+  return ALLOWED_DOCUMENT_EXTENSIONS.some((extension) => name.endsWith(extension))
+}
+
+function validateDocumentFile(file, requiredMessage) {
+  if (!file) return requiredMessage
+  if (file.size <= 0 || file.size > UPLOAD_LIMITS.maxFileBytes) return 'File phải từ 1 byte đến 10 MB.'
+  if (!isAllowedDocumentType(file)) return DOCUMENT_TYPE_MESSAGE
+  return undefined
+}
+
+// Validate form upload giấy tờ: còn sống thì cần chữ ký rời, đã mất thì cần giấy chứng tử
+export function validateUpload({ file, signature, deathCertificate, beneficiaryId, ownerStatus }) {
+  const errors = {}
+  const fileError = validateDocumentFile(file, 'Vui lòng chọn file giấy tờ.')
+  if (fileError) errors.file = fileError
+
+  if (ownerStatus === 'alive') {
+    if (!signature) errors.signature = 'Vui lòng chọn file chữ ký rời.'
+    else if (signature.size <= 0 || signature.size > UPLOAD_LIMITS.maxSignatureBytes) {
+      errors.signature = 'File chữ ký phải từ 1 byte đến 16 KB.'
+    }
+  } else {
+    const certificateError = validateDocumentFile(deathCertificate, 'Vui lòng chọn giấy chứng tử.')
+    if (certificateError) errors.deathCertificate = certificateError
+  }
+
+  if (!beneficiaryId) errors.beneficiaryId = 'Vui lòng chọn người thụ hưởng.'
+  return errors
+}
+
 // Giới hạn của kho và tài sản lấy theo CreateVaultInput / CreateAssetInput của BE
 export const VAULT_LIMITS = { name: 100, description: 4000, assetType: 50 }
 const ASSET_TYPE_PATTERN = /^[\x20-\x7E]+$/

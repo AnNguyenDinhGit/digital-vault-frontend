@@ -5,8 +5,12 @@ import {
   buildStats,
   fileTypeLabel,
   filterAssets,
+  formatFileSize,
+  filterPeople,
   formatAllocation,
+  getAssignableAssets,
   getInitials,
+  groupBeneficiariesByPerson,
   getTypeTabs,
   paginate,
 } from './catalog'
@@ -79,6 +83,90 @@ describe('fileTypeLabel', () => {
   it('fileTypeLabel_EmptyMime_ReturnsFile', () => {
     expect(fileTypeLabel('')).toBe('FILE')
     expect(fileTypeLabel(undefined)).toBe('FILE')
+  })
+})
+
+describe('groupBeneficiariesByPerson', () => {
+  const people = groupBeneficiariesByPerson(assets, beneficiaries)
+
+  it('groupBeneficiariesByPerson_Assignments_GroupsByBeneficiaryId', () => {
+    expect(people).toHaveLength(2)
+    const mai = people.find((p) => p.beneficiaryId === 11)
+    expect(mai.items.map((i) => i.assetId)).toEqual([1, 2])
+    expect(mai.totalAssets).toBe(2)
+  })
+
+  it('groupBeneficiariesByPerson_Items_CarryAssetNameAndAllocation', () => {
+    const long = people.find((p) => p.beneficiaryId === 10)
+    expect(long.items).toEqual([{ assetId: 1, assetName: 'Ví Lạnh Crypto', allocation: 40, status: 'Active' }])
+  })
+
+  it('groupBeneficiariesByPerson_People_SortedByVietnameseName', () => {
+    expect(people.map((p) => p.fullName)).toEqual(['Nguyễn Thị Mai', 'Trần Bảo Long'])
+  })
+
+  it('groupBeneficiariesByPerson_UnknownAsset_FallsBackToAssetId', () => {
+    const result = groupBeneficiariesByPerson([], [{ assetId: 9, beneficiaryId: 1, fullName: 'A', allocation: 10, status: 'Active' }])
+    expect(result[0].items[0].assetName).toBe('Tài sản #9')
+  })
+
+  it('groupBeneficiariesByPerson_NoAssignments_ReturnsEmptyList', () => {
+    expect(groupBeneficiariesByPerson(assets, [])).toEqual([])
+  })
+})
+
+describe('filterPeople', () => {
+  const people = groupBeneficiariesByPerson(assets, beneficiaries)
+
+  it('filterPeople_EmptyQuery_ReturnsAll', () => {
+    expect(filterPeople(people, '  ')).toHaveLength(2)
+  })
+
+  it('filterPeople_NameIgnoringDiacritics_ReturnsMatch', () => {
+    expect(filterPeople(people, 'bao long').map((p) => p.beneficiaryId)).toEqual([10])
+  })
+
+  it('filterPeople_AssetName_ReturnsPeopleOfThatAsset', () => {
+    expect(filterPeople(people, 'tiet kiem').map((p) => p.beneficiaryId)).toEqual([11])
+  })
+
+  it('filterPeople_NoMatch_ReturnsEmptyList', () => {
+    expect(filterPeople(people, 'zzz')).toEqual([])
+  })
+})
+
+describe('getAssignableAssets', () => {
+  const withBeneficiaries = attachBeneficiaries(assets, beneficiaries)
+
+  it('getAssignableAssets_PartiallyAllocated_ReturnsRemainingPercent', () => {
+    const partial = [
+      { assetId: 7, name: 'Một phần', type: 'Other', documents: [], beneficiaries: [{ allocation: 70 }] },
+      { assetId: 8, name: 'Trống', type: 'Other', documents: [], beneficiaries: [] },
+    ]
+    const result = getAssignableAssets(partial)
+    expect(result.map((a) => [a.assetId, a.remaining])).toEqual([
+      [7, 30],
+      [8, 100],
+    ])
+  })
+
+  it('getAssignableAssets_FullyAllocated_AreExcluded', () => {
+    expect(getAssignableAssets(withBeneficiaries).map((a) => a.assetId)).toEqual([3, 4])
+  })
+})
+
+describe('formatFileSize', () => {
+  it('formatFileSize_Bytes_ReturnsBytes', () => {
+    expect(formatFileSize(512)).toBe('512 B')
+  })
+
+  it('formatFileSize_Kilobytes_ReturnsOneDecimal', () => {
+    expect(formatFileSize(2048)).toBe('2 KB')
+    expect(formatFileSize(1536)).toBe('1,5 KB')
+  })
+
+  it('formatFileSize_Megabytes_ReturnsOneDecimal', () => {
+    expect(formatFileSize(2.4 * 1024 * 1024)).toBe('2,4 MB')
   })
 })
 

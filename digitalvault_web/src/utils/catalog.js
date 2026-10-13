@@ -44,12 +44,61 @@ export function fileTypeLabel(mimeType) {
   return subtype ? subtype.replace(/^x-/, '').toUpperCase() : 'FILE'
 }
 
+// Dung lượng file dạng dễ đọc: 512 B, 1,5 KB, 2,4 MB
+export function formatFileSize(bytes) {
+  const oneDecimal = (value) => value.toFixed(1).replace('.', ',').replace(/,0$/, '')
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${oneDecimal(bytes / 1024)} KB`
+  return `${oneDecimal(bytes / (1024 * 1024))} MB`
+}
+
 // Gắn danh sách người thụ hưởng vào từng tài sản (không sửa dữ liệu gốc)
 export function attachBeneficiaries(assets, beneficiaries) {
   return assets.map((asset) => ({
     ...asset,
     beneficiaries: beneficiaries.filter((b) => b.assetId === asset.assetId),
   }))
+}
+
+// Gom danh sách phân bổ theo từng người thụ hưởng: người X hưởng những tài sản nào, bao nhiêu %
+export function groupBeneficiariesByPerson(assets, beneficiaries) {
+  const assetNames = new Map(assets.map((asset) => [asset.assetId, asset.name]))
+  const people = new Map()
+  beneficiaries.forEach((b) => {
+    if (!people.has(b.beneficiaryId)) {
+      people.set(b.beneficiaryId, { beneficiaryId: b.beneficiaryId, fullName: b.fullName, items: [] })
+    }
+    people.get(b.beneficiaryId).items.push({
+      assetId: b.assetId,
+      assetName: assetNames.get(b.assetId) ?? `Tài sản #${b.assetId}`,
+      allocation: b.allocation,
+      status: b.status,
+    })
+  })
+  return [...people.values()]
+    .map((person) => ({ ...person, totalAssets: person.items.length }))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName, 'vi'))
+}
+
+// Tìm người thụ hưởng theo tên hoặc tên tài sản họ được hưởng (không phân biệt dấu)
+export function filterPeople(people, query) {
+  const needle = normalizeText(query.trim())
+  if (!needle) return people
+  return people.filter(
+    (person) =>
+      normalizeText(person.fullName).includes(needle) ||
+      person.items.some((item) => normalizeText(item.assetName).includes(needle)),
+  )
+}
+
+// Tài sản còn phần trăm chưa phân bổ, kèm số đã phân bổ và còn lại
+export function getAssignableAssets(assets) {
+  return assets
+    .map((asset) => {
+      const allocated = Math.round(asset.beneficiaries.reduce((sum, b) => sum + b.allocation, 0) * 100) / 100
+      return { ...asset, allocated, remaining: Math.round((100 - allocated) * 100) / 100 }
+    })
+    .filter((asset) => asset.remaining > 0)
 }
 
 // Số liệu cho 3 thẻ thống kê, chỉ tính từ dữ liệu BE thật có
