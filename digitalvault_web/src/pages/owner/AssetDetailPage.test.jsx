@@ -200,10 +200,12 @@ describe('AssetDetailPage group A details', () => {
     downloads.forEach((button) => expect(button).toBeDisabled())
   })
 
-  it('executor_Section_ShowsComingSoonPlaceholder', async () => {
+  it('executor_Section_ShowsExecutorOfTheVault', async () => {
     renderDetail(1)
     await waitForDetail()
     const section = screen.getByRole('region', { name: 'Digital Executor giám sát' })
-    expect(within(section).getByText('Sắp ra mắt')).toBeInTheDocument()
+    expect(await within(section).findByText('LS. Lê Hoàng Nam')).toBeInTheDocument()
+    expect(within(section).getByText('Đang hiệu lực')).toBeInTheDocument()
+    expect(within(section).getByRole('link', { name: /Quản lý người thi hành/ })).toHaveAttribute('href', '/owner/executor')
   })
 })

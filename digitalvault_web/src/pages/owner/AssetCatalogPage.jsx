@@ -10,6 +10,7 @@ import Pagination from '../../components/owner/Pagination'
 import StatCards from '../../components/owner/StatCards'
 import VaultBanner from '../../components/owner/VaultBanner'
 import { useOwnerCatalog } from '../../hooks/useOwnerCatalog'
+import { useVaultExecutor } from '../../hooks/useVaultExecutor'
 import { buildStats, filterAssets, getTypeTabs, paginate } from '../../utils/catalog'
 
 const DEFAULT_PAGE_SIZE = 4
@@ -19,6 +20,7 @@ export default function AssetCatalogPage() {
   const catalog = useOwnerCatalog()
   const navigate = useNavigate()
   const { status, error, vaults, assets, beneficiaries, selectedVault, selectVault, reload } = catalog
+  const executor = useVaultExecutor(selectedVault?.vaultId ?? null)
 
   const [query, setQuery] = useState('')
   const [type, setType] = useState('all')
@@ -105,7 +107,7 @@ export default function AssetCatalogPage() {
         onCreateVault={() => setModal('vault')}
         onCheckIn={() => navigate('/owner/proof-of-life?ping=1')}
       />
-      <StatCards stats={stats} />
+      <StatCards stats={stats} executor={executor} />
 
       <section className="av-panel d-flex flex-column gap-3" aria-labelledby="catalog-title">
         <div>

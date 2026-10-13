@@ -103,3 +103,29 @@ export async function assignBeneficiary(assetId, { email, allocation }) {
   })
   return data
 }
+
+// Người thi hành (BE chưa có API, đang dùng mock): 404 ở getVaultExecutor nghĩa là kho chưa gán
+export async function getExecutors() {
+  const { data } = await axiosClient.get('/owner/executors')
+  return data
+}
+
+export async function getVaultExecutor(vaultId) {
+  const { data } = await axiosClient.get(`/owner/vaults/${vaultId}/executor`)
+  return data
+}
+
+export async function assignExecutor(vaultId, executorId) {
+  const { data } = await axiosClient.put(`/owner/vaults/${vaultId}/executor`, { executorId: Number(executorId) })
+  return data
+}
+
+export async function revokeExecutor(vaultId) {
+  await axiosClient.delete(`/owner/vaults/${vaultId}/executor`)
+}
+
+// Chỉ có ở mock: giả lập Executor chấp nhận lời ủy quyền
+export async function simulateExecutorAccept(vaultId) {
+  const { data } = await axiosClient.post(`/owner/vaults/${vaultId}/executor/accept`)
+  return data
+}

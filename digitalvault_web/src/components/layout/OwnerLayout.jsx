@@ -8,7 +8,7 @@ const COMING_SOON = 'Sắp ra mắt'
 const VAULT_ITEMS = [
   { label: 'Danh mục tài sản số', icon: FolderLock, to: '/owner/assets' },
   { label: 'Người thụ hưởng', icon: Users, to: '/owner/beneficiaries' },
-  { label: 'Người thi hành (Executor)', icon: UserCog },
+  { label: 'Người thi hành (Executor)', icon: UserCog, to: '/owner/executor' },
 ]
 
 const MONITOR_ITEMS = [

@@ -5,19 +5,24 @@ import {
   createVault,
   getAsset,
   getAssets,
+  assignExecutor,
   getActivityLogs,
   getBeneficiaries,
+  getExecutors,
   getProofOfLife,
   getVault,
+  getVaultExecutor,
   getVaults,
   pingProofOfLife,
+  revokeExecutor,
   saveProofOfLife,
+  simulateExecutorAccept,
   simulateTimePassing,
   uploadDocument,
 } from './ownerApi'
 
 vi.mock('./axiosClient', () => ({
-  default: { get: vi.fn(), post: vi.fn(), put: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }))
 
 describe('ownerApi', () => {
@@ -130,6 +135,38 @@ describe('ownerApi', () => {
     axiosClient.get.mockResolvedValue({ data: [{ logId: 1 }] })
     await expect(getActivityLogs()).resolves.toEqual([{ logId: 1 }])
     expect(axiosClient.get).toHaveBeenCalledWith('/owner/activity-logs')
+  })
+
+  describe('executor', () => {
+    it('getExecutors_Called_GetsCandidates', async () => {
+      axiosClient.get.mockResolvedValue({ data: [{ executorId: 5 }] })
+      await expect(getExecutors()).resolves.toEqual([{ executorId: 5 }])
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/executors')
+    })
+
+    it('getVaultExecutor_VaultId_GetsAssignmentOfThatVault', async () => {
+      axiosClient.get.mockResolvedValue({ data: { vaultId: 3 } })
+      await expect(getVaultExecutor(3)).resolves.toEqual({ vaultId: 3 })
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/vaults/3/executor')
+    })
+
+    it('assignExecutor_VaultAndExecutor_PutsExecutorId', async () => {
+      axiosClient.put.mockResolvedValue({ data: { status: 'Pending' } })
+      await expect(assignExecutor(3, '21')).resolves.toEqual({ status: 'Pending' })
+      expect(axiosClient.put).toHaveBeenCalledWith('/owner/vaults/3/executor', { executorId: 21 })
+    })
+
+    it('revokeExecutor_VaultId_SendsDelete', async () => {
+      axiosClient.delete.mockResolvedValue({ status: 204 })
+      await revokeExecutor(3)
+      expect(axiosClient.delete).toHaveBeenCalledWith('/owner/vaults/3/executor')
+    })
+
+    it('simulateExecutorAccept_VaultId_PostsAccept', async () => {
+      axiosClient.post.mockResolvedValue({ data: { status: 'Active' } })
+      await expect(simulateExecutorAccept(3)).resolves.toEqual({ status: 'Active' })
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/vaults/3/executor/accept')
+    })
   })
 
   describe('proof of life', () => {

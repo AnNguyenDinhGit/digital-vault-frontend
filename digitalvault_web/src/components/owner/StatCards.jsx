@@ -1,6 +1,7 @@
 import { Briefcase, FileCheck, UserCheck, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { executorBadgeClass, executorStatusLabel } from '../../utils/executor'
 
-const COMING_SOON = 'Sắp ra mắt'
 const pad2 = (value) => String(value).padStart(2, '0')
 
 function StatCard({ label, icon: Icon, tone, children }) {
@@ -17,8 +18,8 @@ function StatCard({ label, icon: Icon, tone, children }) {
   )
 }
 
-// 4 thẻ thống kê; thẻ Digital Executor chưa có API nên vô hiệu hoá
-export default function StatCards({ stats }) {
+// 4 thẻ thống kê; executor = { status: 'loading' | 'ready' | 'error', data } của kho đang chọn
+export default function StatCards({ stats, executor }) {
   const { totalAssets, beneficiaryCount, documentedCount, missingDocumentCount, encryptedPercent } = stats
   return (
     <div className="av-stat-grid">
@@ -51,14 +52,29 @@ export default function StatCards({ stats }) {
       </StatCard>
 
       <StatCard label="DIGITAL EXECUTOR" icon={UserCheck} tone="">
-        <p className="mb-0 mt-1 fw-bold text-slate-400" style={{ fontSize: 18 }}>
-          Chưa gán
-        </p>
-        <p className="mb-0 mt-1">
-          <span className="av-soon-badge" title={COMING_SOON}>
-            {COMING_SOON}
-          </span>
-        </p>
+        {executor?.status === 'loading' && <p className="mb-0 mt-1 fs-12 text-slate-400">Đang tải...</p>}
+        {executor?.status === 'ready' && executor.data && (
+          <>
+            <p className="mb-0 mt-1 fw-bold text-ink text-truncate" style={{ fontSize: 18 }}>
+              {executor.data.fullName}
+            </p>
+            <p className="mb-0 mt-1">
+              <span className={`av-badge ${executorBadgeClass(executor.data.status)}`}>{executorStatusLabel(executor.data.status)}</span>
+            </p>
+          </>
+        )}
+        {(!executor || executor.status === 'error' || (executor.status === 'ready' && !executor.data)) && (
+          <>
+            <p className="mb-0 mt-1 fw-bold text-slate-400" style={{ fontSize: 18 }}>
+              Chưa gán
+            </p>
+            <p className="mb-0 mt-1 fs-11">
+              <Link to="/owner/executor" className="av-link-btn text-decoration-none">
+                Gán người thi hành
+              </Link>
+            </p>
+          </>
+        )}
       </StatCard>
     </div>
   )

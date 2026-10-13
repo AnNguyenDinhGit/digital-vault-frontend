@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 5
+const DB_VERSION = 6
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -53,7 +53,7 @@ const hoursAgo = (hours) => new Date(Date.now() - hours * 60 * 60 * 1000).toISOS
 function createSeed() {
   return {
     version: DB_VERSION,
-    nextIds: { user: 9, vault: 2, asset: 7, document: 20, log: 13 },
+    nextIds: { user: 9, vault: 2, asset: 7, document: 20, log: 13, contract: 2 },
     users: [
       { userId: 1, fullName: DEMO_ACCOUNT.fullName, email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password, roles: ['Owner'] },
       { userId: 2, fullName: 'Trần Bảo Long', email: 'long.tran@example.com', password: 'Owner@123456', roles: ['Owner', 'Beneficiary'] },
@@ -132,6 +132,16 @@ function createSeed() {
     // Điểm danh sự sống theo userId; chủ sở hữu demo đã cấu hình và điểm danh lần cuối 10 ngày trước
     proofOfLife: {
       1: { frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), missedCount: 0 },
+    },
+    // Hồ sơ các Executor (luật sư/công chứng viên) có thể được ủy quyền
+    executors: [
+      { executorId: 5, fullName: 'LS. Lê Hoàng Nam', organization: 'Văn phòng Luật sư Trí Minh', licenseNumber: 'EX-9021', email: 'hoangnam@trimin.example', hotline: '0901 234 567', address: '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh' },
+      { executorId: 21, fullName: 'LS. Trần Đăng Khoa', organization: 'Công ty Luật Đại Việt', licenseNumber: 'EX-8832', email: 'dangkhoa@daiviet.example', hotline: '0912 345 678', address: '45 Lê Lợi, Quận Hải Châu, Đà Nẵng' },
+      { executorId: 22, fullName: 'LS. Nguyễn Hải Yến', organization: 'Văn phòng Luật sư Hải Yến', licenseNumber: 'EX-9104', email: 'haiyen@haiyen.example', hotline: '0933 456 789', address: '88 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội' },
+    ],
+    // Người thi hành của từng kho (theo vaultId); kho demo đã có Executor đang hiệu lực
+    executorAssignments: {
+      1: { executorId: 5, status: 'Active', assignedAt: hoursAgo(24 * 20), contractNumber: 'HD-UQ-2026-0001' },
     },
     // Nhật ký hoạt động (cột theo bảng AuditLog của BE) của chủ sở hữu demo
     activityLogs: [

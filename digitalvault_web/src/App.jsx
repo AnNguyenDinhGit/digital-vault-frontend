@@ -12,6 +12,7 @@ import AssetCatalogPage from './pages/owner/AssetCatalogPage'
 import AssetDetailPage from './pages/owner/AssetDetailPage'
 import ActivityLogPage from './pages/owner/ActivityLogPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
+import ExecutorManagementPage from './pages/owner/ExecutorManagementPage'
 import ProofOfLifePage from './pages/owner/ProofOfLifePage'
 
 // Component gốc: khai báo provider và các route theo từng vai trò của hệ thống
@@ -29,6 +30,7 @@ function App() {
               <Route path="assets" element={<AssetCatalogPage />} />
               <Route path="assets/:assetId" element={<AssetDetailPage />} />
               <Route path="beneficiaries" element={<BeneficiariesPage />} />
+              <Route path="executor" element={<ExecutorManagementPage />} />
               <Route path="proof-of-life" element={<ProofOfLifePage />} />
               <Route path="activity-log" element={<ActivityLogPage />} />
             </Route>

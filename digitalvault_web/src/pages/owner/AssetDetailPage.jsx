@@ -2,6 +2,7 @@ import { ArrowLeft, Download, FileText, Lock, Pencil, Plus, ShieldCheck } from '
 import { useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
 import { Link, useParams } from 'react-router-dom'
+import AssetExecutorSection from '../../components/owner/AssetExecutorSection'
 import AssetTypeIcon from '../../components/owner/AssetTypeIcon'
 import AssignBeneficiaryForm from '../../components/owner/AssignBeneficiaryForm'
 import UploadDocumentModal from '../../components/owner/UploadDocumentModal'
@@ -214,17 +215,7 @@ export default function AssetDetailPage() {
             )}
           </section>
 
-          <section className="av-panel d-flex flex-column gap-2" aria-labelledby="executor-title">
-            <div className="d-flex align-items-center justify-content-between gap-2">
-              <h2 id="executor-title" className="mb-0 fw-bold text-ink" style={{ fontSize: 16 }}>
-                Digital Executor giám sát
-              </h2>
-              <span className="av-soon-badge">{COMING_SOON}</span>
-            </div>
-            <p className="mb-0 fs-12 text-slate-500">
-              Người thi hành được ủy quyền bàn giao tài sản này sẽ hiển thị tại đây khi tính năng sẵn sàng.
-            </p>
-          </section>
+          <AssetExecutorSection />
         </div>
       </div>
       <UploadDocumentModal

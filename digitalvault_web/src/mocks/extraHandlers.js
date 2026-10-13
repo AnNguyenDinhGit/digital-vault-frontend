@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { computeProofOfLife } from '../utils/proofOfLife'
-import { getDb, saveDb } from './db'
+import { getDb, isMockHybrid, nextId, saveDb } from './db'
 import { hasUnknownFields, ownerRoute, problem } from './helpers'
 
 // Các API mà BE chưa có (điểm danh, nhật ký, executor, bảo mật...). Dùng được ở cả chế độ mock đầy đủ lẫn hỗn hợp.
@@ -97,4 +97,91 @@ const activityLogHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers]
+// Executor: BE mới có bảng ExecutorAssignment (theo kho) nhưng chưa có API
+const executorProfile = ({ executorId, fullName, organization, licenseNumber, email, hotline, address }) => ({
+  executorId,
+  fullName,
+  organization,
+  licenseNumber,
+  email,
+  hotline,
+  address,
+})
+
+function executorDto(db, vaultId, assignment) {
+  const profile = db.executors.find((executor) => executor.executorId === assignment.executorId)
+  return {
+    vaultId,
+    ...executorProfile(profile),
+    status: assignment.status,
+    assignedAt: assignment.assignedAt,
+    contractNumber: assignment.contractNumber,
+  }
+}
+
+// Ở chế độ hỗn hợp kho nằm ở BE thật nên mock không kiểm tra được quyền sở hữu kho
+const canUseVault = (db, userId, vaultId) =>
+  isMockHybrid() ? Number.isInteger(vaultId) : db.vaults.some((vault) => vault.vaultId === vaultId && vault.ownerId === userId)
+
+const executorHandlers = [
+  http.get(
+    '*/api/owner/executors',
+    ownerRoute(() => HttpResponse.json(getDb().executors.map(executorProfile))),
+  ),
+
+  http.get(
+    '*/api/owner/vaults/:vaultId/executor',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const vaultId = Number(params.vaultId)
+      const assignment = canUseVault(db, userId, vaultId) ? db.executorAssignments[vaultId] : null
+      return assignment ? HttpResponse.json(executorDto(db, vaultId, assignment)) : problem(404, 'Executor is not assigned.')
+    }),
+  ),
+
+  // Gán hoặc đổi Executor: luôn tạo hợp đồng ủy quyền mới ở trạng thái chờ Executor chấp nhận
+  http.put(
+    '*/api/owner/vaults/:vaultId/executor',
+    ownerRoute(({ userId, params, body }) => {
+      if (hasUnknownFields(body, ['executorId']) || !Number.isInteger(body?.executorId)) {
+        return problem(400, 'Request contains fields outside the contract.')
+      }
+      const db = getDb()
+      const vaultId = Number(params.vaultId)
+      if (!canUseVault(db, userId, vaultId)) return problem(404, 'Vault not found.')
+      if (!db.executors.some((executor) => executor.executorId === body.executorId)) return problem(404, 'Executor not found.')
+      const contractNumber = `HD-UQ-${new Date().getFullYear()}-${String(nextId('contract')).padStart(4, '0')}`
+      db.executorAssignments[vaultId] ={ executorId: body.executorId, status: 'Pending', assignedAt: new Date().toISOString(), contractNumber }
+      saveDb()
+      return HttpResponse.json(executorDto(db, vaultId, db.executorAssignments[vaultId]))
+    }),
+  ),
+
+  http.delete(
+    '*/api/owner/vaults/:vaultId/executor',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const vaultId = Number(params.vaultId)
+      if (!canUseVault(db, userId, vaultId) || !db.executorAssignments[vaultId]) return problem(404, 'Executor is not assigned.')
+      delete db.executorAssignments[vaultId]
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+
+  // Chỉ có ở mock: giả lập Executor bấm chấp nhận lời ủy quyền
+  http.post(
+    '*/api/owner/vaults/:vaultId/executor/accept',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const vaultId = Number(params.vaultId)
+      const assignment = canUseVault(db, userId, vaultId) ? db.executorAssignments[vaultId] : null
+      if (!assignment) return problem(404, 'Executor is not assigned.')
+      assignment.status = 'Active'
+      saveDb()
+      return HttpResponse.json(executorDto(db, vaultId, assignment))
+    }),
+  ),
+]
+
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers]

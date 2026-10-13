@@ -64,7 +64,8 @@ describe('AssetCatalogPage banner and stats', () => {
     expect(within(screen.getByRole('group', { name: 'TỔNG TÀI SẢN SỐ' })).getByText('06')).toBeInTheDocument()
     expect(within(screen.getByRole('group', { name: 'NGƯỜI THỤ HƯỞNG' })).getByText('02')).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'GIẤY TỜ ĐÍNH KÈM' })).toHaveTextContent('03/06')
-    expect(screen.getByRole('group', { name: 'DIGITAL EXECUTOR' })).toHaveTextContent('Sắp ra mắt')
+    expect(await screen.findByText('LS. Lê Hoàng Nam')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'DIGITAL EXECUTOR' })).toHaveTextContent('Đang hiệu lực')
   })
 
   it('render_SingleVault_HidesVaultSelector', async () => {

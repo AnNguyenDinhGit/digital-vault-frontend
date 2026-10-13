@@ -53,6 +53,11 @@ describe('OwnerLayout', () => {
     expect(screen.getByRole('link', { name: /Điểm danh sự sống/ })).toHaveAttribute('href', '/owner/proof-of-life')
   })
 
+  it('render_ExecutorLink_IsEnabled', () => {
+    renderLayout()
+    expect(screen.getByRole('link', { name: /Người thi hành/ })).toHaveAttribute('href', '/owner/executor')
+  })
+
   it('render_ActivityLogLink_IsEnabled', () => {
     renderLayout()
     expect(screen.getByRole('link', { name: /Nhật ký hoạt động/ })).toHaveAttribute('href', '/owner/activity-log')
@@ -60,7 +65,7 @@ describe('OwnerLayout', () => {
 
   it('render_UnsupportedItems_AreDisabledWithComingSoon', () => {
     renderLayout()
-    for (const name of [/Người thi hành/, /Cài đặt bảo mật/]) {
+    for (const name of [/Cài đặt bảo mật/]) {
       const item = screen.getByRole('button', { name })
       expect(item).toBeDisabled()
       expect(item).toHaveAttribute('title', 'Sắp ra mắt')
