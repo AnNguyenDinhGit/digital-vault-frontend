@@ -127,7 +127,7 @@ export function getTypeTabs(assets) {
 }
 
 // Bỏ dấu và hạ chữ thường để tìm kiếm tiếng Việt không phụ thuộc cách gõ
-function normalizeText(value) {
+export function normalizeText(value) {
   return (value ?? '')
     .toLowerCase()
     .normalize('NFD')

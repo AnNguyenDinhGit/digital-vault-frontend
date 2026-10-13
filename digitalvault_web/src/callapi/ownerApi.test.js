@@ -5,6 +5,7 @@ import {
   createVault,
   getAsset,
   getAssets,
+  getActivityLogs,
   getBeneficiaries,
   getProofOfLife,
   getVault,
@@ -123,6 +124,12 @@ describe('ownerApi', () => {
       await uploadDocument(4, { file, beneficiaryId: 11, ownerAlive: true, signature, deathCertificate: certificate })
       expect(sentForm().has('deathCertificate')).toBe(false)
     })
+  })
+
+  it('getActivityLogs_Called_GetsLogsAndReturnsData', async () => {
+    axiosClient.get.mockResolvedValue({ data: [{ logId: 1 }] })
+    await expect(getActivityLogs()).resolves.toEqual([{ logId: 1 }])
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/activity-logs')
   })
 
   describe('proof of life', () => {

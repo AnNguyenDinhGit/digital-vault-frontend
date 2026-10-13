@@ -57,6 +57,12 @@ export async function uploadDocument(assetId, { file, beneficiaryId, ownerAlive,
   return data
 }
 
+// Nhật ký hoạt động (BE đã ghi AuditLog nhưng chưa có API đọc, đang dùng mock)
+export async function getActivityLogs() {
+  const { data } = await axiosClient.get('/owner/activity-logs')
+  return data
+}
+
 // Điểm danh sự sống (BE chưa có API, đang dùng mock): 404 nghĩa là chưa thiết lập
 export async function getProofOfLife() {
   const { data } = await axiosClient.get('/owner/proof-of-life')

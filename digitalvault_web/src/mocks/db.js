@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 4
+const DB_VERSION = 5
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -47,11 +47,13 @@ function doc(documentId, fileName, fileType) {
   return { documentId, fileName, fileType, isEncrypted: true, signatureValid: null }
 }
 
+const hoursAgo = (hours) => new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
+
 // Dữ liệu khởi tạo: 1 chủ sở hữu demo, 2 người thụ hưởng đã đăng ký, 1 kho và 6 tài sản
 function createSeed() {
   return {
     version: DB_VERSION,
-    nextIds: { user: 9, vault: 2, asset: 7, document: 20 },
+    nextIds: { user: 9, vault: 2, asset: 7, document: 20, log: 13 },
     users: [
       { userId: 1, fullName: DEMO_ACCOUNT.fullName, email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password, roles: ['Owner'] },
       { userId: 2, fullName: 'Trần Bảo Long', email: 'long.tran@example.com', password: 'Owner@123456', roles: ['Owner', 'Beneficiary'] },
@@ -131,6 +133,21 @@ function createSeed() {
     proofOfLife: {
       1: { frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), missedCount: 0 },
     },
+    // Nhật ký hoạt động (cột theo bảng AuditLog của BE) của chủ sở hữu demo
+    activityLogs: [
+      { logId: 1, userId: 1, action: 'Login', entityType: 'User', entityId: 1, timestamp: hoursAgo(2), ipAddress: '14.161.42.90', result: 'Success' },
+      { logId: 2, userId: 1, action: 'CreateVault', entityType: 'DigitalVault', entityId: 1, timestamp: hoursAgo(50), ipAddress: '14.161.42.90', result: 'Success' },
+      { logId: 3, userId: 1, action: 'CreateAsset', entityType: 'DigitalAsset', entityId: 1, timestamp: hoursAgo(49), ipAddress: '14.161.42.90', result: 'Success' },
+      { logId: 4, userId: 1, action: 'CreateAsset', entityType: 'DigitalAsset', entityId: 2, timestamp: hoursAgo(48), ipAddress: '14.161.42.90', result: 'Success' },
+      { logId: 5, userId: 1, action: 'AssignBeneficiary', entityType: 'DigitalAsset', entityId: 1, timestamp: hoursAgo(47), ipAddress: '14.161.42.90', result: 'Success' },
+      { logId: 6, userId: 1, action: 'AssignBeneficiary', entityType: 'DigitalAsset', entityId: 1, timestamp: hoursAgo(46), ipAddress: '14.161.42.90', result: 'Success' },
+      { logId: 7, userId: 1, action: 'UploadAssetDocument', entityType: 'DigitalAsset', entityId: 2, timestamp: hoursAgo(30), ipAddress: '14.161.42.90', result: 'Alive_Signed' },
+      { logId: 8, userId: 1, action: 'UploadAssetDocument', entityType: 'DigitalAsset', entityId: 3, timestamp: hoursAgo(28), ipAddress: '14.161.42.90', result: 'Pending_Legal' },
+      { logId: 9, userId: 1, action: 'Login', entityType: 'User', entityId: 1, timestamp: hoursAgo(100), ipAddress: '113.190.234.12', result: 'Failed' },
+      { logId: 10, userId: 1, action: 'UpdateProofOfLife', entityType: null, entityId: null, timestamp: hoursAgo(250), ipAddress: '14.161.42.90', result: 'Success' },
+      { logId: 11, userId: 1, action: 'PingProofOfLife', entityType: null, entityId: null, timestamp: hoursAgo(240), ipAddress: '14.161.42.90', result: 'Success' },
+      { logId: 12, userId: 1, action: 'Logout', entityType: null, entityId: null, timestamp: hoursAgo(200), ipAddress: '14.161.42.90', result: 'Success' },
+    ],
     assignments: [
       { assetId: 1, beneficiaryId: 2, allocation: 40, status: 'Active' },
       { assetId: 1, beneficiaryId: 3, allocation: 60, status: 'Active' },

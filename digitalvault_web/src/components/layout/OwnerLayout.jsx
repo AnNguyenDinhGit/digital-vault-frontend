@@ -13,7 +13,7 @@ const VAULT_ITEMS = [
 
 const MONITOR_ITEMS = [
   { label: 'Điểm danh sự sống', icon: Activity, to: '/owner/proof-of-life' },
-  { label: 'Nhật ký hoạt động', icon: History },
+  { label: 'Nhật ký hoạt động', icon: History, to: '/owner/activity-log' },
   { label: 'Cài đặt bảo mật', icon: Settings },
 ]
 

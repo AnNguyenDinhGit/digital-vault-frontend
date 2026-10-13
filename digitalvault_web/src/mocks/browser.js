@@ -1,4 +1,6 @@
 import { setupWorker } from 'msw/browser'
+import axiosClient from '../callapi/axiosClient'
+import { installActivityRecorder } from './activityRecorder'
 import { setMockHybrid, setMockLatency } from './db'
 import { handlers, hybridHandlers } from './handlers'
 
@@ -7,6 +9,8 @@ import { handlers, hybridHandlers } from './handlers'
 export async function startMockApi(mode = 'full') {
   setMockLatency(300)
   setMockHybrid(mode === 'hybrid')
+  // Ghi nhật ký hoạt động cho các thao tác thành công (cả khi dữ liệu khác lấy từ BE thật)
+  installActivityRecorder(axiosClient)
   const worker = setupWorker(...(mode === 'hybrid' ? hybridHandlers : handlers))
   await worker.start({
     onUnhandledRequest: 'bypass',

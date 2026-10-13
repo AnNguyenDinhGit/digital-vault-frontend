@@ -83,4 +83,18 @@ const proofOfLifeHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers]
+const activityLogHandlers = [
+  // Nhật ký của chính người dùng, mới nhất trước; cột theo bảng AuditLog của BE
+  http.get(
+    '*/api/owner/activity-logs',
+    ownerRoute(({ userId }) => {
+      const logs = getDb()
+        .activityLogs.filter((log) => log.userId === userId)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .map(({ logId, action, entityType, entityId, timestamp, ipAddress, result }) => ({ logId, action, entityType, entityId, timestamp, ipAddress, result }))
+      return HttpResponse.json(logs)
+    }),
+  ),
+]
+
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers]

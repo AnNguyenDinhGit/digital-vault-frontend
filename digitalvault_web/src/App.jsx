@@ -10,6 +10,7 @@ import LandingPage from './pages/LandingPage'
 import RolePlaceholderPage from './pages/common/RolePlaceholderPage'
 import AssetCatalogPage from './pages/owner/AssetCatalogPage'
 import AssetDetailPage from './pages/owner/AssetDetailPage'
+import ActivityLogPage from './pages/owner/ActivityLogPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
 import ProofOfLifePage from './pages/owner/ProofOfLifePage'
 
@@ -29,6 +30,7 @@ function App() {
               <Route path="assets/:assetId" element={<AssetDetailPage />} />
               <Route path="beneficiaries" element={<BeneficiariesPage />} />
               <Route path="proof-of-life" element={<ProofOfLifePage />} />
+              <Route path="activity-log" element={<ActivityLogPage />} />
             </Route>
           </Route>
 

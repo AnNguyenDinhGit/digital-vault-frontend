@@ -3,13 +3,21 @@ import { Form } from 'react-bootstrap'
 import { PAGE_SIZE_OPTIONS } from '../../utils/catalog'
 
 // Thanh phân trang kèm lựa chọn số lượng mỗi trang
-export default function Pagination({ pageData, pageSize, onPageChange, onPageSizeChange }) {
+export default function Pagination({
+  pageData,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  unit = 'tài sản số',
+  perPageUnit = 'tài sản',
+  sizeOptions = PAGE_SIZE_OPTIONS,
+}) {
   const { page, totalPages, total, from, to } = pageData
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1)
   return (
     <div className="av-pagination">
       <div className="d-flex flex-wrap align-items-center gap-3 fs-12 text-slate-500">
-        <span>{`Hiển thị ${from} - ${to} trong tổng số ${total} tài sản số`}</span>
+        <span>{`Hiển thị ${from} - ${to} trong tổng số ${total} ${unit}`}</span>
         <div className="d-flex align-items-center gap-2">
           <label htmlFor="catalog-page-size" className="mb-0">
             Số lượng
@@ -21,9 +29,9 @@ export default function Pagination({ pageData, pageSize, onPageChange, onPageSiz
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
             style={{ width: 'auto' }}
           >
-            {PAGE_SIZE_OPTIONS.map((size) => (
+            {sizeOptions.map((size) => (
               <option key={size} value={size}>
-                {`${size} tài sản / trang`}
+                {`${size} ${perPageUnit} / trang`}
               </option>
             ))}
           </Form.Select>
