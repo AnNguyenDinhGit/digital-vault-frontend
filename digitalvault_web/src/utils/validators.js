@@ -192,3 +192,31 @@ export function validateBeneficiary({ email, allocation }, remaining) {
   else if (value > remaining) errors.allocation = `Chỉ còn ${remaining}% có thể phân bổ.`
   return errors
 }
+
+// Validate riêng ô email (dùng ở bước nhập email của luồng quên mật khẩu)
+export function validateEmailOnly(email) {
+  const mail = email.trim()
+  if (!mail) return 'Vui lòng nhập email.'
+  if (mail.length > LIMITS.email) return `Email tối đa ${LIMITS.email} ký tự.`
+  if (!isValidEmail(mail)) return 'Email không hợp lệ.'
+  return undefined
+}
+
+// Mã OTP gồm đúng 6 chữ số
+export function validateOtp(value) {
+  const otp = value.trim()
+  if (!otp) return { otp: 'Vui lòng nhập mã xác nhận.' }
+  if (!/^\d{6}$/.test(otp)) return { otp: 'Mã gồm đúng 6 chữ số.' }
+  return {}
+}
+
+// Validate bước đặt mật khẩu mới khi quên mật khẩu (không có mật khẩu hiện tại để so sánh)
+export function validateNewPassword({ newPassword, confirmPassword }) {
+  const errors = {}
+  if (!newPassword) errors.newPassword = 'Vui lòng nhập mật khẩu mới.'
+  else if (!isStrongPassword(newPassword)) errors.newPassword = PASSWORD_RULE_MESSAGE
+
+  if (!confirmPassword) errors.confirmPassword = 'Vui lòng nhập lại mật khẩu mới.'
+  else if (confirmPassword !== newPassword) errors.confirmPassword = 'Mật khẩu xác nhận không khớp.'
+  return errors
+}

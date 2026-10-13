@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { validateLogin } from '../../utils/validators'
 import { getDefaultRouteForRoles } from '../../utils/roleRoutes'
 import TextField from '../common/TextField'
+import ForgotPasswordModal from './ForgotPasswordModal'
 
 const COMING_SOON = 'Sắp ra mắt'
 
@@ -25,11 +26,22 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [isForgotOpen, setIsForgotOpen] = useState(false)
+  const [resetNotice, setResetNotice] = useState('')
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setForm((prev) => ({ ...prev, [name]: value }))
     setErrors((prev) => ({ ...prev, [name]: undefined }))
+  }
+
+  // Đặt lại mật khẩu xong: đóng hộp thoại, điền sẵn email và nhắc đăng nhập bằng mật khẩu mới
+  const handlePasswordReset = (email) => {
+    setIsForgotOpen(false)
+    setForm({ email, password: '' })
+    setErrors({})
+    setSubmitError('')
+    setResetNotice('Đã đặt lại mật khẩu. Vui lòng đăng nhập bằng mật khẩu mới.')
   }
 
   const handleSubmit = async (event) => {
@@ -69,9 +81,9 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
         </p>
       </div>
 
-      {notice && (
+      {(resetNotice || notice) && (
         <p role="status" className="av-notice mt-4">
-          {notice}
+          {resetNotice || notice}
         </p>
       )}
 
@@ -103,7 +115,7 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
           onChange={handleChange}
           error={errors.password}
           labelAside={
-            <button type="button" disabled title={COMING_SOON} className="av-link-btn fs-12">
+            <button type="button" onClick={() => setIsForgotOpen(true)} className="av-link-btn fs-12">
               Quên mật khẩu?
             </button>
           }
@@ -164,6 +176,9 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
           Đăng ký tạo Vault mới
         </button>
       </p>
+      {isForgotOpen && (
+        <ForgotPasswordModal initialEmail={form.email} onClose={() => setIsForgotOpen(false)} onReset={handlePasswordReset} />
+      )}
     </section>
   )
 }

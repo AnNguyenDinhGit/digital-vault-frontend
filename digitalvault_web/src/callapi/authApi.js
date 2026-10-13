@@ -46,3 +46,19 @@ export async function checkSession() {
     throw error
   }
 }
+
+// Quên mật khẩu (BE chưa có API, đang dùng mock). Ba bước: gửi mã OTP, xác nhận mã, đặt mật khẩu mới.
+export async function requestPasswordReset(email) {
+  const { data } = await axiosClient.post('/auth/forgot-password', { email: email.trim() }, AUTH_CONFIG)
+  return data
+}
+
+export async function verifyResetOtp(email, otp) {
+  const { data } = await axiosClient.post('/auth/verify-reset-otp', { email: email.trim(), otp: otp.trim() }, AUTH_CONFIG)
+  return data
+}
+
+// Chỉ gửi đúng các trường hợp đồng; mật khẩu không bao giờ được log
+export async function resetPassword({ resetToken, newPassword, confirmPassword }) {
+  await axiosClient.post('/auth/reset-password', { resetToken, newPassword, confirmPassword }, AUTH_CONFIG)
+}

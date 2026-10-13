@@ -1,9 +1,9 @@
 import { http, HttpResponse } from 'msw'
 import { computeProofOfLife } from '../utils/proofOfLife'
 import { parseAllocation, parseAssetUpdate } from './assetInput'
-import { LIMITS, isStrongPassword, isValidPhone } from '../utils/validators'
+import { LIMITS, isStrongPassword, isValidPhone, validateEmailOnly } from '../utils/validators'
 import { getDb, getFrontendEmail, isMockHybrid, nextId, saveDb } from './db'
-import { hasUnknownFields, ownerRoute, problem } from './helpers'
+import { hasUnknownFields, ownerRoute, problem, route } from './helpers'
 
 // Các API mà BE chưa có (điểm danh, nhật ký, executor, bảo mật...). Dùng được ở cả chế độ mock đầy đủ lẫn hỗn hợp.
 
@@ -286,6 +286,92 @@ const downloadHandlers = [
   ),
 ]
 
+// Quên mật khẩu: OTP chỉ tồn tại trong mock và được trả về trong mockOtp để demo (BE thật sẽ gửi qua email).
+// Email không tồn tại vẫn nhận phản hồi giống hệt nhưng không có OTP để không lộ tài khoản nào đã đăng ký.
+const OTP_TTL_MS = 5 * 60 * 1000
+const RESET_TOKEN_TTL_MS = 10 * 60 * 1000
+const MAX_OTP_ATTEMPTS = 5
+
+const normalizeEmail = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '')
+
+function maskEmail(email) {
+  const [local, domain] = email.split('@')
+  return `${local[0]}***${local[local.length - 1]}@${domain}`
+}
+
+const passwordResetHandlers = [
+  http.post(
+    '*/api/auth/forgot-password',
+    route(
+      ({ body }) => {
+        if (hasUnknownFields(body, ['email'])) return problem(400, 'Request contains fields outside the contract.')
+        const email = normalizeEmail(body?.email)
+        if (!email || validateEmailOnly(email)) return problem(400, 'Email is invalid.')
+        const db = getDb()
+        const response = { maskedEmail: maskEmail(email), expiresInSeconds: OTP_TTL_MS / 1000 }
+        if (!db.users.some((user) => user.email.toLowerCase() === email)) return HttpResponse.json(response)
+        const otp = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0')
+        db.passwordResets[email] = { otp, expiresAt: Date.now() + OTP_TTL_MS, attempts: 0 }
+        saveDb()
+        return HttpResponse.json({ ...response, mockOtp: otp })
+      },
+      { auth: false },
+    ),
+  ),
+
+  http.post(
+    '*/api/auth/verify-reset-otp',
+    route(
+      ({ body }) => {
+        if (hasUnknownFields(body, ['email', 'otp'])) return problem(400, 'Request contains fields outside the contract.')
+        const email = normalizeEmail(body?.email)
+        if (!email || typeof body?.otp !== 'string' || !/^\d{6}$/.test(body.otp.trim())) return problem(400, 'Email and a 6 digit code are required.')
+        const db = getDb()
+        const record = db.passwordResets[email]
+        if (!record || record.expiresAt < Date.now()) return problem(400, 'Invalid or expired code.')
+        if (record.attempts >= MAX_OTP_ATTEMPTS) return problem(429, 'Too many attempts. Request a new code.')
+        if (record.otp !== body.otp.trim()) {
+          record.attempts += 1
+          saveDb()
+          return problem(400, 'Invalid or expired code.')
+        }
+        delete db.passwordResets[email]
+        const resetToken = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, '')
+        db.resetTokens[resetToken] = { email, expiresAt: Date.now() + RESET_TOKEN_TTL_MS }
+        saveDb()
+        return HttpResponse.json({ resetToken })
+      },
+      { auth: false },
+    ),
+  ),
+
+  http.post(
+    '*/api/auth/reset-password',
+    route(
+      ({ body }) => {
+        if (hasUnknownFields(body, ['resetToken', 'newPassword', 'confirmPassword'])) {
+          return problem(400, 'Request contains fields outside the contract.')
+        }
+        const { resetToken, newPassword, confirmPassword } = body ?? {}
+        const db = getDb()
+        const entry = typeof resetToken === 'string' ? db.resetTokens[resetToken] : null
+        if (!entry || entry.expiresAt < Date.now()) return problem(400, 'Invalid or expired reset token.')
+        if (newPassword !== confirmPassword) return problem(400, 'Passwords do not match.')
+        if (!isStrongPassword(newPassword)) return problem(400, 'Password must be 12 to 1024 characters with a digit and a symbol.')
+        const account = db.users.find((user) => user.email.toLowerCase() === entry.email)
+        if (account) {
+          account.password = newPassword
+          db.security[account.userId] = { ...db.security[account.userId], passwordChangedAt: new Date().toISOString() }
+        }
+        delete db.resetTokens[resetToken]
+        saveDb()
+        return new HttpResponse(null, { status: 204 })
+      },
+      { auth: false },
+    ),
+  ),
+]
+
 // Hồ sơ và bảo mật: tài khoản ở BE thật không có trong mock nên chỉnh sửa được lưu thành lớp phủ theo userId
 function profileDto(db, userId) {
   const account = db.users.find((user) => user.userId === userId)
@@ -361,4 +447,4 @@ const securityHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...assetEditHandlers, ...beneficiaryEditHandlers, ...downloadHandlers, ...securityHandlers]
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...assetEditHandlers, ...beneficiaryEditHandlers, ...downloadHandlers, ...securityHandlers, ...passwordResetHandlers]

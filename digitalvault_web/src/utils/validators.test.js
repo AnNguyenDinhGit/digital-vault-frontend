@@ -5,6 +5,8 @@ import {
   validateAsset,
   validateBeneficiary,
   validateLogin,
+  validateNewPassword,
+  validateOtp,
   validatePasswordChange,
   validateProfile,
   validateRegister,
@@ -379,5 +381,42 @@ describe('validatePasswordChange', () => {
 
   it('validatePasswordChange_ValidInput_ReturnsEmptyObject', () => {
     expect(validatePasswordChange(valid)).toEqual({})
+  })
+})
+
+describe('validateNewPassword', () => {
+  it('validateNewPassword_EmptyFields_ReturnsBothErrors', () => {
+    expect(validateNewPassword({ newPassword: '', confirmPassword: '' })).toEqual({
+      newPassword: 'Vui lòng nhập mật khẩu mới.',
+      confirmPassword: 'Vui lòng nhập lại mật khẩu mới.',
+    })
+  })
+
+  it('validateNewPassword_Weak_ReturnsRuleError', () => {
+    expect(validateNewPassword({ newPassword: 'ngan', confirmPassword: 'ngan' })).toEqual({
+      newPassword: 'Mật khẩu tối thiểu 12 ký tự, có số và ký tự đặc biệt.',
+    })
+  })
+
+  it('validateNewPassword_Mismatch_ReturnsConfirmError', () => {
+    expect(validateNewPassword({ newPassword: 'MatKhauMoi#2026', confirmPassword: 'Khac#Hoan2026x' })).toEqual({
+      confirmPassword: 'Mật khẩu xác nhận không khớp.',
+    })
+  })
+
+  it('validateNewPassword_Valid_ReturnsEmptyObject', () => {
+    expect(validateNewPassword({ newPassword: 'MatKhauMoi#2026', confirmPassword: 'MatKhauMoi#2026' })).toEqual({})
+  })
+})
+
+describe('validateOtp', () => {
+  it('validateOtp_SixDigits_ReturnsEmptyObject', () => {
+    expect(validateOtp(' 123456 ')).toEqual({})
+  })
+
+  it('validateOtp_EmptyOrWrongFormat_ReturnsError', () => {
+    expect(validateOtp('')).toEqual({ otp: 'Vui lòng nhập mã xác nhận.' })
+    expect(validateOtp('12ab')).toEqual({ otp: 'Mã gồm đúng 6 chữ số.' })
+    expect(validateOtp('1234567')).toEqual({ otp: 'Mã gồm đúng 6 chữ số.' })
   })
 })
