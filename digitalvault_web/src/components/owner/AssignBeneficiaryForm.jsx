@@ -1,18 +1,11 @@
 import { useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
 import { assignBeneficiary } from '../../callapi/ownerApi'
+import { assignErrorMessage } from '../../utils/beneficiaryErrors'
 import { validateBeneficiary } from '../../utils/validators'
 import TextField from '../common/TextField'
 
 const EMPTY_FORM = { email: '', allocation: '' }
-
-// Chuyển lỗi API chỉ định người thụ hưởng sang thông báo tiếng Việt
-function assignErrorMessage(error) {
-  if (error?.status === 404) return 'Không tìm thấy tài khoản đang hoạt động với email này.'
-  if (error?.status === 400) return 'Thông tin không hợp lệ (bạn không thể chọn chính mình làm người thụ hưởng).'
-  if (error?.status === 409) return 'Người này đã được chỉ định hoặc tổng phân bổ vượt 100%.'
-  return error?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
-}
 
 // Form chỉ định người thụ hưởng bằng email đã đăng ký; remaining là % còn có thể phân bổ
 export default function AssignBeneficiaryForm({ assetId, remaining, onAssigned }) {

@@ -10,6 +10,7 @@ import LandingPage from './pages/LandingPage'
 import RolePlaceholderPage from './pages/common/RolePlaceholderPage'
 import AssetCatalogPage from './pages/owner/AssetCatalogPage'
 import AssetDetailPage from './pages/owner/AssetDetailPage'
+import BeneficiariesPage from './pages/owner/BeneficiariesPage'
 
 // Component gốc: khai báo provider và các route theo từng vai trò của hệ thống
 function App() {
@@ -25,7 +26,7 @@ function App() {
               <Route index element={<Navigate to="assets" replace />} />
               <Route path="assets" element={<AssetCatalogPage />} />
               <Route path="assets/:assetId" element={<AssetDetailPage />} />
-              <Route path="beneficiaries" element={<RolePlaceholderPage title="Người thụ hưởng" />} />
+              <Route path="beneficiaries" element={<BeneficiariesPage />} />
             </Route>
           </Route>
 
