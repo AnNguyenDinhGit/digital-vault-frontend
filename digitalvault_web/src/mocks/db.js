@@ -1,3 +1,5 @@
+import { USER_STORAGE_KEY } from '../contexts/authContextInstance'
+
 // Cơ sở dữ liệu giả trong bộ nhớ cho MSW, bám theo DTO của BE (xem docs/API.md bên repo BE)
 const DB_STORAGE_KEY = 'aeterna.mock.db'
 const SESSION_STORAGE_KEY = 'aeterna.mock.session'
@@ -21,7 +23,16 @@ export const ROLE_ACCOUNTS = [
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
 const DB_VERSION = 3
 
-const config = { latencyMs: 0 }
+// hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
+const config = { latencyMs: 0, hybrid: false }
+
+export function setMockHybrid(flag) {
+  config.hybrid = flag
+}
+
+export function isMockHybrid() {
+  return config.hybrid
+}
 
 export function setMockLatency(ms) {
   config.latencyMs = ms
@@ -162,6 +173,7 @@ export function resetMockDb() {
     // Bỏ qua khi trình duyệt chặn storage
   }
   config.latencyMs = 0
+  config.hybrid = false
 }
 
 export function nextId(kind) {
@@ -170,14 +182,25 @@ export function nextId(kind) {
   return id
 }
 
+// Ở chế độ hỗn hợp người dùng đăng nhập vào BE thật, FE đã lưu userId đó trong sessionStorage nên mock dùng lại
+function readFrontendUserId() {
+  try {
+    const user = JSON.parse(sessionStorage.getItem(USER_STORAGE_KEY))
+    return Number.isInteger(user?.userId) ? user.userId : null
+  } catch {
+    return null
+  }
+}
+
 // Phiên đăng nhập giả: lưu userId trong sessionStorage để F5 không mất phiên, đóng tab thì mất
 export function getSessionUserId() {
   try {
     const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
-    return raw ? Number(raw) : null
+    if (raw) return Number(raw)
   } catch {
-    return null
+    // Bỏ qua khi trình duyệt chặn storage
   }
+  return config.hybrid ? readFrontendUserId() : null
 }
 
 export function setSessionUserId(userId) {

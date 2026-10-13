@@ -3,12 +3,15 @@ import { createRoot } from 'react-dom/client'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import './index.css'
 import App from './App.jsx'
+import { getMockMode } from './mocks/mode'
 
-// Khi BE chưa chạy được, bật VITE_USE_MOCK=true để dùng API giả (MSW) theo đúng contract của BE
+// VITE_USE_MOCK=true: mock toàn bộ API (khi BE chưa chạy được).
+// VITE_MOCK_MISSING_APIS=true: gọi BE thật, chỉ mock những API BE chưa có.
 async function enableMocking() {
-  if (import.meta.env.VITE_USE_MOCK !== 'true') return
+  const mode = getMockMode(import.meta.env)
+  if (mode === 'off') return
   const { startMockApi } = await import('./mocks/browser')
-  await startMockApi()
+  await startMockApi(mode)
 }
 
 enableMocking().then(() => {
