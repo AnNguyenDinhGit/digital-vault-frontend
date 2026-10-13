@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -127,6 +127,10 @@ function createSeed() {
         documents: [],
       },
     ],
+    // Điểm danh sự sống theo userId; chủ sở hữu demo đã cấu hình và điểm danh lần cuối 10 ngày trước
+    proofOfLife: {
+      1: { frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), missedCount: 0 },
+    },
     assignments: [
       { assetId: 1, beneficiaryId: 2, allocation: 40, status: 'Active' },
       { assetId: 1, beneficiaryId: 3, allocation: 60, status: 'Active' },

@@ -57,6 +57,31 @@ export async function uploadDocument(assetId, { file, beneficiaryId, ownerAlive,
   return data
 }
 
+// Điểm danh sự sống (BE chưa có API, đang dùng mock): 404 nghĩa là chưa thiết lập
+export async function getProofOfLife() {
+  const { data } = await axiosClient.get('/owner/proof-of-life')
+  return data
+}
+
+export async function saveProofOfLife({ frequencyDays, gracePeriodDays }) {
+  const { data } = await axiosClient.put('/owner/proof-of-life', {
+    frequencyDays: Number(frequencyDays),
+    gracePeriodDays: Number(gracePeriodDays),
+  })
+  return data
+}
+
+export async function pingProofOfLife() {
+  const { data } = await axiosClient.post('/owner/proof-of-life/ping')
+  return data
+}
+
+// Chỉ có ở mock: tua nhanh thời gian để xem trạng thái Cảnh báo và Đã kích hoạt
+export async function simulateTimePassing(days) {
+  const { data } = await axiosClient.post('/owner/proof-of-life/simulate', { days })
+  return data
+}
+
 // Bỏ assetId để lấy người thụ hưởng trên mọi tài sản của user
 export async function getBeneficiaries(assetId) {
   const { data } = await axiosClient.get('/owner/beneficiaries', {

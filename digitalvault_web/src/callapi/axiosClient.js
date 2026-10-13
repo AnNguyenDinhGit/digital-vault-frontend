@@ -23,6 +23,8 @@ const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   // BE xác thực bằng cookie HttpOnly nên luôn gửi kèm cookie
   withCredentials: true,
+  // Quá thời gian thì axios báo lỗi như mất kết nối (status 0) để giao diện hiện đúng thông báo
+  timeout: 30000,
   headers: { Accept: 'application/json' },
 })
 

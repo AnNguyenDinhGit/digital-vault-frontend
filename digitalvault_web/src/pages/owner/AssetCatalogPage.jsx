@@ -1,6 +1,7 @@
 import { Lock } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
+import { useNavigate } from 'react-router-dom'
 import AddAssetModal from '../../components/owner/AddAssetModal'
 import AssetCard from '../../components/owner/AssetCard'
 import AssetFilters from '../../components/owner/AssetFilters'
@@ -16,6 +17,7 @@ const DEFAULT_PAGE_SIZE = 4
 // Trang "Danh mục tài sản số": banner kho, thống kê và danh sách tài sản có tìm kiếm, lọc, phân trang
 export default function AssetCatalogPage() {
   const catalog = useOwnerCatalog()
+  const navigate = useNavigate()
   const { status, error, vaults, assets, beneficiaries, selectedVault, selectVault, reload } = catalog
 
   const [query, setQuery] = useState('')
@@ -101,6 +103,7 @@ export default function AssetCatalogPage() {
         onSelectVault={selectVault}
         onAddAsset={() => setModal('asset')}
         onCreateVault={() => setModal('vault')}
+        onCheckIn={() => navigate('/owner/proof-of-life?ping=1')}
       />
       <StatCards stats={stats} />
 

@@ -6,13 +6,17 @@ import {
   getAsset,
   getAssets,
   getBeneficiaries,
+  getProofOfLife,
   getVault,
   getVaults,
+  pingProofOfLife,
+  saveProofOfLife,
+  simulateTimePassing,
   uploadDocument,
 } from './ownerApi'
 
 vi.mock('./axiosClient', () => ({
-  default: { get: vi.fn(), post: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), put: vi.fn() },
 }))
 
 describe('ownerApi', () => {
@@ -118,6 +122,32 @@ describe('ownerApi', () => {
       axiosClient.post.mockResolvedValue({ data: {} })
       await uploadDocument(4, { file, beneficiaryId: 11, ownerAlive: true, signature, deathCertificate: certificate })
       expect(sentForm().has('deathCertificate')).toBe(false)
+    })
+  })
+
+  describe('proof of life', () => {
+    it('getProofOfLife_Called_GetsConfigAndReturnsData', async () => {
+      axiosClient.get.mockResolvedValue({ data: { frequencyDays: 30 } })
+      await expect(getProofOfLife()).resolves.toEqual({ frequencyDays: 30 })
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/proof-of-life')
+    })
+
+    it('saveProofOfLife_StringValues_PutsIntegers', async () => {
+      axiosClient.put.mockResolvedValue({ data: { frequencyDays: 14 } })
+      await expect(saveProofOfLife({ frequencyDays: '14', gracePeriodDays: '3' })).resolves.toEqual({ frequencyDays: 14 })
+      expect(axiosClient.put).toHaveBeenCalledWith('/owner/proof-of-life', { frequencyDays: 14, gracePeriodDays: 3 })
+    })
+
+    it('pingProofOfLife_Called_PostsPing', async () => {
+      axiosClient.post.mockResolvedValue({ data: { status: 'Active' } })
+      await expect(pingProofOfLife()).resolves.toEqual({ status: 'Active' })
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/proof-of-life/ping')
+    })
+
+    it('simulateTimePassing_Days_PostsDays', async () => {
+      axiosClient.post.mockResolvedValue({ data: { status: 'Warning' } })
+      await simulateTimePassing(25)
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/proof-of-life/simulate', { days: 25 })
     })
   })
 

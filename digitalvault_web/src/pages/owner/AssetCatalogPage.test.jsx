@@ -45,8 +45,17 @@ describe('AssetCatalogPage banner and stats', () => {
     renderPage()
     expect(await waitForCatalog()).toHaveTextContent('Kho Tài Sản Số & Phân Quyền Thừa Kế Cá Nhân')
     expect(screen.getByText('VAULT #1')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Điểm danh ngay/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Điểm danh ngay/ })).toBeEnabled()
     expect(screen.getByRole('button', { name: /Thêm tài sản mới/ })).toBeEnabled()
+  })
+
+  it('checkIn_ButtonClicked_NavigatesToProofOfLifeWithPingFlag', async () => {
+    renderWithProviders(<AssetCatalogPage />, {
+      extraRoutes: [{ path: '/owner/proof-of-life', element: <p>proof-of-life-page</p> }],
+    })
+    await waitForCatalog()
+    await userEvent.click(screen.getByRole('button', { name: /Điểm danh ngay/ }))
+    expect(await screen.findByText('proof-of-life-page')).toBeInTheDocument()
   })
 
   it('render_Ready_ShowsStatsFromRealData', async () => {

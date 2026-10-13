@@ -1,11 +1,10 @@
 import { Activity, Plus, ShieldCheck } from 'lucide-react'
 import { Button, Form } from 'react-bootstrap'
 
-const COMING_SOON = 'Sắp ra mắt'
 const STATUS_LABELS = { Active: 'Đang hoạt động' }
 
 // Banner đầu trang: thông tin kho đang chọn, bộ chọn kho (khi có từ 2 kho) và các nút hành động
-export default function VaultBanner({ vault, vaults, onSelectVault, onAddAsset, onCreateVault }) {
+export default function VaultBanner({ vault, vaults, onSelectVault, onAddAsset, onCreateVault, onCheckIn }) {
   return (
     <section className="av-panel av-banner" aria-label="Thông tin kho">
       <div className="d-flex align-items-center gap-3" style={{ minWidth: 0 }}>
@@ -46,7 +45,7 @@ export default function VaultBanner({ vault, vaults, onSelectVault, onAddAsset, 
         <button type="button" onClick={onCreateVault} className="av-link-btn fs-12">
           Tạo kho mới
         </button>
-        <button type="button" disabled title={COMING_SOON} className="av-ghost-btn is-brand">
+        <button type="button" onClick={onCheckIn} className="av-ghost-btn is-brand">
           <Activity size={14} aria-hidden="true" />
           Điểm danh ngay
         </button>

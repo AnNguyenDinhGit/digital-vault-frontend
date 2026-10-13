@@ -11,6 +11,7 @@ import RolePlaceholderPage from './pages/common/RolePlaceholderPage'
 import AssetCatalogPage from './pages/owner/AssetCatalogPage'
 import AssetDetailPage from './pages/owner/AssetDetailPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
+import ProofOfLifePage from './pages/owner/ProofOfLifePage'
 
 // Component gốc: khai báo provider và các route theo từng vai trò của hệ thống
 function App() {
@@ -27,6 +28,7 @@ function App() {
               <Route path="assets" element={<AssetCatalogPage />} />
               <Route path="assets/:assetId" element={<AssetDetailPage />} />
               <Route path="beneficiaries" element={<BeneficiariesPage />} />
+              <Route path="proof-of-life" element={<ProofOfLifePage />} />
             </Route>
           </Route>
 
