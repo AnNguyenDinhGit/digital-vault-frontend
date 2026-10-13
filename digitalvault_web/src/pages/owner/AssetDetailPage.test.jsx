@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
 import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
@@ -212,7 +213,7 @@ describe('AssetDetailPage group A details', () => {
     expect(within(within(table).getByRole('row', { name: /Trần Bảo Long/ })).getByText('BL')).toBeInTheDocument()
   })
 
-  it('documents_List_ShowsFileTypeLabelsAndDisabledDownload', async () => {
+  it('documents_List_ShowsFileTypeLabelsAndEnabledDownload', async () => {
     renderDetail(3)
     await waitForDetail()
     const list = screen.getByRole('list', { name: 'Giấy tờ đính kèm' })
@@ -220,7 +221,71 @@ describe('AssetDetailPage group A details', () => {
     expect(within(list).getByText('PNG')).toBeInTheDocument()
     const downloads = within(list).getAllByRole('button', { name: 'Tải về' })
     expect(downloads).toHaveLength(2)
-    downloads.forEach((button) => expect(button).toBeDisabled())
+    downloads.forEach((button) => expect(button).toBeEnabled())
+  })
+
+  describe('download', () => {
+    const originalCreate = URL.createObjectURL
+    const originalRevoke = URL.revokeObjectURL
+    let clicked
+
+    beforeEach(() => {
+      clicked = []
+      URL.createObjectURL = vi.fn(() => 'blob:doc')
+      URL.revokeObjectURL = vi.fn()
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click() {
+        clicked.push(this.download)
+      })
+    })
+
+    afterEach(() => {
+      URL.createObjectURL = originalCreate
+      URL.revokeObjectURL = originalRevoke
+      vi.restoreAllMocks()
+    })
+
+    it('download_Clicked_SavesFileWithItsNameAndShowsToast', async () => {
+      renderDetail(2)
+      await waitForDetail()
+      await userEvent.click(within(screen.getByRole('list', { name: 'Giấy tờ đính kèm' })).getByRole('button', { name: 'Tải về' }))
+      expect(await screen.findByText('Đã tải xuống SoTietKiem_Signed.pdf')).toBeInTheDocument()
+      expect(clicked).toEqual(['SoTietKiem_Signed.pdf'])
+    })
+
+    it('download_OnlyThatDocumentIsRequested', async () => {
+      renderDetail(3)
+      await waitForDetail()
+      const buttons = within(screen.getByRole('list', { name: 'Giấy tờ đính kèm' })).getAllByRole('button', { name: 'Tải về' })
+      await userEvent.click(buttons[1])
+      expect(await screen.findByText('Đã tải xuống AnhGiaDinh.png')).toBeInTheDocument()
+      expect(clicked).toEqual(['AnhGiaDinh.png'])
+    })
+
+    it('download_ServerError_ShowsAlertAndDoesNotSaveFile', async () => {
+      server.use(http.get('*/api/owner/assets/:assetId/documents/:documentId/download', () => HttpResponse.json({ status: 500, detail: 'Kho lưu trữ đang bảo trì.' }, { status: 500 })))
+      renderDetail(2)
+      await waitForDetail()
+      await userEvent.click(within(screen.getByRole('list', { name: 'Giấy tờ đính kèm' })).getByRole('button', { name: 'Tải về' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Không tải được SoTietKiem_Signed.pdf')
+      expect(clicked).toEqual([])
+    })
+
+    it('download_NotFound_ShowsNotFoundMessage', async () => {
+      server.use(http.get('*/api/owner/assets/:assetId/documents/:documentId/download', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+      renderDetail(2)
+      await waitForDetail()
+      await userEvent.click(within(screen.getByRole('list', { name: 'Giấy tờ đính kèm' })).getByRole('button', { name: 'Tải về' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Không tìm thấy giấy tờ')
+    })
+
+    it('download_MockMode_ShowsPlaceholderNotice', async () => {
+      renderWithProviders(<AssetDetailPage mockMode="hybrid" />, {
+        route: '/owner/assets/2',
+        path: '/owner/assets/:assetId',
+      })
+      await waitForDetail()
+      expect(screen.getByRole('note')).toHaveTextContent('Nội dung tải về là bản mô phỏng')
+    })
   })
 
   it('executor_Section_ShowsExecutorOfTheVault', async () => {

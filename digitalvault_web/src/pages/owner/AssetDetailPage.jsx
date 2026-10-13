@@ -3,15 +3,18 @@ import { useCallback, useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import AppToast from '../../components/common/AppToast'
+import MockNotice from '../../components/common/MockNotice'
 import AssetExecutorSection from '../../components/owner/AssetExecutorSection'
 import AssetTypeIcon from '../../components/owner/AssetTypeIcon'
 import AssignBeneficiaryForm from '../../components/owner/AssignBeneficiaryForm'
 import EditAssetModal from '../../components/owner/EditAssetModal'
 import UploadDocumentModal from '../../components/owner/UploadDocumentModal'
+import { downloadDocument } from '../../callapi/ownerApi'
 import { useAssetDetail } from '../../hooks/useAssetDetail'
+import { MOCK_MODE } from '../../mocks/mode'
 import { assetCode, assetTypeLabel, fileTypeLabel, formatAllocation, getInitials } from '../../utils/catalog'
+import { downloadBlob } from '../../utils/download'
 
-const COMING_SOON = 'Sắp ra mắt'
 const BENEFICIARY_STATUS_LABELS = { Active: 'Đang hiệu lực' }
 const ASSET_STATUS_LABELS = { Active: 'Đang hoạt động' }
 
@@ -48,18 +51,34 @@ function AllocationBar({ beneficiaries, allocated }) {
 }
 
 // Trang chi tiết một tài sản: thông tin, người thụ hưởng (kèm form chỉ định), giấy tờ và executor
-export default function AssetDetailPage() {
+export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
   const { assetId } = useParams()
   const { status, error, asset, beneficiaries, refresh } = useAssetDetail(assetId)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [toast, setToast] = useState(null)
+  const [downloadingId, setDownloadingId] = useState(null)
+  const [downloadError, setDownloadError] = useState('')
   const navigate = useNavigate()
   const closeToast = useCallback(() => setToast(null), [])
 
   const handleUploaded = () => {
     setIsUploadOpen(false)
     refresh()
+  }
+
+  const handleDownload = async (document) => {
+    setDownloadingId(document.documentId)
+    setDownloadError('')
+    try {
+      downloadBlob(document.fileName, await downloadDocument(asset.assetId, document.documentId))
+      setToast({ title: `Đã tải xuống ${document.fileName}` })
+    } catch (error) {
+      const reason = error?.status === 404 ? 'Không tìm thấy giấy tờ.' : error?.message
+      setDownloadError(`Không tải được ${document.fileName}. ${reason ?? ''}`.trim())
+    } finally {
+      setDownloadingId(null)
+    }
   }
 
   if (status === 'loading') {
@@ -192,6 +211,8 @@ export default function AssetDetailPage() {
                 Thêm giấy tờ
               </Button>
             </div>
+            <MockNotice mode={mockMode} message="Nội dung tải về là bản mô phỏng: máy chủ chưa có API tải giấy tờ." />
+            {downloadError && <Alert variant="danger" className="av-alert mb-0">{downloadError}</Alert>}
             {asset.documents.length === 0 ? (
               <p className="av-empty mb-0">Chưa có giấy tờ nào.</p>
             ) : (
@@ -211,9 +232,14 @@ export default function AssetDetailPage() {
                         Đã mã hóa
                       </span>
                     )}
-                    <button type="button" disabled title={COMING_SOON} className="av-ghost-btn">
+                    <button
+                      type="button"
+                      className="av-ghost-btn"
+                      disabled={downloadingId !== null}
+                      onClick={() => handleDownload(document)}
+                    >
                       <Download size={14} aria-hidden="true" />
-                      Tải về
+                      {downloadingId === document.documentId ? 'Đang tải...' : 'Tải về'}
                     </button>
                   </li>
                 ))}

@@ -4,6 +4,7 @@ import {
   createAsset,
   createVault,
   deleteAsset,
+  downloadDocument,
   getAsset,
   getAssets,
   assignExecutor,
@@ -200,6 +201,15 @@ describe('ownerApi', () => {
       axiosClient.post.mockResolvedValue({ data: { status: 'Warning' } })
       await simulateTimePassing(25)
       expect(axiosClient.post).toHaveBeenCalledWith('/owner/proof-of-life/simulate', { days: 25 })
+    })
+  })
+
+  describe('download document', () => {
+    it('downloadDocument_Ids_GetsBlobFromDocumentUrl', async () => {
+      const blob = new Blob(['x'])
+      axiosClient.get.mockResolvedValue({ data: blob })
+      await expect(downloadDocument(4, 12)).resolves.toBe(blob)
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets/4/documents/12/download', { responseType: 'blob' })
     })
   })
 

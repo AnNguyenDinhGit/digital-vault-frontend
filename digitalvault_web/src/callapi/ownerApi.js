@@ -177,3 +177,9 @@ export async function updateBeneficiaryAllocation(assetId, beneficiaryId, alloca
 export async function removeBeneficiary(assetId, beneficiaryId) {
   await axiosClient.delete(`/owner/assets/${assetId}/beneficiaries/${beneficiaryId}`)
 }
+
+// Tải giấy tờ về dạng Blob (BE chưa có API, đang dùng mock trả nội dung mô phỏng)
+export async function downloadDocument(assetId, documentId) {
+  const { data } = await axiosClient.get(`/owner/assets/${assetId}/documents/${documentId}/download`, { responseType: 'blob' })
+  return data
+}

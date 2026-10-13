@@ -62,6 +62,10 @@ describe('describeRequest', () => {
     expect(run('delete', '/owner/assets/7/beneficiaries/2', 204)).toMatchObject({ action: 'RemoveBeneficiary', entityType: 'DigitalAsset', entityId: 7 })
   })
 
+  it('describeRequest_DownloadDocument_UsesAssetIdFromUrl', () => {
+    expect(run('get', '/owner/assets/7/documents/12/download', 200)).toMatchObject({ action: 'DownloadDocument', entityType: 'DigitalAsset', entityId: 7 })
+  })
+
   it('describeRequest_ExecutorAcceptSimulation_IsNotRecorded', () => {
     expect(run('post', '/owner/vaults/3/executor/accept', 200)).toBeNull()
   })

@@ -267,6 +267,25 @@ const beneficiaryEditHandlers = [
   ),
 ]
 
+// Tải giấy tờ: BE chưa có API nên mock trả một tệp văn bản mô phỏng (không phải nội dung thật của giấy tờ)
+const downloadHandlers = [
+  http.get(
+    '*/api/owner/assets/:assetId/documents/:documentId/download',
+    ownerRoute(({ userId, params }) => {
+      let fileName = `giay-to-${params.documentId}`
+      // Ở chế độ hỗn hợp tài sản nằm ở BE thật nên không tra được tên file trong mock
+      if (!isMockHybrid()) {
+        const asset = findOwnedAsset(getDb(), userId, Number(params.assetId))
+        const found = asset?.documents.find((item) => item.documentId === Number(params.documentId))
+        if (!found) return problem(404, 'Document not found.')
+        fileName = found.fileName
+      }
+      const content = `Tệp mô phỏng cho giấy tờ "${fileName}".\nĐây là nội dung mô phỏng, không phải bản gốc đã mã hóa lưu trên máy chủ.\n`
+      return new HttpResponse(content, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+    }),
+  ),
+]
+
 // Hồ sơ và bảo mật: tài khoản ở BE thật không có trong mock nên chỉnh sửa được lưu thành lớp phủ theo userId
 function profileDto(db, userId) {
   const account = db.users.find((user) => user.userId === userId)
@@ -342,4 +361,4 @@ const securityHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...assetEditHandlers, ...beneficiaryEditHandlers, ...securityHandlers]
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...assetEditHandlers, ...beneficiaryEditHandlers, ...downloadHandlers, ...securityHandlers]
