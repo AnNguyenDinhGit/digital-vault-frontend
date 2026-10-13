@@ -29,8 +29,15 @@ const PHONE_PATTERN = /^\+?[0-9][0-9\s]{7,19}$/
 const PASSWORD_STRENGTH = /^(?=.*\d)(?=.*[^A-Za-z0-9]).+$/
 const PASSWORD_RULE_MESSAGE = `Mật khẩu tối thiểu ${LIMITS.passwordMin} ký tự, có số và ký tự đặc biệt.`
 
+const IDENTITY_NUMBER_PATTERN = /^\d{12}$/
+
+// CCCD cho phép gõ có khoảng trắng (079 094 004521), chuẩn hoá về chuỗi liền trước khi kiểm tra và gửi BE
+export function normalizeIdentityNumber(value) {
+  return (value ?? '').replace(/\s+/g, '')
+}
+
 // Validate form đăng ký: giới hạn theo BE, quy tắc số và ký tự đặc biệt theo gợi ý trên thiết kế
-export function validateRegister({ fullName, email, phone, password, confirmPassword, acceptTerms }) {
+export function validateRegister({ fullName, email, phone, identityNumber = '', password, confirmPassword, acceptTerms }) {
   const errors = {}
   const name = fullName.trim()
   if (!name) errors.fullName = 'Vui lòng nhập họ tên.'
@@ -44,6 +51,10 @@ export function validateRegister({ fullName, email, phone, password, confirmPass
   const phoneValue = phone.trim()
   if (!phoneValue) errors.phone = 'Vui lòng nhập số điện thoại.'
   else if (phoneValue.length > LIMITS.phone || !PHONE_PATTERN.test(phoneValue)) errors.phone = 'Số điện thoại không hợp lệ.'
+
+  // CCCD là trường tuỳ chọn (BE: IdentityNumber), chỉ kiểm tra khi người dùng có nhập
+  const citizenId = normalizeIdentityNumber(identityNumber)
+  if (citizenId && !IDENTITY_NUMBER_PATTERN.test(citizenId)) errors.identityNumber = 'Số CCCD gồm đúng 12 chữ số.'
 
   if (!password) errors.password = 'Vui lòng nhập mật khẩu.'
   else if (password.length < LIMITS.passwordMin || password.length > LIMITS.passwordMax || !PASSWORD_STRENGTH.test(password))

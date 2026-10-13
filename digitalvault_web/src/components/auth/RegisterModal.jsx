@@ -5,7 +5,15 @@ import { register } from '../../callapi/authApi'
 import { validateRegister } from '../../utils/validators'
 import TextField from '../common/TextField'
 
-const EMPTY_FORM = { fullName: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false }
+const EMPTY_FORM = {
+  fullName: '',
+  email: '',
+  phone: '',
+  identityNumber: '',
+  password: '',
+  confirmPassword: '',
+  acceptTerms: false,
+}
 
 // Chuyển lỗi API đăng ký sang thông báo tiếng Việt
 function registerErrorMessage(error) {
@@ -41,6 +49,7 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
         fullName: form.fullName.trim(),
         email,
         phone: form.phone,
+        identityNumber: form.identityNumber,
         password: form.password,
         confirmPassword: form.confirmPassword,
       })
@@ -124,6 +133,20 @@ export default function RegisterModal({ open, onClose, onSuccess, onSwitchToLogi
               inputClassName="av-input-sm"
               error={errors.phone}
               className="col-12 col-sm-6"
+            />
+            <TextField
+              id="register-identityNumber"
+              name="identityNumber"
+              label="Số CCCD (gắn chip)"
+              labelAside={<span className="fs-11 text-slate-400">Không bắt buộc</span>}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="12 chữ số CCCD"
+              value={form.identityNumber}
+              onChange={handleChange}
+              inputClassName="av-input-sm"
+              error={errors.identityNumber}
+              className="col-12"
             />
             <TextField
               id="register-password"

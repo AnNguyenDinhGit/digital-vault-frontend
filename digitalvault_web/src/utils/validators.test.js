@@ -1,5 +1,6 @@
 import {
   isValidEmail,
+  normalizeIdentityNumber,
   validateAsset,
   validateBeneficiary,
   validateLogin,
@@ -90,6 +91,51 @@ describe('validateRegister', () => {
   it('validateRegister_TermsNotAccepted_ReturnsTermsError', () => {
     expect(validateRegister({ ...valid, acceptTerms: false })).toEqual({
       acceptTerms: 'Bạn cần đồng ý với Điều khoản dịch vụ.',
+    })
+  })
+})
+
+describe('identity number (CCCD) on register', () => {
+  const base = {
+    fullName: 'Nguyễn Văn An',
+    email: 'an@example.com',
+    phone: '0901234567',
+    password: 'Secure#Pass2026',
+    confirmPassword: 'Secure#Pass2026',
+    acceptTerms: true,
+  }
+
+  it('normalizeIdentityNumber_WithSpaces_RemovesAllWhitespace', () => {
+    expect(normalizeIdentityNumber(' 079 094 004521 ')).toBe('079094004521')
+  })
+
+  it('normalizeIdentityNumber_UndefinedOrEmpty_ReturnsEmptyString', () => {
+    expect(normalizeIdentityNumber(undefined)).toBe('')
+    expect(normalizeIdentityNumber('   ')).toBe('')
+  })
+
+  it('validateRegister_NoIdentityNumber_IsOptionalAndValid', () => {
+    expect(validateRegister(base)).toEqual({})
+    expect(validateRegister({ ...base, identityNumber: '' })).toEqual({})
+  })
+
+  it('validateRegister_TwelveDigitIdentityNumber_IsValid', () => {
+    expect(validateRegister({ ...base, identityNumber: '079094004521' })).toEqual({})
+  })
+
+  it('validateRegister_IdentityNumberWithSpaces_IsValid', () => {
+    expect(validateRegister({ ...base, identityNumber: '079 094 004521' })).toEqual({})
+  })
+
+  it('validateRegister_WrongLengthIdentityNumber_ReturnsError', () => {
+    expect(validateRegister({ ...base, identityNumber: '12345' })).toEqual({
+      identityNumber: 'Số CCCD gồm đúng 12 chữ số.',
+    })
+  })
+
+  it('validateRegister_NonDigitIdentityNumber_ReturnsError', () => {
+    expect(validateRegister({ ...base, identityNumber: 'abcdefghijkl' })).toEqual({
+      identityNumber: 'Số CCCD gồm đúng 12 chữ số.',
     })
   })
 })

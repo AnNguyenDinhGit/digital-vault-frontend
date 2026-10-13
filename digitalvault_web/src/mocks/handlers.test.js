@@ -58,6 +58,47 @@ describe('mock auth', () => {
     expect(result.data).toMatchObject({ fullName: 'Le Van B', email: 'b@example.com', roles: ['Owner'] })
   })
 
+  it('register_WithPhoneAndIdentityNumber_ReturnsThemInResponse', async () => {
+    const result = await call(
+      axiosClient.post('/auth/register', {
+        fullName: 'Le Van C',
+        email: 'c@example.com',
+        phone: '0901234567',
+        identityNumber: '079094004521',
+        password: 'Registration123!',
+        confirmPassword: 'Registration123!',
+      }),
+    )
+    expect(result.status).toBe(201)
+    expect(result.data).toMatchObject({ phone: '0901234567', identityNumber: '079094004521', roles: ['Owner'] })
+  })
+
+  it('register_WithoutOptionalFields_ReturnsNullPhoneAndIdentityNumber', async () => {
+    const result = await call(
+      axiosClient.post('/auth/register', {
+        fullName: 'Le Van D',
+        email: 'd@example.com',
+        password: 'Registration123!',
+        confirmPassword: 'Registration123!',
+      }),
+    )
+    expect(result.status).toBe(201)
+    expect(result.data).toMatchObject({ phone: null, identityNumber: null })
+  })
+
+  it('register_IdentityNumberLongerThan20_Returns400', async () => {
+    const result = await call(
+      axiosClient.post('/auth/register', {
+        fullName: 'Le Van E',
+        email: 'e@example.com',
+        identityNumber: '1'.repeat(21),
+        password: 'Registration123!',
+        confirmPassword: 'Registration123!',
+      }),
+    )
+    expect(result.status).toBe(400)
+  })
+
   it('register_DuplicateEmailDifferentCase_Returns409', async () => {
     const result = await call(
       axiosClient.post('/auth/register', {

@@ -1,3 +1,4 @@
+import { normalizeIdentityNumber } from '../utils/validators'
 import axiosClient from './axiosClient'
 
 // Các request xác thực tự xử lý 401 nên không kích hoạt redirect toàn cục
@@ -10,14 +11,17 @@ export async function login(email, password) {
 }
 
 // Đăng ký tài khoản Owner, chỉ gửi đúng các trường BE nhận (BE từ chối trường thừa)
-export async function register({ fullName, email, phone, password, confirmPassword }) {
+export async function register({ fullName, email, phone, identityNumber, password, confirmPassword }) {
   const trimmedPhone = phone?.trim()
+  const citizenId = normalizeIdentityNumber(identityNumber)
   const { data } = await axiosClient.post(
     '/auth/register',
     {
       fullName,
       email,
       phone: trimmedPhone ? trimmedPhone : null,
+      // CCCD tuỳ chọn: chỉ gửi khi có nhập (BE bỏ qua khi thiếu)
+      ...(citizenId ? { identityNumber: citizenId } : {}),
       password,
       confirmPassword,
     },

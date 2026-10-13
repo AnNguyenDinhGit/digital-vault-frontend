@@ -44,6 +44,25 @@ describe('authApi', () => {
     )
   })
 
+  it('register_WithIdentityNumber_SendsNormalizedIdentityNumber', async () => {
+    axiosClient.post.mockResolvedValue({ data: { userId: 1 } })
+    await register({
+      fullName: 'A',
+      email: 'a@b.co',
+      phone: '',
+      identityNumber: ' 079 094 004521 ',
+      password: 'x',
+      confirmPassword: 'x',
+    })
+    expect(axiosClient.post.mock.calls[0][1].identityNumber).toBe('079094004521')
+  })
+
+  it('register_BlankIdentityNumber_OmitsTheField', async () => {
+    axiosClient.post.mockResolvedValue({ data: { userId: 1 } })
+    await register({ fullName: 'A', email: 'a@b.co', phone: '', identityNumber: '   ', password: 'x', confirmPassword: 'x' })
+    expect(axiosClient.post.mock.calls[0][1]).not.toHaveProperty('identityNumber')
+  })
+
   it('register_EmptyPhone_SendsNullPhone', async () => {
     axiosClient.post.mockResolvedValue({ data: { userId: 1 } })
     await register({ fullName: 'A', email: 'a@b.co', phone: '  ', password: 'x', confirmPassword: 'x' })

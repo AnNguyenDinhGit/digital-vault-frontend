@@ -33,7 +33,7 @@ describe('RegisterModal', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('render_Open_ShowsDesignTextsWithoutCitizenIdField', () => {
+  it('render_Open_ShowsDesignTextsAndOptionalCitizenIdField', () => {
     renderModal()
     expect(screen.getByRole('dialog', { name: 'Đăng Ký Tạo Kho Di Sản Số Mới' })).toBeInTheDocument()
     expect(screen.getByText('VAULT OWNER SETUP')).toBeInTheDocument()
@@ -41,7 +41,29 @@ describe('RegisterModal', () => {
       'placeholder',
       'Tối thiểu 12 ký tự, có số & ký tự đặc biệt',
     )
-    expect(screen.queryByLabelText(/CCCD/)).not.toBeInTheDocument()
+    // BE đã hỗ trợ CCCD (IdentityNumber) là trường tuỳ chọn khi đăng ký
+    const citizenId = screen.getByLabelText(/^Số CCCD/)
+    expect(citizenId).toBeInTheDocument()
+    expect(citizenId).not.toBeRequired()
+    expect(screen.getByText(/Không bắt buộc/)).toBeInTheDocument()
+  })
+
+  it('submit_InvalidCitizenId_ShowsErrorAndDoesNotCallApi', async () => {
+    renderModal()
+    await fillValidForm()
+    await userEvent.type(screen.getByLabelText(/^Số CCCD/), '12345')
+    await submit()
+    expect(screen.getByText('Số CCCD gồm đúng 12 chữ số.')).toBeInTheDocument()
+    expect(authApi.register).not.toHaveBeenCalled()
+  })
+
+  it('submit_ValidCitizenId_SendsIdentityNumberToApi', async () => {
+    authApi.register.mockResolvedValue({ userId: 1, email: 'an.nguyen@example.com' })
+    renderModal()
+    await fillValidForm()
+    await userEvent.type(screen.getByLabelText(/^Số CCCD/), '079094004521')
+    await submit()
+    expect(authApi.register).toHaveBeenCalledWith(expect.objectContaining({ identityNumber: '079094004521' }))
   })
 
   it('render_PhoneField_IsContactOnlyWithoutOtpMention', () => {
@@ -68,6 +90,7 @@ describe('RegisterModal', () => {
       fullName: 'Nguyễn Văn An',
       email: 'an.nguyen@example.com',
       phone: '0901234567',
+      identityNumber: '',
       password: 'Secure#Pass2026',
       confirmPassword: 'Secure#Pass2026',
     })

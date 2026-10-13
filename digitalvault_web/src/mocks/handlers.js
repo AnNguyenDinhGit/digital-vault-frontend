@@ -79,26 +79,46 @@ export const handlers = [
     '*/api/auth/register',
     route(
       ({ body }) => {
-        const allowed = ['fullName', 'email', 'password', 'confirmPassword', 'phone']
+        const allowed = ['fullName', 'email', 'password', 'confirmPassword', 'phone', 'identityNumber']
         if (hasUnknownFields(body, allowed)) return problem(400, 'Request contains fields outside the contract.')
-        const { fullName, email, password, confirmPassword } = body ?? {}
+        const { fullName, email, password, confirmPassword, phone, identityNumber } = body ?? {}
         if (isBlank(fullName) || fullName.trim().length > 100) return problem(400, 'Full name is required (max 100).')
         if (isBlank(email) || !/^\S+@\S+\.\S+$/.test(email.trim())) return problem(400, 'Email is invalid.')
         if (typeof password !== 'string' || password.length < 12 || password.length > 1024) {
           return problem(400, 'Password must be 12 to 1024 characters.')
         }
         if (password !== confirmPassword) return problem(400, 'Passwords do not match.')
+        // Phone và IdentityNumber (CCCD) là trường tuỳ chọn, tối đa 20 ký tự như BE
+        if (typeof phone === 'string' && phone.length > 20) return problem(400, 'Phone is too long (max 20).')
+        if (typeof identityNumber === 'string' && identityNumber.length > 20) {
+          return problem(400, 'IdentityNumber is too long (max 20).')
+        }
 
         const db = getDb()
         const normalizedEmail = email.trim().toLowerCase()
         if (db.users.some((u) => u.email.toLowerCase() === normalizedEmail)) {
           return problem(409, 'Email is already registered.')
         }
-        const user = { userId: nextId('user'), fullName: fullName.trim(), email: normalizedEmail, password, roles: ['Owner'] }
+        const user = {
+          userId: nextId('user'),
+          fullName: fullName.trim(),
+          email: normalizedEmail,
+          phone: isBlank(phone) ? null : phone.trim(),
+          identityNumber: isBlank(identityNumber) ? null : identityNumber.trim(),
+          password,
+          roles: ['Owner'],
+        }
         db.users.push(user)
         saveDb()
         return HttpResponse.json(
-          { userId: user.userId, fullName: user.fullName, email: user.email, roles: user.roles },
+          {
+            userId: user.userId,
+            fullName: user.fullName,
+            email: user.email,
+            phone: user.phone,
+            identityNumber: user.identityNumber,
+            roles: user.roles,
+          },
           { status: 201 },
         )
       },
