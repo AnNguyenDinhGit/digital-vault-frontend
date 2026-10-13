@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
@@ -151,10 +151,33 @@ describe('AssetDetailPage group A details', () => {
     expect(screen.getByText('2 người thụ hưởng')).toBeInTheDocument()
   })
 
-  it('header_EditButton_IsDisabledComingSoon', async () => {
+  it('header_EditButton_IsEnabled', async () => {
     renderDetail(1)
     await waitForDetail()
-    expect(screen.getByRole('button', { name: 'Chỉnh sửa' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Chỉnh sửa' })).toBeEnabled()
+  })
+
+  it('edit_ChangeName_UpdatesHeadingAndShowsToast', async () => {
+    renderDetail(1)
+    await waitForDetail()
+    await userEvent.click(screen.getByRole('button', { name: 'Chỉnh sửa' }))
+    const dialog = screen.getByRole('dialog', { name: 'Chỉnh Sửa Tài Sản' })
+    const name = within(dialog).getByLabelText(/Tên tài sản/)
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Ví Lạnh Mới')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thay đổi' }))
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Ví Lạnh Mới'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('Đã cập nhật tài sản')).toBeInTheDocument()
+  })
+
+  it('delete_Confirm_ReturnsToCatalog', async () => {
+    renderDetail(1)
+    await waitForDetail()
+    await userEvent.click(screen.getByRole('button', { name: 'Chỉnh sửa' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xóa tài sản' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa' }))
+    expect(await screen.findByText('catalog-page')).toBeInTheDocument()
   })
 
   it('allocation_FullyAllocated_ShowsFullBarAndZeroRemaining', async () => {

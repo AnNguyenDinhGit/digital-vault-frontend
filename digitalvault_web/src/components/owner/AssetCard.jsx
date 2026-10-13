@@ -3,10 +3,8 @@ import { Link } from 'react-router-dom'
 import { assetCode, assetTypeLabel, formatAllocation } from '../../utils/catalog'
 import AssetTypeIcon from './AssetTypeIcon'
 
-const COMING_SOON = 'Sắp ra mắt'
-
 // Thẻ một tài sản trong danh sách: thông tin, người thụ hưởng, file đính kèm và hành động
-export default function AssetCard({ asset }) {
+export default function AssetCard({ asset, onEdit }) {
   const titleId = `asset-title-${asset.assetId}`
   const [firstDocument] = asset.documents
   const extraDocuments = asset.documents.length - 1
@@ -60,7 +58,7 @@ export default function AssetCard({ asset }) {
         <Link to={`/owner/assets/${asset.assetId}`} className="av-ghost-btn">
           Xem chi tiết
         </Link>
-        <button type="button" disabled title={COMING_SOON} className="av-ghost-btn is-brand">
+        <button type="button" onClick={() => onEdit(asset)} className="av-ghost-btn is-brand">
           Chỉnh sửa
         </button>
       </div>

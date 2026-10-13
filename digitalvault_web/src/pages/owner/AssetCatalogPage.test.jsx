@@ -116,12 +116,47 @@ describe('AssetCatalogPage asset list', () => {
     expect(screen.getByRole('article', { name: /Vietcombank/ })).toHaveTextContent('SoTietKiem_Signed.pdf')
   })
 
-  it('card_Actions_DetailLinksAndEditDisabled', async () => {
+  it('card_Actions_DetailLinkAndEditEnabled', async () => {
     renderPage()
     await waitForCatalog()
     const card = screen.getByRole('article', { name: /Ví Lạnh Trữ Crypto/ })
     expect(within(card).getByRole('link', { name: 'Xem chi tiết' })).toHaveAttribute('href', '/owner/assets/1')
-    expect(within(card).getByRole('button', { name: 'Chỉnh sửa' })).toBeDisabled()
+    expect(within(card).getByRole('button', { name: 'Chỉnh sửa' })).toBeEnabled()
+  })
+
+  it('edit_ChangeNameFromCard_UpdatesCardAndShowsToast', async () => {
+    renderPage()
+    await waitForCatalog()
+    await userEvent.click(within(screen.getByRole('article', { name: /Ví Lạnh Trữ Crypto/ })).getByRole('button', { name: 'Chỉnh sửa' }))
+    const dialog = screen.getByRole('dialog', { name: 'Chỉnh Sửa Tài Sản' })
+    const name = within(dialog).getByLabelText(/Tên tài sản/)
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Ví Lạnh Đã Đổi Tên')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thay đổi' }))
+    expect(await screen.findByRole('heading', { name: 'Ví Lạnh Đã Đổi Tên' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('Đã cập nhật tài sản')).toBeInTheDocument()
+  })
+
+  it('delete_ConfirmFromCard_RemovesAssetAndUpdatesTotal', async () => {
+    renderPage()
+    await waitForCatalog()
+    await userEvent.click(within(screen.getByRole('article', { name: /Ví Lạnh Trữ Crypto/ })).getByRole('button', { name: 'Chỉnh sửa' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xóa tài sản' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa' }))
+    const total = await screen.findByRole('group', { name: 'TỔNG TÀI SẢN SỐ' })
+    expect(within(total).getByText('05')).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: /Ví Lạnh Trữ Crypto/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Đã xóa tài sản')).toBeInTheDocument()
+  })
+
+  it('delete_ConfirmationShowsDocumentAndBeneficiaryImpact', async () => {
+    renderPage()
+    await waitForCatalog()
+    await userEvent.click(within(screen.getByRole('article', { name: /Kho Lưu Trữ Kỷ Niệm/ })).getByRole('button', { name: 'Chỉnh sửa' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xóa tài sản' }))
+    expect(screen.getByRole('dialog', { name: 'Xác Nhận Xóa Tài Sản' })).toHaveTextContent('2 giấy tờ')
+    expect(screen.getByRole('dialog', { name: 'Xác Nhận Xóa Tài Sản' })).toHaveTextContent('2 người thụ hưởng')
   })
 
   it('pagination_NextPage_ShowsRemainingAssets', async () => {

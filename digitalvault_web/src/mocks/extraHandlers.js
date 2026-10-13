@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { computeProofOfLife } from '../utils/proofOfLife'
+import { parseAssetUpdate } from './assetInput'
 import { LIMITS, isStrongPassword, isValidPhone } from '../utils/validators'
 import { getDb, getFrontendEmail, isMockHybrid, nextId, saveDb } from './db'
 import { hasUnknownFields, ownerRoute, problem } from './helpers'
@@ -185,6 +186,42 @@ const executorHandlers = [
   ),
 ]
 
+// Sửa/xóa tài sản trong mock đầy đủ. Ở chế độ hỗn hợp các handler này bị lớp phủ (mocks/overlay.js) đặt trước nên không được dùng.
+function findOwnedAsset(db, userId, assetId) {
+  const vaultIds = db.vaults.filter((vault) => vault.ownerId === userId).map((vault) => vault.vaultId)
+  return db.assets.find((asset) => asset.assetId === assetId && vaultIds.includes(asset.vaultId))
+}
+
+const assetEditHandlers = [
+  http.put(
+    '*/api/owner/assets/:assetId',
+    ownerRoute(({ userId, params, body }) => {
+      const parsed = parseAssetUpdate(body)
+      if (parsed.error) return problem(400, parsed.error)
+      const asset = findOwnedAsset(getDb(), userId, Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+      Object.assign(asset, parsed.value)
+      saveDb()
+      const { assetId, name, type, description, status, documents } = asset
+      return HttpResponse.json({ assetId, name, type, description, status, documents })
+    }),
+  ),
+
+  // Xóa tài sản kéo theo phân bổ người thụ hưởng của tài sản đó
+  http.delete(
+    '*/api/owner/assets/:assetId',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const asset = findOwnedAsset(db, userId, Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+      db.assets = db.assets.filter((item) => item.assetId !== asset.assetId)
+      db.assignments = db.assignments.filter((item) => item.assetId !== asset.assetId)
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+]
+
 // Hồ sơ và bảo mật: tài khoản ở BE thật không có trong mock nên chỉnh sửa được lưu thành lớp phủ theo userId
 function profileDto(db, userId) {
   const account = db.users.find((user) => user.userId === userId)
@@ -260,4 +297,4 @@ const securityHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...securityHandlers]
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...assetEditHandlers, ...securityHandlers]

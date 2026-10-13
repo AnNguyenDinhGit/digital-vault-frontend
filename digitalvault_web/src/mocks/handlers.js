@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { getDb, nextId, saveDb, setSessionUserId } from './db'
 import { extraHandlers } from './extraHandlers'
 import { hasUnknownFields, isBlank, ownerRoute, problem, route } from './helpers'
+import { createAssetOverlayHandlers } from './overlay'
 
 const vaultDto = ({ vaultId, name, description, status }) => ({ vaultId, name, description, status })
 const assetDto = ({ assetId, name, type, description, status, documents }) => ({
@@ -302,4 +303,4 @@ const coreHandlers = [
 
 // Mock đầy đủ = API đã có ở BE + API chưa có; chế độ hỗn hợp chỉ mock phần BE chưa có
 export const handlers = [...coreHandlers, ...extraHandlers]
-export const hybridHandlers = [...extraHandlers]
+export const hybridHandlers = [...createAssetOverlayHandlers(), ...extraHandlers]

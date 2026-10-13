@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 7
+const DB_VERSION = 8
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -141,6 +141,8 @@ function createSeed() {
     proofOfLife: {
       1: { frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), missedCount: 0 },
     },
+    // Lớp phủ chế độ hỗn hợp theo userId: chỉnh sửa/xóa lên dữ liệu BE thật chưa cho sửa (xem mocks/overlay.js)
+    overlay: {},
     // Chỉnh sửa hồ sơ theo userId (tên, số điện thoại); phủ lên dữ liệu gốc, dùng được cả khi tài khoản nằm ở BE thật
     profiles: {},
     // Cài đặt bảo mật theo userId; thiếu thì coi như chưa bật 2FA và chưa từng đổi mật khẩu

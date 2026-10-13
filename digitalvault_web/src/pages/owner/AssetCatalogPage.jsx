@@ -1,11 +1,13 @@
 import { Lock } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
+import AppToast from '../../components/common/AppToast'
 import AddAssetModal from '../../components/owner/AddAssetModal'
 import AssetCard from '../../components/owner/AssetCard'
 import AssetFilters from '../../components/owner/AssetFilters'
 import CreateVaultModal from '../../components/owner/CreateVaultModal'
+import EditAssetModal from '../../components/owner/EditAssetModal'
 import Pagination from '../../components/owner/Pagination'
 import StatCards from '../../components/owner/StatCards'
 import VaultBanner from '../../components/owner/VaultBanner'
@@ -27,6 +29,9 @@ export default function AssetCatalogPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [modal, setModal] = useState(null)
+  const [editingAsset, setEditingAsset] = useState(null)
+  const [toast, setToast] = useState(null)
+  const closeToast = useCallback(() => setToast(null), [])
 
   const stats = useMemo(() => buildStats(assets, beneficiaries), [assets, beneficiaries])
   const tabs = useMemo(() => getTypeTabs(assets), [assets])
@@ -58,6 +63,12 @@ export default function AssetCatalogPage() {
 
   const handleAssetCreated = () => {
     closeModal()
+    reload()
+  }
+
+  const finishEdit = (title) => {
+    setEditingAsset(null)
+    setToast({ title })
     reload()
   }
 
@@ -141,7 +152,7 @@ export default function AssetCatalogPage() {
             ) : (
               <div>
                 {pageData.items.map((asset) => (
-                  <AssetCard key={asset.assetId} asset={asset} />
+                  <AssetCard key={asset.assetId} asset={asset} onEdit={setEditingAsset} />
                 ))}
               </div>
             )}
@@ -156,7 +167,17 @@ export default function AssetCatalogPage() {
       </section>
 
       <AddAssetModal open={modal === 'asset'} vault={selectedVault} onClose={closeModal} onCreated={handleAssetCreated} />
+      {editingAsset && (
+        <EditAssetModal
+          asset={editingAsset}
+          impact={{ documents: editingAsset.documents.length, beneficiaries: editingAsset.beneficiaries.length }}
+          onClose={() => setEditingAsset(null)}
+          onSaved={() => finishEdit('Đã cập nhật tài sản')}
+          onDeleted={() => finishEdit('Đã xóa tài sản')}
+        />
+      )}
       {createVaultModal}
+      <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />
     </div>
   )
 }

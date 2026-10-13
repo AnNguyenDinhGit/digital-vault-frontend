@@ -3,6 +3,7 @@ import {
   assignBeneficiary,
   createAsset,
   createVault,
+  deleteAsset,
   getAsset,
   getAssets,
   assignExecutor,
@@ -21,6 +22,7 @@ import {
   setTwoFactor,
   simulateExecutorAccept,
   simulateTimePassing,
+  updateAsset,
   updateProfile,
   uploadDocument,
 } from './ownerApi'
@@ -196,6 +198,20 @@ describe('ownerApi', () => {
       axiosClient.post.mockResolvedValue({ data: { status: 'Warning' } })
       await simulateTimePassing(25)
       expect(axiosClient.post).toHaveBeenCalledWith('/owner/proof-of-life/simulate', { days: 25 })
+    })
+  })
+
+  describe('edit asset', () => {
+    it('updateAsset_Values_PutsTrimmedNameTypeAndNullForBlankDescription', async () => {
+      axiosClient.put.mockResolvedValue({ data: { assetId: 4 } })
+      await expect(updateAsset(4, { name: ' Ví mới ', type: 'CryptoWallet', description: '  ', vaultId: 9 })).resolves.toEqual({ assetId: 4 })
+      expect(axiosClient.put).toHaveBeenCalledWith('/owner/assets/4', { name: 'Ví mới', type: 'CryptoWallet', description: null })
+    })
+
+    it('deleteAsset_AssetId_SendsDelete', async () => {
+      axiosClient.delete.mockResolvedValue({ data: undefined })
+      await deleteAsset(4)
+      expect(axiosClient.delete).toHaveBeenCalledWith('/owner/assets/4')
     })
   })
 

@@ -151,3 +151,17 @@ export async function setTwoFactor(enabled) {
   const { data } = await axiosClient.put('/owner/security/two-factor', { enabled })
   return data
 }
+
+// Sửa và xóa tài sản (BE chưa có API, đang dùng mock); không gửi vaultId vì tài sản không được chuyển kho
+export async function updateAsset(assetId, { name, type, description }) {
+  const { data } = await axiosClient.put(`/owner/assets/${assetId}`, {
+    name: name.trim(),
+    type,
+    description: optionalText(description),
+  })
+  return data
+}
+
+export async function deleteAsset(assetId) {
+  await axiosClient.delete(`/owner/assets/${assetId}`)
+}

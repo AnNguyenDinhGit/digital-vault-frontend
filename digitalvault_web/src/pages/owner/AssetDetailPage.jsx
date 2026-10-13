@@ -1,10 +1,12 @@
 import { ArrowLeft, Download, FileText, Lock, Pencil, Plus, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import AppToast from '../../components/common/AppToast'
 import AssetExecutorSection from '../../components/owner/AssetExecutorSection'
 import AssetTypeIcon from '../../components/owner/AssetTypeIcon'
 import AssignBeneficiaryForm from '../../components/owner/AssignBeneficiaryForm'
+import EditAssetModal from '../../components/owner/EditAssetModal'
 import UploadDocumentModal from '../../components/owner/UploadDocumentModal'
 import { useAssetDetail } from '../../hooks/useAssetDetail'
 import { assetCode, assetTypeLabel, fileTypeLabel, formatAllocation, getInitials } from '../../utils/catalog'
@@ -50,6 +52,10 @@ export default function AssetDetailPage() {
   const { assetId } = useParams()
   const { status, error, asset, beneficiaries, refresh } = useAssetDetail(assetId)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [toast, setToast] = useState(null)
+  const navigate = useNavigate()
+  const closeToast = useCallback(() => setToast(null), [])
 
   const handleUploaded = () => {
     setIsUploadOpen(false)
@@ -111,7 +117,7 @@ export default function AssetDetailPage() {
             </div>
           </div>
         </div>
-        <button type="button" disabled title={COMING_SOON} className="av-ghost-btn is-brand">
+        <button type="button" onClick={() => setIsEditOpen(true)} className="av-ghost-btn is-brand">
           <Pencil size={14} aria-hidden="true" />
           Chỉnh sửa
         </button>
@@ -218,6 +224,20 @@ export default function AssetDetailPage() {
           <AssetExecutorSection />
         </div>
       </div>
+      {isEditOpen && (
+        <EditAssetModal
+          asset={asset}
+          impact={{ documents: asset.documents.length, beneficiaries: beneficiaries.length }}
+          onClose={() => setIsEditOpen(false)}
+          onSaved={() => {
+            setIsEditOpen(false)
+            setToast({ title: 'Đã cập nhật tài sản' })
+            refresh()
+          }}
+          onDeleted={() => navigate('/owner/assets')}
+        />
+      )}
+      <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />
       <UploadDocumentModal
         open={isUploadOpen}
         asset={asset}

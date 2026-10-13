@@ -19,6 +19,7 @@ export function recordActivity({ userId, action, entityType = null, entityId = n
 
 const ASSET_DOCUMENTS = /^\/owner\/assets\/(\d+)\/documents$/
 const ASSET_BENEFICIARIES = /^\/owner\/assets\/(\d+)\/beneficiaries$/
+const ASSET_ITEM = /^\/owner\/assets\/(\d+)$/
 const VAULT_EXECUTOR = /^\/owner\/vaults\/(\d+)\/executor$/
 
 // Từ một request thành công, suy ra dòng nhật ký tương ứng; trả null nếu không phải thao tác cần ghi
@@ -50,6 +51,9 @@ export function describeRequest({ method, url, data: body }, status, data) {
       result: deceased ? 'Pending_Legal' : 'Alive_Signed',
     }
   }
+  const asset = ASSET_ITEM.exec(path)
+  if (asset && verb === 'put') return { action: 'UpdateAsset', entityType: 'DigitalAsset', entityId: Number(asset[1]), result: 'Success' }
+  if (asset && verb === 'delete') return { action: 'DeleteAsset', entityType: 'DigitalAsset', entityId: Number(asset[1]), result: 'Success' }
   const executor = VAULT_EXECUTOR.exec(path)
   if (executor && verb === 'put') return { action: 'AssignExecutor', entityType: 'DigitalVault', entityId: Number(executor[1]), result: 'Success' }
   if (executor && verb === 'delete') return { action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: Number(executor[1]), result: 'Success' }
