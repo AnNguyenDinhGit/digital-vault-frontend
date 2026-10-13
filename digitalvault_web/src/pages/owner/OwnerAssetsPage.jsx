@@ -79,6 +79,7 @@ function AddAssetModal({ show, onHide }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    // TODO: Kết nối API POST /owner/assets khi BE sẵn sàng
     onHide()
   }
 
