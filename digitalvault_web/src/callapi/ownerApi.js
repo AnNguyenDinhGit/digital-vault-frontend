@@ -129,3 +129,25 @@ export async function simulateExecutorAccept(vaultId) {
   const { data } = await axiosClient.post(`/owner/vaults/${vaultId}/executor/accept`)
   return data
 }
+
+// Cài đặt bảo mật (BE chưa có API, đang dùng mock)
+export async function getProfile() {
+  const { data } = await axiosClient.get('/owner/profile')
+  return data
+}
+
+// Số điện thoại để trống thì gửi null (xóa số)
+export async function updateProfile({ fullName, phone }) {
+  const { data } = await axiosClient.put('/owner/profile', { fullName: fullName.trim(), phone: optionalText(phone) })
+  return data
+}
+
+// Chỉ gửi đúng các trường hợp đồng; mật khẩu không bao giờ được log
+export async function changePassword({ currentPassword, newPassword, confirmPassword }) {
+  await axiosClient.post('/owner/change-password', { currentPassword, newPassword, confirmPassword })
+}
+
+export async function setTwoFactor(enabled) {
+  const { data } = await axiosClient.put('/owner/security/two-factor', { enabled })
+  return data
+}

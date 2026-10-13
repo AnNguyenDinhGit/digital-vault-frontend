@@ -6,9 +6,11 @@ import {
   getAsset,
   getAssets,
   assignExecutor,
+  changePassword,
   getActivityLogs,
   getBeneficiaries,
   getExecutors,
+  getProfile,
   getProofOfLife,
   getVault,
   getVaultExecutor,
@@ -16,8 +18,10 @@ import {
   pingProofOfLife,
   revokeExecutor,
   saveProofOfLife,
+  setTwoFactor,
   simulateExecutorAccept,
   simulateTimePassing,
+  updateProfile,
   uploadDocument,
 } from './ownerApi'
 
@@ -192,6 +196,32 @@ describe('ownerApi', () => {
       axiosClient.post.mockResolvedValue({ data: { status: 'Warning' } })
       await simulateTimePassing(25)
       expect(axiosClient.post).toHaveBeenCalledWith('/owner/proof-of-life/simulate', { days: 25 })
+    })
+  })
+
+  describe('security settings', () => {
+    it('getProfile_Called_GetsProfile', async () => {
+      axiosClient.get.mockResolvedValue({ data: { userId: 1 } })
+      await expect(getProfile()).resolves.toEqual({ userId: 1 })
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/profile')
+    })
+
+    it('updateProfile_BlankPhone_PutsTrimmedNameAndNullPhone', async () => {
+      axiosClient.put.mockResolvedValue({ data: { fullName: 'An' } })
+      await updateProfile({ fullName: ' An ', phone: '  ' })
+      expect(axiosClient.put).toHaveBeenCalledWith('/owner/profile', { fullName: 'An', phone: null })
+    })
+
+    it('changePassword_Values_PostsOnlyContractFields', async () => {
+      axiosClient.post.mockResolvedValue({ data: undefined })
+      await changePassword({ currentPassword: 'a', newPassword: 'b', confirmPassword: 'b', extra: 'x' })
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/change-password', { currentPassword: 'a', newPassword: 'b', confirmPassword: 'b' })
+    })
+
+    it('setTwoFactor_Enabled_PutsBoolean', async () => {
+      axiosClient.put.mockResolvedValue({ data: { twoFactorEnabled: true } })
+      await expect(setTwoFactor(true)).resolves.toEqual({ twoFactorEnabled: true })
+      expect(axiosClient.put).toHaveBeenCalledWith('/owner/security/two-factor', { enabled: true })
     })
   })
 

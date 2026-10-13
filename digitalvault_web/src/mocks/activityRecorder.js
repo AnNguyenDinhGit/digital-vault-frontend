@@ -19,6 +19,7 @@ export function recordActivity({ userId, action, entityType = null, entityId = n
 
 const ASSET_DOCUMENTS = /^\/owner\/assets\/(\d+)\/documents$/
 const ASSET_BENEFICIARIES = /^\/owner\/assets\/(\d+)\/beneficiaries$/
+const VAULT_EXECUTOR = /^\/owner\/vaults\/(\d+)\/executor$/
 
 // Từ một request thành công, suy ra dòng nhật ký tương ứng; trả null nếu không phải thao tác cần ghi
 export function describeRequest({ method, url, data: body }, status, data) {
@@ -49,6 +50,12 @@ export function describeRequest({ method, url, data: body }, status, data) {
       result: deceased ? 'Pending_Legal' : 'Alive_Signed',
     }
   }
+  const executor = VAULT_EXECUTOR.exec(path)
+  if (executor && verb === 'put') return { action: 'AssignExecutor', entityType: 'DigitalVault', entityId: Number(executor[1]), result: 'Success' }
+  if (executor && verb === 'delete') return { action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: Number(executor[1]), result: 'Success' }
+  if (verb === 'put' && path === '/owner/profile') return { action: 'UpdateProfile', result: 'Success' }
+  if (verb === 'post' && path === '/owner/change-password') return { action: 'ChangePassword', result: 'Success' }
+  if (verb === 'put' && path === '/owner/security/two-factor') return { action: 'ToggleTwoFactor', result: 'Success' }
   if (verb === 'put' && path === '/owner/proof-of-life') return { action: 'UpdateProofOfLife', result: 'Success' }
   if (verb === 'post' && path === '/owner/proof-of-life/ping') return { action: 'PingProofOfLife', result: 'Success' }
   return null

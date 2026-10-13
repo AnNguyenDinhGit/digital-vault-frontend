@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 6
+const DB_VERSION = 7
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -55,7 +55,15 @@ function createSeed() {
     version: DB_VERSION,
     nextIds: { user: 9, vault: 2, asset: 7, document: 20, log: 13, contract: 2 },
     users: [
-      { userId: 1, fullName: DEMO_ACCOUNT.fullName, email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password, roles: ['Owner'] },
+      {
+        userId: 1,
+        fullName: DEMO_ACCOUNT.fullName,
+        email: DEMO_ACCOUNT.email,
+        phone: '0901234567',
+        identityNumber: '079094004521',
+        password: DEMO_ACCOUNT.password,
+        roles: ['Owner'],
+      },
       { userId: 2, fullName: 'Trần Bảo Long', email: 'long.tran@example.com', password: 'Owner@123456', roles: ['Owner', 'Beneficiary'] },
       { userId: 3, fullName: 'Nguyễn Thị Mai', email: 'mai.nguyen@example.com', password: 'Owner@123456', roles: ['Owner', 'Beneficiary'] },
       { userId: 4, fullName: 'Lê Minh Quân', email: 'quan.le@example.com', password: 'Owner@123456', roles: ['Owner'] },
@@ -133,6 +141,10 @@ function createSeed() {
     proofOfLife: {
       1: { frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), missedCount: 0 },
     },
+    // Chỉnh sửa hồ sơ theo userId (tên, số điện thoại); phủ lên dữ liệu gốc, dùng được cả khi tài khoản nằm ở BE thật
+    profiles: {},
+    // Cài đặt bảo mật theo userId; thiếu thì coi như chưa bật 2FA và chưa từng đổi mật khẩu
+    security: { 1: { twoFactorEnabled: false, passwordChangedAt: hoursAgo(24 * 45) } },
     // Hồ sơ các Executor (luật sư/công chứng viên) có thể được ủy quyền
     executors: [
       { executorId: 5, fullName: 'LS. Lê Hoàng Nam', organization: 'Văn phòng Luật sư Trí Minh', licenseNumber: 'EX-9021', email: 'hoangnam@trimin.example', hotline: '0901 234 567', address: '12 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh' },
@@ -213,14 +225,24 @@ export function nextId(kind) {
   return id
 }
 
-// Ở chế độ hỗn hợp người dùng đăng nhập vào BE thật, FE đã lưu userId đó trong sessionStorage nên mock dùng lại
-function readFrontendUserId() {
+// Ở chế độ hỗn hợp người dùng đăng nhập vào BE thật, FE đã lưu userId và email đó trong sessionStorage nên mock dùng lại
+function readFrontendUser() {
   try {
-    const user = JSON.parse(sessionStorage.getItem(USER_STORAGE_KEY))
-    return Number.isInteger(user?.userId) ? user.userId : null
+    return JSON.parse(sessionStorage.getItem(USER_STORAGE_KEY))
   } catch {
     return null
   }
+}
+
+function readFrontendUserId() {
+  const user = readFrontendUser()
+  return Number.isInteger(user?.userId) ? user.userId : null
+}
+
+// Email mà FE đã lưu khi đăng nhập, dùng cho tài khoản chỉ có ở BE thật
+export function getFrontendEmail() {
+  const email = readFrontendUser()?.email
+  return typeof email === 'string' ? email : ''
 }
 
 // Phiên đăng nhập giả: lưu userId trong sessionStorage để F5 không mất phiên, đóng tab thì mất

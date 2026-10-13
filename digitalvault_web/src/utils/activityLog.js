@@ -20,6 +20,7 @@ const ACTION_LABELS = {
   RevokeExecutor: 'Thu hồi người thi hành',
   UpdateProfile: 'Cập nhật thông tin cá nhân',
   ChangePassword: 'Đổi mật khẩu',
+  ToggleTwoFactor: 'Đổi cài đặt xác thực hai lớp',
   CreateHandoverRequest: 'Tạo đơn bàn giao',
   RequestLegalVerification: 'Gửi xác minh pháp lý',
   CompleteHandover: 'Hoàn tất bàn giao',

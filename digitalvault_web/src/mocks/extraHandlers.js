@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { computeProofOfLife } from '../utils/proofOfLife'
-import { getDb, isMockHybrid, nextId, saveDb } from './db'
+import { LIMITS, isStrongPassword, isValidPhone } from '../utils/validators'
+import { getDb, getFrontendEmail, isMockHybrid, nextId, saveDb } from './db'
 import { hasUnknownFields, ownerRoute, problem } from './helpers'
 
 // Các API mà BE chưa có (điểm danh, nhật ký, executor, bảo mật...). Dùng được ở cả chế độ mock đầy đủ lẫn hỗn hợp.
@@ -184,4 +185,79 @@ const executorHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers]
+// Hồ sơ và bảo mật: tài khoản ở BE thật không có trong mock nên chỉnh sửa được lưu thành lớp phủ theo userId
+function profileDto(db, userId) {
+  const account = db.users.find((user) => user.userId === userId)
+  const overlay = db.profiles[userId] ?? {}
+  const security = db.security[userId] ?? {}
+  return {
+    userId,
+    fullName: overlay.fullName ?? account?.fullName ?? '',
+    email: account?.email ?? getFrontendEmail(),
+    phone: 'phone' in overlay ? overlay.phone : (account?.phone ?? null),
+    identityNumber: account?.identityNumber ?? null,
+    twoFactorEnabled: security.twoFactorEnabled ?? false,
+    passwordChangedAt: security.passwordChangedAt ?? null,
+  }
+}
+
+const securityHandlers = [
+  http.get(
+    '*/api/owner/profile',
+    ownerRoute(({ userId }) => HttpResponse.json(profileDto(getDb(), userId))),
+  ),
+
+  http.put(
+    '*/api/owner/profile',
+    ownerRoute(({ userId, body }) => {
+      if (hasUnknownFields(body, ['fullName', 'phone'])) return problem(400, 'Request contains fields outside the contract.')
+      const fullName = typeof body?.fullName === 'string' ? body.fullName.trim() : ''
+      if (!fullName || fullName.length > LIMITS.fullName) return problem(400, 'Full name is required (max 100).')
+      const rawPhone = body?.phone ?? null
+      if (rawPhone !== null && typeof rawPhone !== 'string') return problem(400, 'Phone is invalid.')
+      const phone = rawPhone?.trim() || null
+      if (phone && !isValidPhone(phone)) return problem(400, 'Phone is invalid.')
+      const db = getDb()
+      db.profiles[userId] = { fullName, phone }
+      saveDb()
+      return HttpResponse.json(profileDto(db, userId))
+    }),
+  ),
+
+  http.post(
+    '*/api/owner/change-password',
+    ownerRoute(({ userId, body }) => {
+      if (hasUnknownFields(body, ['currentPassword', 'newPassword', 'confirmPassword'])) {
+        return problem(400, 'Request contains fields outside the contract.')
+      }
+      const { currentPassword, newPassword, confirmPassword } = body ?? {}
+      if (typeof currentPassword !== 'string' || currentPassword === '') return problem(400, 'Current password is required.')
+      if (newPassword !== confirmPassword) return problem(400, 'Passwords do not match.')
+      if (!isStrongPassword(newPassword)) return problem(400, 'Password must be 12 to 1024 characters with a digit and a symbol.')
+      if (newPassword === currentPassword) return problem(400, 'New password must differ from the current one.')
+      const db = getDb()
+      const account = db.users.find((user) => user.userId === userId)
+      // Tài khoản ở BE thật không có mật khẩu trong mock nên không kiểm tra được, chỉ ghi nhận thao tác mô phỏng
+      if (account && account.password !== currentPassword) return problem(403, 'Current password is incorrect.')
+      if (account) account.password = newPassword
+      db.security[userId] = { ...db.security[userId], passwordChangedAt: new Date().toISOString() }
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+
+  http.put(
+    '*/api/owner/security/two-factor',
+    ownerRoute(({ userId, body }) => {
+      if (hasUnknownFields(body, ['enabled']) || typeof body?.enabled !== 'boolean') {
+        return problem(400, 'Enabled must be a boolean.')
+      }
+      const db = getDb()
+      db.security[userId] = { ...db.security[userId], twoFactorEnabled: body.enabled }
+      saveDb()
+      return HttpResponse.json({ twoFactorEnabled: body.enabled })
+    }),
+  ),
+]
+
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...securityHandlers]

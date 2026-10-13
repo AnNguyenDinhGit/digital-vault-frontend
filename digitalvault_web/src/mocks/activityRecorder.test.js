@@ -47,6 +47,21 @@ describe('describeRequest', () => {
     expect(run('post', '/owner/proof-of-life/ping', 200)).toMatchObject({ action: 'PingProofOfLife' })
   })
 
+  it('describeRequest_ExecutorAssignAndRevoke_UseVaultIdFromUrl', () => {
+    expect(run('put', '/owner/vaults/3/executor', 200)).toMatchObject({ action: 'AssignExecutor', entityType: 'DigitalVault', entityId: 3 })
+    expect(run('delete', '/owner/vaults/3/executor', 204)).toMatchObject({ action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: 3 })
+  })
+
+  it('describeRequest_ExecutorAcceptSimulation_IsNotRecorded', () => {
+    expect(run('post', '/owner/vaults/3/executor/accept', 200)).toBeNull()
+  })
+
+  it('describeRequest_ProfileAndPasswordChanges_ReturnActions', () => {
+    expect(run('put', '/owner/profile', 200)).toMatchObject({ action: 'UpdateProfile' })
+    expect(run('post', '/owner/change-password', 204)).toMatchObject({ action: 'ChangePassword' })
+    expect(run('put', '/owner/security/two-factor', 200)).toMatchObject({ action: 'ToggleTwoFactor' })
+  })
+
   it('describeRequest_ReadRequests_AreNotRecorded', () => {
     expect(run('get', '/owner/assets', 200)).toBeNull()
     expect(run('get', '/owner/activity-logs', 200)).toBeNull()

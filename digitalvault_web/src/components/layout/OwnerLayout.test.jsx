@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -63,13 +63,16 @@ describe('OwnerLayout', () => {
     expect(screen.getByRole('link', { name: /Nhật ký hoạt động/ })).toHaveAttribute('href', '/owner/activity-log')
   })
 
-  it('render_UnsupportedItems_AreDisabledWithComingSoon', () => {
+  it('render_SecuritySettingsLink_IsEnabled', () => {
     renderLayout()
-    for (const name of [/Cài đặt bảo mật/]) {
-      const item = screen.getByRole('button', { name })
-      expect(item).toBeDisabled()
-      expect(item).toHaveAttribute('title', 'Sắp ra mắt')
-    }
+    expect(screen.getByRole('link', { name: /Cài đặt bảo mật/ })).toHaveAttribute('href', '/owner/security')
+  })
+
+  it('render_AllSidebarItems_AreLinks', () => {
+    renderLayout()
+    const nav = screen.getByRole('navigation', { name: 'Điều hướng Vault Owner' })
+    expect(within(nav).queryAllByRole('button')).toHaveLength(0)
+    expect(within(nav).getAllByRole('link')).toHaveLength(6)
   })
 
   it('render_LoggedInUser_ShowsEmailAndInitials', () => {

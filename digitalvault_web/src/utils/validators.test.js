@@ -5,6 +5,8 @@ import {
   validateAsset,
   validateBeneficiary,
   validateLogin,
+  validatePasswordChange,
+  validateProfile,
   validateRegister,
   validateUpload,
   validateVault,
@@ -321,5 +323,61 @@ describe('validateAsset', () => {
 
   it('validateAsset_ValidInput_ReturnsEmptyObject', () => {
     expect(validateAsset(valid)).toEqual({})
+  })
+})
+
+describe('validateProfile', () => {
+  it('validateProfile_BlankName_ReturnsNameError', () => {
+    expect(validateProfile({ fullName: '  ', phone: '' })).toEqual({ fullName: 'Vui lòng nhập họ tên.' })
+  })
+
+  it('validateProfile_NameTooLong_ReturnsNameError', () => {
+    expect(validateProfile({ fullName: 'x'.repeat(101), phone: '' })).toEqual({ fullName: 'Họ tên tối đa 100 ký tự.' })
+  })
+
+  it('validateProfile_EmptyPhone_IsAllowed', () => {
+    expect(validateProfile({ fullName: 'An', phone: '' })).toEqual({})
+  })
+
+  it('validateProfile_InvalidPhone_ReturnsPhoneError', () => {
+    expect(validateProfile({ fullName: 'An', phone: 'abc' })).toEqual({ phone: 'Số điện thoại không hợp lệ.' })
+  })
+
+  it('validateProfile_ValidInput_ReturnsEmptyObject', () => {
+    expect(validateProfile({ fullName: 'An', phone: '0901 234 567' })).toEqual({})
+  })
+})
+
+describe('validatePasswordChange', () => {
+  const valid = { currentPassword: 'MatKhauCu#2025', newPassword: 'MatKhauMoi#2026', confirmPassword: 'MatKhauMoi#2026' }
+
+  it('validatePasswordChange_EmptyFields_ReturnsAllErrors', () => {
+    expect(validatePasswordChange({ currentPassword: '', newPassword: '', confirmPassword: '' })).toEqual({
+      currentPassword: 'Vui lòng nhập mật khẩu hiện tại.',
+      newPassword: 'Vui lòng nhập mật khẩu mới.',
+      confirmPassword: 'Vui lòng nhập lại mật khẩu mới.',
+    })
+  })
+
+  it('validatePasswordChange_WeakNewPassword_ReturnsRuleError', () => {
+    expect(validatePasswordChange({ ...valid, newPassword: 'ngan', confirmPassword: 'ngan' })).toEqual({
+      newPassword: 'Mật khẩu tối thiểu 12 ký tự, có số và ký tự đặc biệt.',
+    })
+  })
+
+  it('validatePasswordChange_SameAsCurrent_ReturnsError', () => {
+    expect(validatePasswordChange({ ...valid, newPassword: valid.currentPassword, confirmPassword: valid.currentPassword })).toEqual({
+      newPassword: 'Mật khẩu mới phải khác mật khẩu hiện tại.',
+    })
+  })
+
+  it('validatePasswordChange_ConfirmMismatch_ReturnsError', () => {
+    expect(validatePasswordChange({ ...valid, confirmPassword: 'Khac#Hoan2026x' })).toEqual({
+      confirmPassword: 'Mật khẩu xác nhận không khớp.',
+    })
+  })
+
+  it('validatePasswordChange_ValidInput_ReturnsEmptyObject', () => {
+    expect(validatePasswordChange(valid)).toEqual({})
   })
 })

@@ -67,6 +67,38 @@ export function validateRegister({ fullName, email, phone, identityNumber = '', 
   return errors
 }
 
+export const isValidPhone = (value) => value.length <= LIMITS.phone && PHONE_PATTERN.test(value)
+
+// Mật khẩu đủ độ dài và có cả số lẫn ký tự đặc biệt (dùng chung cho đăng ký và đổi mật khẩu)
+export const isStrongPassword = (value) =>
+  typeof value === 'string' && value.length >= LIMITS.passwordMin && value.length <= LIMITS.passwordMax && PASSWORD_STRENGTH.test(value)
+
+// Validate form thông tin cá nhân: email và CCCD không sửa được nên không kiểm tra; số điện thoại là tuỳ chọn
+export function validateProfile({ fullName, phone }) {
+  const errors = {}
+  const name = fullName.trim()
+  if (!name) errors.fullName = 'Vui lòng nhập họ tên.'
+  else if (name.length > LIMITS.fullName) errors.fullName = `Họ tên tối đa ${LIMITS.fullName} ký tự.`
+
+  const phoneValue = phone.trim()
+  if (phoneValue && !isValidPhone(phoneValue)) errors.phone = 'Số điện thoại không hợp lệ.'
+  return errors
+}
+
+// Validate form đổi mật khẩu
+export function validatePasswordChange({ currentPassword, newPassword, confirmPassword }) {
+  const errors = {}
+  if (!currentPassword) errors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại.'
+
+  if (!newPassword) errors.newPassword = 'Vui lòng nhập mật khẩu mới.'
+  else if (!isStrongPassword(newPassword)) errors.newPassword = PASSWORD_RULE_MESSAGE
+  else if (newPassword === currentPassword) errors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại.'
+
+  if (!confirmPassword) errors.confirmPassword = 'Vui lòng nhập lại mật khẩu mới.'
+  else if (confirmPassword !== newPassword) errors.confirmPassword = 'Mật khẩu xác nhận không khớp.'
+  return errors
+}
+
 // Validate form chỉ định người thụ hưởng khi phải chọn tài sản trước (trang Người thụ hưởng)
 export function validateAssignment({ assetId, email, allocation }, remaining) {
   const errors = validateBeneficiary({ email, allocation }, remaining)

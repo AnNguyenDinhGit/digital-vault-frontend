@@ -14,7 +14,7 @@ const VAULT_ITEMS = [
 const MONITOR_ITEMS = [
   { label: 'Điểm danh sự sống', icon: Activity, to: '/owner/proof-of-life' },
   { label: 'Nhật ký hoạt động', icon: History, to: '/owner/activity-log' },
-  { label: 'Cài đặt bảo mật', icon: Settings },
+  { label: 'Cài đặt bảo mật', icon: Settings, to: '/owner/security' },
 ]
 
 // Lấy 2 ký tự viết tắt từ phần tên của email để làm avatar
