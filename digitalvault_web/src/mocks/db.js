@@ -19,7 +19,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 const config = { latencyMs: 0 }
 
@@ -43,8 +43,8 @@ function createSeed() {
     nextIds: { user: 9, vault: 2, asset: 7, document: 20 },
     users: [
       { userId: 1, fullName: DEMO_ACCOUNT.fullName, email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password, roles: ['Owner'] },
-      { userId: 2, fullName: 'Trần Bảo Long', email: 'long.tran@example.com', password: 'Owner@123456', roles: ['Owner'] },
-      { userId: 3, fullName: 'Nguyễn Thị Mai', email: 'mai.nguyen@example.com', password: 'Owner@123456', roles: ['Owner'] },
+      { userId: 2, fullName: 'Trần Bảo Long', email: 'long.tran@example.com', password: 'Owner@123456', roles: ['Owner', 'Beneficiary'] },
+      { userId: 3, fullName: 'Nguyễn Thị Mai', email: 'mai.nguyen@example.com', password: 'Owner@123456', roles: ['Owner', 'Beneficiary'] },
       { userId: 4, fullName: 'Lê Minh Quân', email: 'quan.le@example.com', password: 'Owner@123456', roles: ['Owner'] },
       ...ROLE_ACCOUNTS.map(({ userId, fullName, email, password, role }) => ({ userId, fullName, email, password, roles: [role] })),
     ],

@@ -8,6 +8,7 @@ import {
   getBeneficiaries,
   getVault,
   getVaults,
+  uploadDocument,
 } from './ownerApi'
 
 vi.mock('./axiosClient', () => ({
@@ -82,6 +83,42 @@ describe('ownerApi', () => {
     axiosClient.get.mockResolvedValue({ data: [] })
     await getBeneficiaries(10)
     expect(axiosClient.get).toHaveBeenCalledWith('/owner/beneficiaries', { params: { assetId: 10 } })
+  })
+
+  describe('uploadDocument', () => {
+    const file = new File(['pdf'], 'HopDong.pdf', { type: 'application/pdf' })
+    const signature = new File(['sig'], 'HopDong.sig')
+    const certificate = new File(['cert'], 'ChungTu.pdf', { type: 'application/pdf' })
+
+    const sentForm = () => axiosClient.post.mock.calls[0][1]
+
+    it('uploadDocument_Alive_PostsMultipartWithSignatureAndNoCertificate', async () => {
+      axiosClient.post.mockResolvedValue({ data: { documentId: 9 } })
+      await expect(uploadDocument(4, { file, beneficiaryId: 11, ownerAlive: true, signature })).resolves.toEqual({ documentId: 9 })
+      expect(axiosClient.post.mock.calls[0][0]).toBe('/owner/assets/4/documents')
+      const form = sentForm()
+      expect(form).toBeInstanceOf(FormData)
+      expect(form.get('file').name).toBe('HopDong.pdf')
+      expect(form.get('beneficiaryId')).toBe('11')
+      expect(form.get('ownerAlive')).toBe('true')
+      expect(form.get('signature').name).toBe('HopDong.sig')
+      expect(form.has('deathCertificate')).toBe(false)
+    })
+
+    it('uploadDocument_Dead_PostsMultipartWithCertificateAndNoSignature', async () => {
+      axiosClient.post.mockResolvedValue({ data: {} })
+      await uploadDocument(4, { file, beneficiaryId: 11, ownerAlive: false, deathCertificate: certificate })
+      const form = sentForm()
+      expect(form.get('ownerAlive')).toBe('false')
+      expect(form.get('deathCertificate').name).toBe('ChungTu.pdf')
+      expect(form.has('signature')).toBe(false)
+    })
+
+    it('uploadDocument_AliveBranch_IgnoresStrayCertificate', async () => {
+      axiosClient.post.mockResolvedValue({ data: {} })
+      await uploadDocument(4, { file, beneficiaryId: 11, ownerAlive: true, signature, deathCertificate: certificate })
+      expect(sentForm().has('deathCertificate')).toBe(false)
+    })
   })
 
   it('assignBeneficiary_ValidInput_PostsTrimmedEmailAndAllocation', async () => {

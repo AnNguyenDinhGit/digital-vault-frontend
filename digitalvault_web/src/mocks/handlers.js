@@ -30,7 +30,9 @@ function route(handler, { auth = true, role = null } = {}) {
       if (role && !account?.roles.includes(role)) return problem(403, `Role ${role} required.`)
     }
     let body = null
-    if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
+    // Request multipart (upload) do handler tự đọc formData, không đọc trước ở đây để không làm cạn body
+    const isMultipart = (request.headers.get('content-type') ?? '').startsWith('multipart/')
+    if (['POST', 'PUT', 'PATCH'].includes(request.method) && !isMultipart) {
       try {
         body = await request.json()
       } catch {
@@ -236,6 +238,57 @@ export const handlers = [
         status: 201,
         headers: { Location: `/api/owner/assets/${asset.assetId}` },
       })
+    }),
+  ),
+
+  // Upload giấy tờ: kiểm tra các ràng buộc như BE (file, chữ ký rời, người thụ hưởng, trạng thái chủ sở hữu)
+  http.post(
+    '*/api/owner/assets/:assetId/documents',
+    ownerRoute(async ({ userId, params, request }) => {
+      const db = getDb()
+      const asset = ownedAssets(db, userId).find((a) => a.assetId === Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+
+      let form
+      try {
+        form = await request.formData()
+      } catch {
+        return problem(400, 'Request must be multipart/form-data.')
+      }
+      const isFile = (value) => value !== null && typeof value === 'object' && typeof value.size === 'number'
+      const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'text/plain']
+      const badDocument = (value) => !isFile(value) || value.size <= 0 || value.size > 10 * 1024 * 1024 || !allowedTypes.includes(value.type)
+
+      const file = form.get('file')
+      if (badDocument(file)) return problem(400, 'File must be 1 byte to 10 MB and a PDF, PNG, JPEG or text file.')
+      const beneficiaryId = Number(form.get('beneficiaryId'))
+      if (!Number.isInteger(beneficiaryId) || beneficiaryId < 1) return problem(400, 'BeneficiaryId is required.')
+      const aliveText = String(form.get('ownerAlive') ?? '').toLowerCase()
+      if (aliveText !== 'true' && aliveText !== 'false') return problem(400, 'OwnerAlive is required.')
+      const ownerAlive = aliveText === 'true'
+
+      if (ownerAlive) {
+        const signature = form.get('signature')
+        if (!isFile(signature) || signature.size <= 0 || signature.size > 16384) return problem(400, 'Detached signature is required (max 16 KB).')
+      } else if (badDocument(form.get('deathCertificate'))) {
+        return problem(400, 'Death certificate is required.')
+      }
+
+      const target = db.users.find((u) => u.userId === beneficiaryId)
+      if (!target || !target.roles.includes('Beneficiary')) return problem(404, 'Beneficiary not found.')
+      const active = db.assignments.filter((a) => a.assetId === asset.assetId && a.status === 'Active')
+      if (active.length > 0 && !active.some((a) => a.beneficiaryId === beneficiaryId)) {
+        return problem(409, 'Choose a beneficiary currently assigned to this asset.')
+      }
+
+      const document = { documentId: nextId('document'), fileName: file.name, fileType: file.type, isEncrypted: true, signatureValid: null }
+      asset.documents.push(document)
+      // Tài sản chưa có người thụ hưởng thì BE tạo phân bổ 100% cho người được chọn
+      if (active.length === 0) {
+        db.assignments.push({ assetId: asset.assetId, beneficiaryId, allocation: 100, status: 'Active' })
+      }
+      saveDb()
+      return HttpResponse.json(document)
     }),
   ),
 

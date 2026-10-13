@@ -1,8 +1,10 @@
-import { ArrowLeft, Download, FileText, Lock, Pencil, ShieldCheck } from 'lucide-react'
-import { Alert } from 'react-bootstrap'
+import { ArrowLeft, Download, FileText, Lock, Pencil, Plus, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
+import { Alert, Button } from 'react-bootstrap'
 import { Link, useParams } from 'react-router-dom'
 import AssetTypeIcon from '../../components/owner/AssetTypeIcon'
 import AssignBeneficiaryForm from '../../components/owner/AssignBeneficiaryForm'
+import UploadDocumentModal from '../../components/owner/UploadDocumentModal'
 import { useAssetDetail } from '../../hooks/useAssetDetail'
 import { assetCode, assetTypeLabel, fileTypeLabel, formatAllocation, getInitials } from '../../utils/catalog'
 
@@ -46,6 +48,12 @@ function AllocationBar({ beneficiaries, allocated }) {
 export default function AssetDetailPage() {
   const { assetId } = useParams()
   const { status, error, asset, beneficiaries, refresh } = useAssetDetail(assetId)
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
+
+  const handleUploaded = () => {
+    setIsUploadOpen(false)
+    refresh()
+  }
 
   if (status === 'loading') {
     return (
@@ -168,9 +176,15 @@ export default function AssetDetailPage() {
 
         <div className="col-12 col-xl-5 d-flex flex-column gap-4">
           <section className="av-panel d-flex flex-column gap-3">
-            <h2 className="mb-0 fw-bold text-ink" style={{ fontSize: 16 }}>
-              Giấy tờ đính kèm
-            </h2>
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <h2 className="mb-0 fw-bold text-ink" style={{ fontSize: 16 }}>
+                Giấy tờ đính kèm
+              </h2>
+              <Button type="button" variant="primary" className="av-btn av-btn-sm" onClick={() => setIsUploadOpen(true)}>
+                <Plus size={16} aria-hidden="true" />
+                Thêm giấy tờ
+              </Button>
+            </div>
             {asset.documents.length === 0 ? (
               <p className="av-empty mb-0">Chưa có giấy tờ nào.</p>
             ) : (
@@ -213,6 +227,13 @@ export default function AssetDetailPage() {
           </section>
         </div>
       </div>
+      <UploadDocumentModal
+        open={isUploadOpen}
+        asset={asset}
+        beneficiaries={beneficiaries}
+        onClose={() => setIsUploadOpen(false)}
+        onUploaded={handleUploaded}
+      />
     </div>
   )
 }
