@@ -19,6 +19,7 @@ export function recordActivity({ userId, action, entityType = null, entityId = n
 
 const ASSET_DOCUMENTS = /^\/owner\/assets\/(\d+)\/documents$/
 const ASSET_BENEFICIARIES = /^\/owner\/assets\/(\d+)\/beneficiaries$/
+const ASSET_ASSIGNMENT = /^\/owner\/assets\/(\d+)\/beneficiaries\/\d+$/
 const ASSET_ITEM = /^\/owner\/assets\/(\d+)$/
 const VAULT_EXECUTOR = /^\/owner\/vaults\/(\d+)\/executor$/
 
@@ -51,6 +52,9 @@ export function describeRequest({ method, url, data: body }, status, data) {
       result: deceased ? 'Pending_Legal' : 'Alive_Signed',
     }
   }
+  const assignment = ASSET_ASSIGNMENT.exec(path)
+  if (assignment && verb === 'put') return { action: 'UpdateAllocation', entityType: 'DigitalAsset', entityId: Number(assignment[1]), result: 'Success' }
+  if (assignment && verb === 'delete') return { action: 'RemoveBeneficiary', entityType: 'DigitalAsset', entityId: Number(assignment[1]), result: 'Success' }
   const asset = ASSET_ITEM.exec(path)
   if (asset && verb === 'put') return { action: 'UpdateAsset', entityType: 'DigitalAsset', entityId: Number(asset[1]), result: 'Success' }
   if (asset && verb === 'delete') return { action: 'DeleteAsset', entityType: 'DigitalAsset', entityId: Number(asset[1]), result: 'Success' }

@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom'
 import { formatAllocation, getInitials } from '../../utils/catalog'
 
-const COMING_SOON = 'Sắp ra mắt'
-
-// Thẻ một người thụ hưởng: họ hưởng những tài sản nào và bao nhiêu %; sửa/xóa chờ BE có API
-export default function BeneficiaryPersonCard({ person }) {
+// Thẻ một người thụ hưởng: họ hưởng những tài sản nào và bao nhiêu %, kèm nút sửa phân quyền và xóa
+export default function BeneficiaryPersonCard({ person, onEdit, onRemove }) {
   const titleId = `beneficiary-title-${person.beneficiaryId}`
   return (
     <article aria-labelledby={titleId} className="av-asset-card">
@@ -33,10 +31,10 @@ export default function BeneficiaryPersonCard({ person }) {
         </div>
       </div>
       <div className="d-flex gap-2">
-        <button type="button" disabled title={COMING_SOON} className="av-ghost-btn is-brand">
+        <button type="button" onClick={() => onEdit(person)} className="av-ghost-btn is-brand">
           Sửa phân quyền
         </button>
-        <button type="button" disabled title={COMING_SOON} className="av-ghost-btn">
+        <button type="button" onClick={() => onRemove(person)} className="av-ghost-btn">
           Xóa
         </button>
       </div>

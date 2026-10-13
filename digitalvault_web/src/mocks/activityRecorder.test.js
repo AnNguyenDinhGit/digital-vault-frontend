@@ -57,6 +57,11 @@ describe('describeRequest', () => {
     expect(run('delete', '/owner/assets/7', 204)).toMatchObject({ action: 'DeleteAsset', entityType: 'DigitalAsset', entityId: 7 })
   })
 
+  it('describeRequest_UpdateAndRemoveBeneficiary_UseAssetIdFromUrl', () => {
+    expect(run('put', '/owner/assets/7/beneficiaries/2', 200)).toMatchObject({ action: 'UpdateAllocation', entityType: 'DigitalAsset', entityId: 7 })
+    expect(run('delete', '/owner/assets/7/beneficiaries/2', 204)).toMatchObject({ action: 'RemoveBeneficiary', entityType: 'DigitalAsset', entityId: 7 })
+  })
+
   it('describeRequest_ExecutorAcceptSimulation_IsNotRecorded', () => {
     expect(run('post', '/owner/vaults/3/executor/accept', 200)).toBeNull()
   })

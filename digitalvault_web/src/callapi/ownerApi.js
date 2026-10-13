@@ -165,3 +165,15 @@ export async function updateAsset(assetId, { name, type, description }) {
 export async function deleteAsset(assetId) {
   await axiosClient.delete(`/owner/assets/${assetId}`)
 }
+
+// Sửa tỷ lệ và gỡ người thụ hưởng khỏi một tài sản (BE chưa có API, đang dùng mock)
+export async function updateBeneficiaryAllocation(assetId, beneficiaryId, allocation) {
+  const { data } = await axiosClient.put(`/owner/assets/${assetId}/beneficiaries/${beneficiaryId}`, {
+    allocation: Number(allocation),
+  })
+  return data
+}
+
+export async function removeBeneficiary(assetId, beneficiaryId) {
+  await axiosClient.delete(`/owner/assets/${assetId}/beneficiaries/${beneficiaryId}`)
+}

@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 8
+const DB_VERSION = 9
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }

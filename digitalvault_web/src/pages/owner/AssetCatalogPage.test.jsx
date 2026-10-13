@@ -144,10 +144,9 @@ describe('AssetCatalogPage asset list', () => {
     await userEvent.click(within(screen.getByRole('article', { name: /Ví Lạnh Trữ Crypto/ })).getByRole('button', { name: 'Chỉnh sửa' }))
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xóa tài sản' }))
     await userEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa' }))
-    const total = await screen.findByRole('group', { name: 'TỔNG TÀI SẢN SỐ' })
-    expect(within(total).getByText('05')).toBeInTheDocument()
+    expect(await screen.findByText('Đã xóa tài sản')).toBeInTheDocument()
+    expect(within(screen.getByRole('group', { name: 'TỔNG TÀI SẢN SỐ' })).getByText('05')).toBeInTheDocument()
     expect(screen.queryByRole('article', { name: /Ví Lạnh Trữ Crypto/ })).not.toBeInTheDocument()
-    expect(screen.getByText('Đã xóa tài sản')).toBeInTheDocument()
   })
 
   it('delete_ConfirmationShowsDocumentAndBeneficiaryImpact', async () => {

@@ -1,8 +1,11 @@
 import { Briefcase, Plus, Search, Users } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Alert, Button, Form } from 'react-bootstrap'
+import AppToast from '../../components/common/AppToast'
 import AddBeneficiaryModal from '../../components/owner/AddBeneficiaryModal'
 import BeneficiaryPersonCard from '../../components/owner/BeneficiaryPersonCard'
+import EditAllocationModal from '../../components/owner/EditAllocationModal'
+import RemoveBeneficiaryModal from '../../components/owner/RemoveBeneficiaryModal'
 import { useOwnerCatalog } from '../../hooks/useOwnerCatalog'
 import { filterPeople, getAssignableAssets, groupBeneficiariesByPerson } from '../../utils/catalog'
 
@@ -27,11 +30,20 @@ export default function BeneficiariesPage() {
   const { status, error, assets, beneficiaries, reload } = useOwnerCatalog()
   const [query, setQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [action, setAction] = useState(null)
+  const [toast, setToast] = useState(null)
+  const closeToast = useCallback(() => setToast(null), [])
 
   const people = useMemo(() => groupBeneficiariesByPerson(assets, beneficiaries), [assets, beneficiaries])
   const visiblePeople = useMemo(() => filterPeople(people, query), [people, query])
   const assignableAssets = useMemo(() => getAssignableAssets(assets), [assets])
   const allocatedAssetCount = useMemo(() => new Set(beneficiaries.map((b) => b.assetId)).size, [beneficiaries])
+
+  const finishAction = (title) => {
+    setAction(null)
+    setToast({ title })
+    reload()
+  }
 
   const handleAssigned = () => {
     setIsModalOpen(false)
@@ -118,7 +130,12 @@ export default function BeneficiariesPage() {
             ) : (
               <div>
                 {visiblePeople.map((person) => (
-                  <BeneficiaryPersonCard key={person.beneficiaryId} person={person} />
+                  <BeneficiaryPersonCard
+                    key={person.beneficiaryId}
+                    person={person}
+                    onEdit={(target) => setAction({ type: 'edit', person: target })}
+                    onRemove={(target) => setAction({ type: 'remove', person: target })}
+                  />
                 ))}
               </div>
             )}
@@ -132,6 +149,22 @@ export default function BeneficiariesPage() {
         onClose={() => setIsModalOpen(false)}
         onAssigned={handleAssigned}
       />
+      {action?.type === 'edit' && (
+        <EditAllocationModal
+          person={action.person}
+          beneficiaries={beneficiaries}
+          onClose={() => setAction(null)}
+          onChanged={() => finishAction('Đã cập nhật phân quyền')}
+        />
+      )}
+      {action?.type === 'remove' && (
+        <RemoveBeneficiaryModal
+          person={action.person}
+          onClose={() => setAction(null)}
+          onRemoved={() => finishAction('Đã xóa người thụ hưởng')}
+        />
+      )}
+      <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />
     </div>
   )
 }

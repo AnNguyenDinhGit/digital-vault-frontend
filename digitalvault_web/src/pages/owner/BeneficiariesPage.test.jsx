@@ -58,12 +58,37 @@ describe('BeneficiariesPage list', () => {
     expect(card).toHaveTextContent('3 tài sản')
   })
 
-  it('card_Actions_EditAndDeleteAreDisabled', async () => {
+  it('card_Actions_EditAndDeleteAreEnabled', async () => {
     renderPage()
     await waitForPage()
     const card = screen.getByRole('article', { name: 'Trần Bảo Long' })
-    expect(within(card).getByRole('button', { name: 'Sửa phân quyền' })).toBeDisabled()
-    expect(within(card).getByRole('button', { name: 'Xóa' })).toBeDisabled()
+    expect(within(card).getByRole('button', { name: 'Sửa phân quyền' })).toBeEnabled()
+    expect(within(card).getByRole('button', { name: 'Xóa' })).toBeEnabled()
+  })
+
+  it('edit_ChangeAllocation_UpdatesCardAndShowsToast', async () => {
+    renderPage()
+    await waitForPage()
+    await userEvent.click(within(screen.getByRole('article', { name: 'Trần Bảo Long' })).getByRole('button', { name: 'Sửa phân quyền' }))
+    const dialog = screen.getByRole('dialog', { name: 'Sửa Phân Quyền Người Thụ Hưởng' })
+    const input = within(dialog).getByLabelText(/Kho Lưu Trữ Kỷ Niệm/)
+    await userEvent.clear(input)
+    await userEvent.type(input, '30')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thay đổi' }))
+    expect(await screen.findByText('Đã cập nhật phân quyền')).toBeInTheDocument()
+    const card = screen.getByRole('article', { name: 'Trần Bảo Long' })
+    expect(within(card).getByRole('link', { name: /Kho Lưu Trữ Kỷ Niệm.*30%/ })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('remove_Confirm_RemovesPersonAndUpdatesStats', async () => {
+    renderPage()
+    await waitForPage()
+    await userEvent.click(within(screen.getByRole('article', { name: 'Trần Bảo Long' })).getByRole('button', { name: 'Xóa' }))
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Xóa Người Thụ Hưởng' })).getByRole('button', { name: 'Xác nhận xóa' }))
+    expect(await screen.findByText('Đã xóa người thụ hưởng')).toBeInTheDocument()
+    expect(within(screen.getByRole('group', { name: 'NGƯỜI THỤ HƯỞNG' })).getByText('01')).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Trần Bảo Long' })).not.toBeInTheDocument()
   })
 
   it('stats_Ready_CountsPeopleAndAllocatedAssets', async () => {

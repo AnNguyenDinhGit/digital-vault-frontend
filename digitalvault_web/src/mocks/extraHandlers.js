@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { computeProofOfLife } from '../utils/proofOfLife'
-import { parseAssetUpdate } from './assetInput'
+import { parseAllocation, parseAssetUpdate } from './assetInput'
 import { LIMITS, isStrongPassword, isValidPhone } from '../utils/validators'
 import { getDb, getFrontendEmail, isMockHybrid, nextId, saveDb } from './db'
 import { hasUnknownFields, ownerRoute, problem } from './helpers'
@@ -222,6 +222,51 @@ const assetEditHandlers = [
   ),
 ]
 
+// Sửa tỷ lệ và gỡ người thụ hưởng khỏi một tài sản (mock đầy đủ; chế độ hỗn hợp dùng lớp phủ ở mocks/overlay.js)
+const beneficiaryRow = (db, assignment) => ({
+  assetId: assignment.assetId,
+  beneficiaryId: assignment.beneficiaryId,
+  fullName: db.users.find((user) => user.userId === assignment.beneficiaryId)?.fullName ?? '',
+  allocation: assignment.allocation,
+  status: assignment.status,
+})
+
+const findAssignment = (db, assetId, beneficiaryId) =>
+  db.assignments.find((item) => item.assetId === assetId && item.beneficiaryId === beneficiaryId)
+
+const beneficiaryEditHandlers = [
+  http.put(
+    '*/api/owner/assets/:assetId/beneficiaries/:beneficiaryId',
+    ownerRoute(({ userId, params, body }) => {
+      const parsed = parseAllocation(body)
+      if (parsed.error) return problem(400, parsed.error)
+      const db = getDb()
+      const asset = findOwnedAsset(db, userId, Number(params.assetId))
+      const assignment = asset && findAssignment(db, asset.assetId, Number(params.beneficiaryId))
+      if (!assignment) return problem(404, 'Beneficiary assignment not found.')
+      const others = db.assignments.filter((item) => item.assetId === asset.assetId && item !== assignment)
+      const total = others.reduce((sum, item) => sum + item.allocation, 0)
+      if (Math.round((total + parsed.value) * 100) / 100 > 100) return problem(409, 'Total allocation exceeds 100%.')
+      assignment.allocation = parsed.value
+      saveDb()
+      return HttpResponse.json(beneficiaryRow(db, assignment))
+    }),
+  ),
+
+  http.delete(
+    '*/api/owner/assets/:assetId/beneficiaries/:beneficiaryId',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const asset = findOwnedAsset(db, userId, Number(params.assetId))
+      const assignment = asset && findAssignment(db, asset.assetId, Number(params.beneficiaryId))
+      if (!assignment) return problem(404, 'Beneficiary assignment not found.')
+      db.assignments = db.assignments.filter((item) => item !== assignment)
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+]
+
 // Hồ sơ và bảo mật: tài khoản ở BE thật không có trong mock nên chỉnh sửa được lưu thành lớp phủ theo userId
 function profileDto(db, userId) {
   const account = db.users.find((user) => user.userId === userId)
@@ -297,4 +342,4 @@ const securityHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...assetEditHandlers, ...securityHandlers]
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...assetEditHandlers, ...beneficiaryEditHandlers, ...securityHandlers]

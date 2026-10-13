@@ -17,12 +17,14 @@ import {
   getVaultExecutor,
   getVaults,
   pingProofOfLife,
+  removeBeneficiary,
   revokeExecutor,
   saveProofOfLife,
   setTwoFactor,
   simulateExecutorAccept,
   simulateTimePassing,
   updateAsset,
+  updateBeneficiaryAllocation,
   updateProfile,
   uploadDocument,
 } from './ownerApi'
@@ -198,6 +200,20 @@ describe('ownerApi', () => {
       axiosClient.post.mockResolvedValue({ data: { status: 'Warning' } })
       await simulateTimePassing(25)
       expect(axiosClient.post).toHaveBeenCalledWith('/owner/proof-of-life/simulate', { days: 25 })
+    })
+  })
+
+  describe('manage beneficiaries', () => {
+    it('updateBeneficiaryAllocation_Values_PutsNumberAllocation', async () => {
+      axiosClient.put.mockResolvedValue({ data: { allocation: 25 } })
+      await expect(updateBeneficiaryAllocation(4, 9, '25')).resolves.toEqual({ allocation: 25 })
+      expect(axiosClient.put).toHaveBeenCalledWith('/owner/assets/4/beneficiaries/9', { allocation: 25 })
+    })
+
+    it('removeBeneficiary_Ids_SendsDelete', async () => {
+      axiosClient.delete.mockResolvedValue({ data: undefined })
+      await removeBeneficiary(4, 9)
+      expect(axiosClient.delete).toHaveBeenCalledWith('/owner/assets/4/beneficiaries/9')
     })
   })
 
