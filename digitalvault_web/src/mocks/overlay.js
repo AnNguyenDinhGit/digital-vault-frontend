@@ -5,9 +5,15 @@ import { ownerRoute, problem } from './helpers'
 
 // Lớp phủ cho chế độ hỗn hợp: BE thật chưa cho sửa/xóa nên mock ghi lại thay đổi theo userId rồi phủ lên dữ liệu BE trả về.
 
-// Gọi BE thật bỏ qua MSW; request gốc của axios được dựng lại thành GET kèm cookie
-export const defaultFetchUpstream = (request) =>
-  fetch(bypass(new Request(request.url, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } })))
+// Gọi BE thật bỏ qua MSW; request gốc của axios được dựng lại thành GET và giữ nguyên Bearer token
+export function buildUpstreamRequest(request) {
+  const headers = { Accept: 'application/json' }
+  const authorization = request.headers.get('Authorization')
+  if (authorization) headers.Authorization = authorization
+  return new Request(request.url, { method: 'GET', headers })
+}
+
+export const defaultFetchUpstream = (request) => fetch(bypass(buildUpstreamRequest(request)))
 
 const emptyOverlay = () => ({ assetEdits: {}, deletedAssets: [], allocationEdits: {}, removedAssignments: [] })
 

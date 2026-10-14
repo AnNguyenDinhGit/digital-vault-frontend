@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node'
 import axiosClient from '../callapi/axiosClient'
 import { resetMockDb, setMockHybrid } from './db'
 import { extraHandlers } from './extraHandlers'
-import { createAssetOverlayHandlers } from './overlay'
+import { buildUpstreamRequest, createAssetOverlayHandlers } from './overlay'
 
 // Chế độ hỗn hợp: BE thật giả lập bằng hàm fetchUpstream, mock chỉ phủ chỉnh sửa/xóa lên kết quả
 const REAL_ASSETS = [
@@ -43,6 +43,26 @@ const call = async (promise) => {
     return { status: error.status, message: error.message }
   }
 }
+
+describe('buildUpstreamRequest', () => {
+  it('build_Request_IsAGetToTheSameUrlWithBearerTokenCopied', () => {
+    const original = new Request('http://localhost/api/owner/assets/1', {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer abc.def', 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+    const upstream = buildUpstreamRequest(original)
+    expect(upstream.method).toBe('GET')
+    expect(upstream.url).toBe('http://localhost/api/owner/assets/1')
+    expect(upstream.headers.get('Authorization')).toBe('Bearer abc.def')
+    expect(upstream.headers.get('Accept')).toBe('application/json')
+  })
+
+  it('build_NoAuthorization_DoesNotAddOne', () => {
+    const upstream = buildUpstreamRequest(new Request('http://localhost/api/owner/assets'))
+    expect(upstream.headers.has('Authorization')).toBe(false)
+  })
+})
 
 describe('asset overlay in hybrid mode', () => {
   it('get_NoEdits_ReturnsUpstreamDataUnchanged', async () => {

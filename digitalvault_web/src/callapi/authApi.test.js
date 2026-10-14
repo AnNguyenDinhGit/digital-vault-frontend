@@ -1,3 +1,4 @@
+import { clearTokens, getTokens, setTokens } from '../utils/tokenStorage'
 import axiosClient from './axiosClient'
 import { checkSession, login, logout, register, requestPasswordReset, resetPassword, verifyResetOtp } from './authApi'
 
@@ -6,8 +7,54 @@ vi.mock('./axiosClient', () => ({
 }))
 
 describe('authApi', () => {
+  beforeEach(() => setTokens({ accessToken: 'a', refreshToken: 'r' }))
+
   afterEach(() => {
     vi.clearAllMocks()
+    clearTokens()
+  })
+
+  it('login_ResponseWithTokens_StoresThemAndReturnsOnlyUserAndRoles', async () => {
+    axiosClient.post.mockResolvedValue({
+      data: { userId: 5, roles: ['Owner'], accessToken: 'acc', refreshToken: 'ref', expiresAt: '2026-10-21T00:00:00Z' },
+    })
+    await expect(login('an@example.com', 'x')).resolves.toEqual({ userId: 5, roles: ['Owner'] })
+    expect(getTokens()).toEqual({ accessToken: 'acc', refreshToken: 'ref', expiresAt: '2026-10-21T00:00:00Z' })
+  })
+
+  it('login_Called_DropsOldTokensBeforeRequest', async () => {
+    let tokensDuringRequest = 'not-called'
+    axiosClient.post.mockImplementation(async () => {
+      tokensDuringRequest = getTokens()
+      return { data: { userId: 5, roles: [] } }
+    })
+    await login('an@example.com', 'x')
+    expect(tokensDuringRequest).toBeNull()
+    expect(getTokens()).toBeNull()
+  })
+
+  it('login_Rejected_LeavesNoTokens', async () => {
+    axiosClient.post.mockRejectedValue({ status: 401 })
+    await expect(login('an@example.com', 'x')).rejects.toEqual({ status: 401 })
+    expect(getTokens()).toBeNull()
+  })
+
+  it('logout_ServerFails_StillClearsTokensAndThrows', async () => {
+    axiosClient.post.mockRejectedValue({ status: 401 })
+    await expect(logout()).rejects.toEqual({ status: 401 })
+    expect(getTokens()).toBeNull()
+  })
+
+  it('logout_Success_ClearsTokens', async () => {
+    axiosClient.post.mockResolvedValue({ status: 204 })
+    await logout()
+    expect(getTokens()).toBeNull()
+  })
+
+  it('checkSession_NoTokens_ReturnsFalseWithoutCallingApi', async () => {
+    clearTokens()
+    await expect(checkSession()).resolves.toBe(false)
+    expect(axiosClient.get).not.toHaveBeenCalled()
   })
 
   it('login_ValidCredentials_PostsAndReturnsUser', async () => {

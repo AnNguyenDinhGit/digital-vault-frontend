@@ -26,7 +26,9 @@ describe('mock auth', () => {
   it('login_DemoAccount_ReturnsUserIdAndOwnerRole', async () => {
     const result = await call(loginAsDemo())
     expect(result.status).toBe(200)
-    expect(result.data).toEqual({ userId: DEMO_ACCOUNT.userId, roles: ['Owner'] })
+    expect(result.data).toMatchObject({ userId: DEMO_ACCOUNT.userId, roles: ['Owner'] })
+    expect(result.data.accessToken).toEqual(expect.any(String))
+    expect(result.data.refreshToken).toEqual(expect.any(String))
   })
 
   it('login_WrongPassword_Returns401', async () => {

@@ -34,6 +34,16 @@ function beneficiaryDto(db, assignment) {
   }
 }
 
+// Mô phỏng cặp token của BE: access token ngắn hạn, refresh token 7 ngày và lưu lại để xoay vòng
+function issueTokens(userId) {
+  const db = getDb()
+  const accessToken = `mock-access.${userId}.${crypto.randomUUID()}`
+  const refreshToken = `mock-refresh.${crypto.randomUUID()}`
+  db.refreshTokens[refreshToken] = { userId, revoked: false }
+  saveDb()
+  return { accessToken, refreshToken, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }
+}
+
 const coreHandlers = [
   http.post(
     '*/api/auth/register',
@@ -96,7 +106,23 @@ const coreHandlers = [
           return problem(401, 'Invalid email or password.')
         }
         setSessionUserId(user.userId)
-        return HttpResponse.json({ userId: user.userId, roles: user.roles })
+        return HttpResponse.json({ userId: user.userId, roles: user.roles, ...issueTokens(user.userId) })
+      },
+      { auth: false },
+    ),
+  ),
+
+  // Đổi cặp token cũ lấy cặp mới; refresh token đã dùng bị thu hồi (xoay vòng như BE)
+  http.post(
+    '*/api/auth/refresh-token',
+    route(
+      ({ body }) => {
+        const { accessToken, refreshToken } = body ?? {}
+        if (isBlank(accessToken) || isBlank(refreshToken)) return problem(400, 'AccessToken and RefreshToken are required.')
+        const stored = getDb().refreshTokens[refreshToken]
+        if (!stored || stored.revoked) return problem(401, 'Refresh token is invalid or revoked.')
+        stored.revoked = true
+        return HttpResponse.json(issueTokens(stored.userId))
       },
       { auth: false },
     ),
