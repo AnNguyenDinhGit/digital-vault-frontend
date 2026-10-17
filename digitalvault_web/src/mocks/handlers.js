@@ -41,7 +41,34 @@ function issueTokens(userId) {
   const refreshToken = `mock-refresh.${crypto.randomUUID()}`
   db.refreshTokens[refreshToken] = { userId, revoked: false }
   saveDb()
-  return { accessToken, refreshToken, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }
+  return {
+    accessToken,
+    tokenType: 'Bearer',
+    expiresIn: 900,
+    refreshToken,
+    refreshTokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  }
+}
+
+const TWO_FACTOR_TTL_MS = 5 * 60 * 1000
+const TWO_FACTOR_COOLDOWN_MS = 60 * 1000
+const MAX_TWO_FACTOR_ATTEMPTS = 5
+
+// Tạo challenge mới (32 ký tự hex như BE) và mã 6 số
+function startTwoFactorChallenge(userId) {
+  const db = getDb()
+  const challengeId = crypto.randomUUID().replace(/-/g, '')
+  const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0')
+  const now = Date.now()
+  db.twoFactorChallenges[challengeId] = { userId, code, expiresAt: now + TWO_FACTOR_TTL_MS, attempts: 0, lastSentAt: now }
+  saveDb()
+  return {
+    challengeId,
+    method: 'Email',
+    expiresAt: new Date(now + TWO_FACTOR_TTL_MS).toISOString(),
+    requiresTwoFactor: true,
+    mockCode: code,
+  }
 }
 
 const coreHandlers = [
@@ -105,6 +132,10 @@ const coreHandlers = [
         if (!user || user.password !== body?.password) {
           return problem(401, 'Invalid email or password.')
         }
+        // Tài khoản bật xác thực hai lớp thì chưa cấp token: trả 202 kèm challenge (mockCode chỉ có ở mock để demo không cần email thật)
+        if (getDb().security[user.userId]?.twoFactorEnabled) {
+          return HttpResponse.json(startTwoFactorChallenge(user.userId), { status: 202 })
+        }
         setSessionUserId(user.userId)
         return HttpResponse.json({ userId: user.userId, roles: user.roles, ...issueTokens(user.userId) })
       },
@@ -117,8 +148,8 @@ const coreHandlers = [
     '*/api/auth/refresh-token',
     route(
       ({ body }) => {
-        const { accessToken, refreshToken } = body ?? {}
-        if (isBlank(accessToken) || isBlank(refreshToken)) return problem(400, 'AccessToken and RefreshToken are required.')
+        if (hasUnknownFields(body, ['refreshToken']) || isBlank(body?.refreshToken)) return problem(400, 'RefreshToken is required.')
+        const { refreshToken } = body
         const stored = getDb().refreshTokens[refreshToken]
         if (!stored || stored.revoked) return problem(401, 'Refresh token is invalid or revoked.')
         stored.revoked = true
@@ -126,6 +157,57 @@ const coreHandlers = [
       },
       { auth: false },
     ),
+  ),
+
+  http.post(
+    '*/api/auth/2fa/verify',
+    route(
+      ({ body }) => {
+        if (hasUnknownFields(body, ['challengeId', 'code']) || !/^[0-9a-f]{32}$/.test(body?.challengeId ?? '') || !/^\d{6}$/.test(body?.code ?? '')) {
+          return problem(400, 'Challenge and a 6 digit code are required.')
+        }
+        const db = getDb()
+        const challenge = db.twoFactorChallenges[body.challengeId]
+        if (!challenge || challenge.expiresAt < Date.now() || challenge.attempts >= MAX_TWO_FACTOR_ATTEMPTS) {
+          return problem(400, 'Invalid or expired code.')
+        }
+        if (challenge.code !== body.code) {
+          challenge.attempts += 1
+          saveDb()
+          return problem(400, 'Invalid or expired code.')
+        }
+        delete db.twoFactorChallenges[body.challengeId]
+        const user = db.users.find((item) => item.userId === challenge.userId)
+        setSessionUserId(user.userId)
+        return HttpResponse.json({ userId: user.userId, roles: user.roles, ...issueTokens(user.userId) })
+      },
+      { auth: false },
+    ),
+  ),
+
+  // Gửi lại mã: chờ 60 giây giữa hai lần, challenge cũ bị hủy
+  http.post(
+    '*/api/auth/2fa/resend',
+    route(
+      ({ body }) => {
+        if (hasUnknownFields(body, ['challengeId']) || !/^[0-9a-f]{32}$/.test(body?.challengeId ?? '')) return problem(400, 'ChallengeId is required.')
+        const db = getDb()
+        const challenge = db.twoFactorChallenges[body.challengeId]
+        if (!challenge || challenge.expiresAt < Date.now()) return problem(400, 'Invalid or expired challenge.')
+        if (Date.now() - challenge.lastSentAt < TWO_FACTOR_COOLDOWN_MS) return problem(429, 'Wait before requesting another code.')
+        delete db.twoFactorChallenges[body.challengeId]
+        return HttpResponse.json(startTwoFactorChallenge(challenge.userId))
+      },
+      { auth: false },
+    ),
+  ),
+
+  http.get(
+    '*/api/auth/me',
+    route(({ userId }) => {
+      const user = getDb().users.find((item) => item.userId === userId)
+      return HttpResponse.json({ userId, fullName: user.fullName, email: user.email, roles: user.roles, status: 'Active' })
+    }),
   ),
 
   http.post(

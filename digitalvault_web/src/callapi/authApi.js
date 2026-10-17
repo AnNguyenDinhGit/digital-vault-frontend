@@ -5,14 +5,36 @@ import axiosClient from './axiosClient'
 // Các request xác thực tự xử lý 401 nên không kích hoạt redirect toàn cục
 const AUTH_CONFIG = { skipAuthRedirect: true }
 
-// Đăng nhập: BE trả { userId, roles, accessToken, refreshToken, expiresAt }.
-// Token được lưu để axiosClient tự gắn Bearer; nơi gọi chỉ nhận userId và roles.
+// Lưu cặp token từ TokenDto của BE ({ userId, roles, accessToken, refreshToken, refreshTokenExpiresAt, ... })
+// để axiosClient tự gắn Bearer; trả về riêng userId và roles cho nơi gọi.
+function storeSession({ userId, roles, accessToken, refreshToken, refreshTokenExpiresAt }) {
+  setTokens({ accessToken, refreshToken, expiresAt: refreshTokenExpiresAt })
+  return { userId, roles }
+}
+
+// Đăng nhập: 200 là TokenDto; 202 là cần xác thực hai lớp (chưa có token, trả về thông tin challenge để nhập mã).
 export async function login(email, password) {
   // Bỏ token cũ trước để không gửi kèm token hỏng/của tài khoản khác
   clearTokens()
-  const { accessToken, refreshToken, expiresAt, ...user } = (await axiosClient.post('/auth/login', { email, password }, AUTH_CONFIG)).data
-  if (accessToken) setTokens({ accessToken, refreshToken, expiresAt })
-  return user
+  const { data } = await axiosClient.post('/auth/login', { email, password }, AUTH_CONFIG)
+  if (data.requiresTwoFactor) {
+    const { challengeId, method, expiresAt, mockCode } = data
+    return { requiresTwoFactor: true, challengeId, method, expiresAt, ...(mockCode ? { mockCode } : {}) }
+  }
+  return storeSession(data)
+}
+
+// Bước 2 khi có xác thực hai lớp: mã 6 số gửi qua email hoặc từ ứng dụng TOTP
+export async function verifyTwoFactor(challengeId, code) {
+  clearTokens()
+  const { data } = await axiosClient.post('/auth/2fa/verify', { challengeId, code: code.trim() }, AUTH_CONFIG)
+  return storeSession(data)
+}
+
+// Chỉ gửi lại được mã Email (BE chờ 60 giây giữa hai lần) và trả challenge mới thay cho challenge cũ
+export async function resendTwoFactor(challengeId) {
+  const { data } = await axiosClient.post('/auth/2fa/resend', { challengeId }, AUTH_CONFIG)
+  return data
 }
 
 // Đăng ký tài khoản Owner, chỉ gửi đúng các trường BE nhận (BE từ chối trường thừa)
@@ -35,26 +57,26 @@ export async function register({ fullName, email, phone, identityNumber, passwor
   return data
 }
 
-// Luôn xoá token phía FE dù BE trả lỗi, để người dùng thoát được phiên
+// Gửi kèm refresh token để BE thu hồi; luôn xoá token phía FE dù BE trả lỗi, để người dùng thoát được phiên
 export async function logout() {
+  const refreshToken = getTokens()?.refreshToken
   try {
-    await axiosClient.post('/auth/logout', null, AUTH_CONFIG)
+    await axiosClient.post('/auth/logout', refreshToken ? { refreshToken } : {}, AUTH_CONFIG)
   } finally {
     clearTokens()
   }
 }
 
-// BE chưa có endpoint "me": gọi thử một API cần đăng nhập để biết cookie còn hạn không.
-// 403 nghĩa là đã đăng nhập nhưng không phải Owner, vẫn là phiên hợp lệ.
+// Kiểm tra phiên bằng GET /auth/me (BE đọc lại trạng thái và role từ database).
+// Trả { userId, fullName, email, roles } khi còn phiên, null khi hết phiên; lỗi mạng thì ném ra.
 export async function checkSession() {
   // Không có token thì chắc chắn chưa đăng nhập, khỏi gọi BE
-  if (!getTokens()) return false
+  if (!getTokens()) return null
   try {
-    await axiosClient.get('/owner/vaults', AUTH_CONFIG)
-    return true
+    const { data } = await axiosClient.get('/auth/me', AUTH_CONFIG)
+    return { userId: data.userId, fullName: data.fullName, email: data.email, roles: data.roles }
   } catch (error) {
-    if (error.status === 403) return true
-    if (error.status === 401) return false
+    if (error.status === 401) return null
     throw error
   }
 }

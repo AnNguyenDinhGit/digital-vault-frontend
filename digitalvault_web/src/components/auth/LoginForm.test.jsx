@@ -12,6 +12,8 @@ vi.mock('../../callapi/authApi', () => ({
   requestPasswordReset: vi.fn(),
   verifyResetOtp: vi.fn(),
   resetPassword: vi.fn(),
+  verifyTwoFactor: vi.fn(),
+  resendTwoFactor: vi.fn(),
 }))
 
 const renderForm = () =>
@@ -154,6 +156,29 @@ describe('LoginForm', () => {
     expect(await screen.findByText('Đã đặt lại mật khẩu. Vui lòng đăng nhập bằng mật khẩu mới.')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByLabelText(/^Email/)).toHaveValue('an@x.co')
+  })
+
+  it('login_TwoFactorRequired_OpensCodeDialogAndFinishesLoginAfterVerify', async () => {
+    authApi.login.mockResolvedValue({ requiresTwoFactor: true, challengeId: 'c'.repeat(32), method: 'Email', expiresAt: 'x' })
+    authApi.verifyTwoFactor.mockResolvedValue({ userId: 1, roles: ['Owner'] })
+    renderForm()
+    await fillAndSubmit()
+    const dialog = await screen.findByRole('dialog', { name: 'Xác Thực Hai Lớp' })
+    expect(screen.queryByText('owner-assets-page')).not.toBeInTheDocument()
+    await userEvent.type(within(dialog).getByLabelText(/^Mã xác thực/), '123456')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận' }))
+    expect(await screen.findByText('owner-assets-page')).toBeInTheDocument()
+    expect(authApi.verifyTwoFactor).toHaveBeenCalledWith('c'.repeat(32), '123456')
+  })
+
+  it('login_TwoFactorDialogCancelled_StaysOnLoginForm', async () => {
+    authApi.login.mockResolvedValue({ requiresTwoFactor: true, challengeId: 'c'.repeat(32), method: 'Email', expiresAt: 'x' })
+    renderForm()
+    await fillAndSubmit()
+    const dialog = await screen.findByRole('dialog', { name: 'Xác Thực Hai Lớp' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Đăng Nhập Cổng An Toàn' })).toBeInTheDocument()
   })
 
   it('registerLink_Clicked_CallsOnOpenRegister', async () => {

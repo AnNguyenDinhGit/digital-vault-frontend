@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 11
+const DB_VERSION = 12
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -145,6 +145,8 @@ function createSeed() {
     passwordResets: {},
     // Refresh token đang lưu hành (như bảng RefreshTokens của BE): token -> { userId, revoked }
     refreshTokens: {},
+    // Mã xác thực hai lớp đang chờ nhập, theo challengeId: { userId, code, expiresAt, attempts, lastSentAt }
+    twoFactorChallenges: {},
     resetTokens: {},
     // Lớp phủ chế độ hỗn hợp theo userId: chỉnh sửa/xóa lên dữ liệu BE thật chưa cho sửa (xem mocks/overlay.js)
     overlay: {},

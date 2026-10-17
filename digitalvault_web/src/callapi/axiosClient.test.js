@@ -109,7 +109,7 @@ describe('axiosClient token refresh', () => {
       http.post('*/api/auth/refresh-token', async ({ request }) => {
         refreshCalls.push(await request.json())
         if (refreshStatus !== 200) return HttpResponse.json({ message: 'RefreshToken đã hết hạn.' }, { status: refreshStatus })
-        return HttpResponse.json({ accessToken: 'new', refreshToken: 'r-new', expiresAt: '2026-10-21T00:00:00Z' })
+        return HttpResponse.json({ accessToken: 'new', refreshToken: 'r-new', refreshTokenExpiresAt: '2026-10-21T00:00:00Z' })
       }),
     )
   }
@@ -134,7 +134,7 @@ describe('axiosClient token refresh', () => {
     useBackend()
     const { data } = await axiosClient.get('/owner/vaults')
     expect(data).toEqual([{ vaultId: 1 }])
-    expect(refreshCalls).toEqual([{ accessToken: 'old', refreshToken: 'r-old' }])
+    expect(refreshCalls).toEqual([{ refreshToken: 'r-old' }])
     expect(vaultCalls).toBe(2)
     expect(handler).not.toHaveBeenCalled()
   })
@@ -142,7 +142,7 @@ describe('axiosClient token refresh', () => {
   it('response_RefreshSucceeds_StoresNewTokens', async () => {
     useBackend()
     await axiosClient.get('/owner/vaults')
-    expect(getTokens()).toMatchObject({ accessToken: 'new', refreshToken: 'r-new' })
+    expect(getTokens()).toMatchObject({ accessToken: 'new', refreshToken: 'r-new', expiresAt: '2026-10-21T00:00:00Z' })
   })
 
   it('response_RefreshRequest_SendsVaultHeader', async () => {

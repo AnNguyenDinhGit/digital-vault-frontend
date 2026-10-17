@@ -49,10 +49,10 @@ async function refreshTokens() {
   // Dùng axios trần để lỗi của chính request refresh không đi qua interceptor này và gây vòng lặp
   const { data } = await axios.post(
     `${BASE_URL}/auth/refresh-token`,
-    { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken },
+    { refreshToken: tokens.refreshToken },
     { headers: { Accept: 'application/json', 'X-Vault-Request': '1' }, timeout: 30000 },
   )
-  setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken, expiresAt: data.expiresAt })
+  setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken, expiresAt: data.refreshTokenExpiresAt })
 }
 
 // Thử làm mới token cho request vừa bị 401. Trả true nếu đã có token mới để gửi lại.
