@@ -30,3 +30,10 @@ export function filterHandovers(handovers, statuses) {
   const items = statuses ? handovers.filter((item) => statuses.includes(item.status)) : [...handovers]
   return items.sort((a, b) => b.requestId - a.requestId)
 }
+
+// Chuyển lỗi tạo hồ sơ bàn giao sang thông báo tiếng Việt
+export function createHandoverErrorMessage(error) {
+  if (error?.status === 409) return 'Kho này đã có hồ sơ bàn giao đang xử lý hoặc chưa có tài sản nào được phân bổ.'
+  if (error?.status === 403) return 'Bạn không được phân công kho này.'
+  return error?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
+}

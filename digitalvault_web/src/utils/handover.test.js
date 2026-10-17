@@ -1,4 +1,4 @@
-import { HANDOVER_GROUPS, filterHandovers, handoverStatusInfo, isEditableStatus } from './handover'
+import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, isEditableStatus } from './handover'
 
 describe('handoverStatusInfo', () => {
   it.each([
@@ -62,5 +62,20 @@ describe('filterHandovers', () => {
     const input = [{ requestId: 1, status: 'Draft' }, { requestId: 9, status: 'Draft' }]
     filterHandovers(input, undefined)
     expect(input.map((item) => item.requestId)).toEqual([1, 9])
+  })
+})
+
+describe('createHandoverErrorMessage', () => {
+  it('createHandoverErrorMessage_Conflict_ExplainsOpenRequestOrNoAllocation', () => {
+    expect(createHandoverErrorMessage({ status: 409 })).toBe('Kho này đã có hồ sơ bàn giao đang xử lý hoặc chưa có tài sản nào được phân bổ.')
+  })
+
+  it('createHandoverErrorMessage_Forbidden_SaysNotAssigned', () => {
+    expect(createHandoverErrorMessage({ status: 403 })).toBe('Bạn không được phân công kho này.')
+  })
+
+  it('createHandoverErrorMessage_Other_UsesServerMessageOrGeneric', () => {
+    expect(createHandoverErrorMessage({ status: 503, message: 'Không có Executor phù hợp.' })).toBe('Không có Executor phù hợp.')
+    expect(createHandoverErrorMessage({})).toBe('Đã có lỗi xảy ra, vui lòng thử lại.')
   })
 })

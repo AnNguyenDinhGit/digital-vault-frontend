@@ -5,12 +5,15 @@ import ExecutorLayout from './components/layout/ExecutorLayout'
 import LegalVerifierLayout from './components/layout/LegalVerifierLayout'
 import OwnerLayout from './components/layout/OwnerLayout'
 import ProtectedRoute from './components/routing/ProtectedRoute'
+import { HANDOVER_GROUPS } from './utils/handover'
 import { AuthProvider } from './contexts/AuthContext'
 import LandingPage from './pages/LandingPage'
 import RolePlaceholderPage from './pages/common/RolePlaceholderPage'
 import AssetCatalogPage from './pages/owner/AssetCatalogPage'
 import AssetDetailPage from './pages/owner/AssetDetailPage'
 import ActivityLogPage from './pages/owner/ActivityLogPage'
+import ExecutorHandoverListPage from './pages/executor/ExecutorHandoverListPage'
+import ExecutorOrdersPage from './pages/executor/ExecutorOrdersPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
 import ExecutorManagementPage from './pages/owner/ExecutorManagementPage'
 import ProofOfLifePage from './pages/owner/ProofOfLifePage'
@@ -43,11 +46,51 @@ function App() {
           <Route element={<ProtectedRoute role="Executor" />}>
             <Route path="/executor" element={<ExecutorLayout />}>
               <Route index element={<Navigate to="orders" replace />} />
-              <Route path="orders" element={<RolePlaceholderPage title="Quản lý đơn bàn giao di sản" />} />
-              <Route path="pending" element={<RolePlaceholderPage title="Hồ sơ chờ thẩm định" />} />
-              <Route path="approved" element={<RolePlaceholderPage title="Pháp lý đã duyệt - Sẵn sàng bàn giao" />} />
-              <Route path="in-progress" element={<RolePlaceholderPage title="Đang bàn giao & Chờ ký số" />} />
-              <Route path="history" element={<RolePlaceholderPage title="Lịch sử bàn giao hoàn tất" />} />
+              <Route path="orders" element={<ExecutorOrdersPage />} />
+              <Route
+                path="pending"
+                element={
+                  <ExecutorHandoverListPage
+                    title="Hồ sơ chờ thẩm định"
+                    description="Hồ sơ đã gửi cho người xác minh pháp lý hoặc cần bổ sung tài liệu."
+                    statuses={HANDOVER_GROUPS.pending}
+                    emptyMessage="Không có hồ sơ nào đang chờ thẩm định."
+                  />
+                }
+              />
+              <Route
+                path="approved"
+                element={
+                  <ExecutorHandoverListPage
+                    title="Pháp lý đã duyệt - Sẵn sàng bàn giao"
+                    description="Hồ sơ đã được người xác minh pháp lý duyệt, có thể bắt đầu bàn giao."
+                    statuses={HANDOVER_GROUPS.approved}
+                    emptyMessage="Chưa có hồ sơ nào được duyệt pháp lý."
+                  />
+                }
+              />
+              <Route
+                path="in-progress"
+                element={
+                  <ExecutorHandoverListPage
+                    title="Đang bàn giao & Chờ ký số"
+                    description="Hồ sơ đang bàn giao, cần nộp biên bản có chữ ký số để hoàn tất."
+                    statuses={HANDOVER_GROUPS.inProgress}
+                    emptyMessage="Không có hồ sơ nào đang bàn giao."
+                  />
+                }
+              />
+              <Route
+                path="history"
+                element={
+                  <ExecutorHandoverListPage
+                    title="Lịch sử bàn giao hoàn tất"
+                    description="Hồ sơ đã hoàn tất hoặc đã hủy."
+                    statuses={HANDOVER_GROUPS.history}
+                    emptyMessage="Chưa có hồ sơ nào hoàn tất."
+                  />
+                }
+              />
               <Route path="mailbox" element={<RolePlaceholderPage title="Hộp thư bảo mật E2EE" />} />
               <Route path="certificates" element={<RolePlaceholderPage title="Chứng thư số & SmartCA" />} />
             </Route>
