@@ -12,6 +12,7 @@ import RolePlaceholderPage from './pages/common/RolePlaceholderPage'
 import AssetCatalogPage from './pages/owner/AssetCatalogPage'
 import AssetDetailPage from './pages/owner/AssetDetailPage'
 import ActivityLogPage from './pages/owner/ActivityLogPage'
+import ExecutorHandoverDetailPage from './pages/executor/ExecutorHandoverDetailPage'
 import ExecutorHandoverListPage from './pages/executor/ExecutorHandoverListPage'
 import ExecutorOrdersPage from './pages/executor/ExecutorOrdersPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
@@ -47,6 +48,7 @@ function App() {
             <Route path="/executor" element={<ExecutorLayout />}>
               <Route index element={<Navigate to="orders" replace />} />
               <Route path="orders" element={<ExecutorOrdersPage />} />
+              <Route path="handovers/:requestId" element={<ExecutorHandoverDetailPage />} />
               <Route
                 path="pending"
                 element={

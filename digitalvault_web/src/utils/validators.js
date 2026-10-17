@@ -140,6 +140,34 @@ export function validateUpload({ file, signature }) {
   return errors
 }
 
+// Validate form nộp giấy tờ của Người thi hành (giấy chứng tử, bằng chứng, biên bản hoàn tất): chữ ký rời bắt buộc hay không tuỳ nơi dùng
+export function validateHandoverDocument({ file, signature }, { signatureRequired = false } = {}) {
+  const errors = {}
+  const fileError = validateDocumentFile(file, 'Vui lòng chọn file giấy tờ.')
+  if (fileError) errors.file = fileError
+
+  if (!signature) {
+    if (signatureRequired) errors.signature = 'Vui lòng chọn file chữ ký rời.'
+  } else if (signature.size <= 0 || signature.size > UPLOAD_LIMITS.maxSignatureBytes) {
+    errors.signature = 'File chữ ký phải từ 1 byte đến 16 KB.'
+  }
+  return errors
+}
+
+// Validate form gửi thẩm định pháp lý: người xác minh (ID), ghi chú tuỳ chọn tối đa 2000 ký tự, file bằng chứng
+export function validateLegalRequest({ verifierId, comment, evidence }) {
+  const errors = {}
+  const id = String(verifierId ?? '').trim()
+  if (!id) errors.verifierId = 'Vui lòng nhập ID người xác minh pháp lý.'
+  else if (!Number.isInteger(Number(id)) || Number(id) < 1) errors.verifierId = 'ID người xác minh phải là số nguyên dương.'
+
+  if ((comment ?? '').length > 2000) errors.comment = 'Ghi chú tối đa 2000 ký tự.'
+
+  const evidenceError = validateDocumentFile(evidence, 'Vui lòng chọn file giấy tờ.')
+  if (evidenceError) errors.evidence = evidenceError
+  return errors
+}
+
 // Giới hạn của kho và tài sản lấy theo CreateVaultInput / CreateAssetInput của BE
 export const VAULT_LIMITS = { name: 100, description: 4000, assetType: 50 }
 const ASSET_TYPE_PATTERN = /^[\x20-\x7E]+$/

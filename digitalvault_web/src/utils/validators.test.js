@@ -4,6 +4,8 @@ import {
   validateAssignment,
   validateAsset,
   validateBeneficiary,
+  validateHandoverDocument,
+  validateLegalRequest,
   validateLogin,
   validateNewPassword,
   validateOtp,
@@ -388,5 +390,53 @@ describe('validateOtp', () => {
     expect(validateOtp('')).toEqual({ otp: 'Vui lòng nhập mã xác nhận.' })
     expect(validateOtp('12ab')).toEqual({ otp: 'Mã gồm đúng 6 chữ số.' })
     expect(validateOtp('1234567')).toEqual({ otp: 'Mã gồm đúng 6 chữ số.' })
+  })
+})
+
+describe('validateHandoverDocument', () => {
+  const file = { name: 'ChungTu.pdf', type: 'application/pdf', size: 2048 }
+  const signature = { name: 'ChungTu.sig', type: '', size: 256 }
+
+  it('validateHandoverDocument_FileOnlyAndSignatureOptional_ReturnsEmptyObject', () => {
+    expect(validateHandoverDocument({ file, signature: null })).toEqual({})
+  })
+
+  it('validateHandoverDocument_NoFile_ReturnsRequiredError', () => {
+    expect(validateHandoverDocument({ file: null, signature: null })).toEqual({ file: 'Vui lòng chọn file giấy tờ.' })
+  })
+
+  it('validateHandoverDocument_OptionalSignatureTooBig_ReturnsSizeError', () => {
+    expect(validateHandoverDocument({ file, signature: { ...signature, size: 16385 } })).toEqual({ signature: 'File chữ ký phải từ 1 byte đến 16 KB.' })
+  })
+
+  it('validateHandoverDocument_SignatureRequiredButMissing_ReturnsRequiredError', () => {
+    expect(validateHandoverDocument({ file, signature: null }, { signatureRequired: true })).toEqual({ signature: 'Vui lòng chọn file chữ ký rời.' })
+  })
+
+  it('validateHandoverDocument_SignatureRequiredAndPresent_ReturnsEmptyObject', () => {
+    expect(validateHandoverDocument({ file, signature }, { signatureRequired: true })).toEqual({})
+  })
+})
+
+describe('validateLegalRequest', () => {
+  const evidence = { name: 'BangChung.pdf', type: 'application/pdf', size: 1024 }
+
+  it('validateLegalRequest_Valid_ReturnsEmptyObject', () => {
+    expect(validateLegalRequest({ verifierId: '6', comment: 'ok', evidence })).toEqual({})
+  })
+
+  it('validateLegalRequest_Empty_ReturnsRequiredErrors', () => {
+    expect(validateLegalRequest({ verifierId: '', comment: '', evidence: null })).toEqual({
+      verifierId: 'Vui lòng nhập ID người xác minh pháp lý.',
+      evidence: 'Vui lòng chọn file giấy tờ.',
+    })
+  })
+
+  it.each([['0'], ['-3'], ['1.5'], ['abc']])('validateLegalRequest_InvalidVerifierId_ReturnsError', (verifierId) => {
+    expect(validateLegalRequest({ verifierId, comment: '', evidence })).toEqual({ verifierId: 'ID người xác minh phải là số nguyên dương.' })
+  })
+
+  it('validateLegalRequest_CommentOver2000_ReturnsError', () => {
+    expect(validateLegalRequest({ verifierId: '6', comment: 'x'.repeat(2001), evidence })).toEqual({ comment: 'Ghi chú tối đa 2000 ký tự.' })
   })
 })
