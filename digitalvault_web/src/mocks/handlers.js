@@ -1,7 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { getDb, nextId, saveDb, setSessionUserId } from './db'
 import { extraHandlers } from './extraHandlers'
-import { hasUnknownFields, isBlank, ownerRoute, problem, route } from './helpers'
+import { fieldOf, hasUnknownFormFields, isValidDocument, isValidSignature } from './formFiles'
+import { executorRoute, hasUnknownFields, isBlank, ownerRoute, problem, route } from './helpers'
 import { parseAllocation, parseAssetUpdate } from './assetInput'
 
 const vaultDto = ({ vaultId, name, description, status }) => ({ vaultId, name, description, status })
@@ -21,6 +22,55 @@ function ownedVaults(db, userId) {
 function ownedAssets(db, userId) {
   const vaultIds = ownedVaults(db, userId).map((vault) => vault.vaultId)
   return db.assets.filter((asset) => vaultIds.includes(asset.vaultId))
+}
+
+const EDITABLE_HANDOVER_STATUSES = ['Draft', 'Rejected', 'Additional_Info']
+
+const handoverDocumentDto = (document) => ({
+  documentId: document.documentId,
+  fileName: document.fileName,
+  fileType: document.fileType,
+  isEncrypted: true,
+  signatureValid: document.hasSignature ? true : null,
+})
+
+const handoverDto = (request) => ({
+  requestId: request.requestId,
+  vaultId: request.vaultId,
+  requestType: 'Inheritance',
+  status: request.status,
+  initiatedAt: request.initiatedAt,
+  documents: request.documents.map(handoverDocumentDto),
+  cases: request.cases,
+})
+
+// Hồ sơ của chính Executor đang đăng nhập (hồ sơ của người khác coi như không tồn tại)
+const ownHandover = (userId, requestId) => getDb().handovers.find((item) => item.requestId === Number(requestId) && item.executorId === userId)
+
+async function readForm(request) {
+  try {
+    return await request.formData()
+  } catch {
+    return null
+  }
+}
+
+// Nộp giấy chứng tử hoặc bằng chứng: File bắt buộc, Signature tuỳ chọn, chỉ khi hồ sơ còn sửa được
+async function uploadHandoverDocument({ userId, params, request }, purpose) {
+  const handover = ownHandover(userId, params.requestId)
+  if (!handover) return problem(404, 'Handover request not found.')
+  if (!EDITABLE_HANDOVER_STATUSES.includes(handover.status)) return problem(409, 'Documents are editable only before legal submission.')
+  const form = await readForm(request)
+  if (!form) return problem(400, 'Request must be multipart/form-data.')
+  if (hasUnknownFormFields(form, ['File', 'Signature'])) return problem(400, 'Only File and optional Signature are accepted.')
+  const file = fieldOf(form, 'File')
+  if (!isValidDocument(file)) return problem(400, 'File must be 1 byte to 10 MB and a PDF, PNG, JPEG or text file.')
+  const signature = fieldOf(form, 'Signature')
+  if (signature !== null && !isValidSignature(signature)) return problem(400, 'Invalid detached signature size.')
+  const document = { documentId: nextId('document'), fileName: file.name, fileType: file.type, purpose, hasSignature: signature !== null }
+  handover.documents.push(document)
+  saveDb()
+  return HttpResponse.json(handoverDocumentDto(document))
 }
 
 function assignmentDto(db, assignment) {
@@ -497,6 +547,139 @@ const coreHandlers = [
       if (!found) return problem(404, 'Document not found.')
       const content = `Tệp mô phỏng cho giấy tờ "${found.fileName}".\nĐây là nội dung mô phỏng, không phải bản gốc đã mã hóa lưu trên máy chủ.\n`
       return new HttpResponse(content, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Signature-Valid': 'true' } })
+    }),
+  ),
+
+  // ---- Cổng Executor (BE có thật, role Executor) ----
+  http.get(
+    '*/api/executor/assignments',
+    executorRoute(({ userId }) => {
+      const list = Object.entries(getDb().executorAssignments)
+        .filter(([, assignment]) => assignment.executorId === userId)
+        .map(([vaultId, assignment]) => ({ vaultId: Number(vaultId), executorId: assignment.executorId, status: assignment.status, assignedAt: assignment.assignedAt }))
+      return HttpResponse.json(list)
+    }),
+  ),
+
+  // Tạo hồ sơ Draft cho kho được phân công: mỗi phân bổ Active của tài sản Active trong kho là một case
+  http.post(
+    '*/api/executor/assignments/:vaultId/handovers',
+    executorRoute(({ userId, params }) => {
+      const db = getDb()
+      const vaultId = Number(params.vaultId)
+      if (db.executorAssignments[vaultId]?.executorId !== userId) return problem(403, 'This vault is not assigned to you.')
+      if (db.handovers.some((item) => item.vaultId === vaultId && item.status !== 'Cancelled')) {
+        return problem(409, 'A handover request already exists for this vault.')
+      }
+      const assetIds = db.assets.filter((asset) => asset.vaultId === vaultId && asset.status === 'Active').map((asset) => asset.assetId)
+      const cases = db.assignments
+        .filter((assignment) => assignment.status === 'Active' && assetIds.includes(assignment.assetId))
+        .map((assignment) => ({ handoverId: nextId('handoverCase'), assetId: assignment.assetId, beneficiaryId: assignment.beneficiaryId, status: 'Pending' }))
+      if (cases.length === 0) return problem(409, 'The vault has no allocated assets to hand over.')
+      const request = { requestId: nextId('handover'), vaultId, executorId: userId, status: 'Draft', initiatedAt: new Date().toISOString(), documents: [], cases }
+      db.handovers.push(request)
+      saveDb()
+      return HttpResponse.json(handoverDto(request), { status: 201, headers: { Location: `/api/executor/handovers/${request.requestId}` } })
+    }),
+  ),
+
+  http.get(
+    '*/api/executor/handovers',
+    executorRoute(({ userId }) =>
+      HttpResponse.json(
+        getDb()
+          .handovers.filter((item) => item.executorId === userId)
+          .sort((a, b) => b.requestId - a.requestId)
+          .map(handoverDto),
+      ),
+    ),
+  ),
+
+  http.get(
+    '*/api/executor/handovers/:requestId',
+    executorRoute(({ userId, params }) => {
+      const request = ownHandover(userId, params.requestId)
+      return request ? HttpResponse.json(handoverDto(request)) : problem(404, 'Handover request not found.')
+    }),
+  ),
+
+  http.post('*/api/executor/handovers/:requestId/death-certificate', executorRoute((info) => uploadHandoverDocument(info, 'DeathCertificate'))),
+  http.post('*/api/executor/handovers/:requestId/documents', executorRoute((info) => uploadHandoverDocument(info, 'Evidence'))),
+
+  // Gửi thẩm định pháp lý: cần giấy chứng tử, người xác minh độc lập; hồ sơ chuyển sang Pending_Legal
+  http.post(
+    '*/api/executor/handovers/:requestId/legal-verifications',
+    executorRoute(async ({ userId, params, request }) => {
+      const handover = ownHandover(userId, params.requestId)
+      if (!handover) return problem(404, 'Handover request not found.')
+      if (!EDITABLE_HANDOVER_STATUSES.includes(handover.status)) {
+        return problem(409, 'Only draft, rejected or additional-info requests can be submitted.')
+      }
+      const form = await readForm(request)
+      if (!form) return problem(400, 'Request must be multipart/form-data.')
+      if (hasUnknownFormFields(form, ['VerifierId', 'Comment', 'Evidence'])) return problem(400, 'Unexpected form field.')
+      if (!handover.documents.some((item) => item.purpose === 'DeathCertificate')) {
+        return problem(400, 'A death certificate must be uploaded before legal submission.')
+      }
+      if (!isValidDocument(fieldOf(form, 'Evidence'))) return problem(400, 'Evidence must be 1 byte to 10 MB and a PDF, PNG, JPEG or text file.')
+      const comment = fieldOf(form, 'Comment')
+      if (typeof comment === 'string' && comment.length > 2000) return problem(400, 'Comment exceeds 2000 characters.')
+      const verifierId = Number(fieldOf(form, 'VerifierId'))
+      const db = getDb()
+      const verifier = db.users.find((item) => item.userId === verifierId)
+      const vaultOwner = db.vaults.find((item) => item.vaultId === handover.vaultId)?.ownerId
+      const beneficiaryIds = handover.cases.map((item) => item.beneficiaryId)
+      if (!verifier || !verifier.roles.includes('LegalVerifier') || verifierId === userId || verifierId === vaultOwner || beneficiaryIds.includes(verifierId)) {
+        return problem(400, 'An independent legal verifier is required.')
+      }
+      handover.status = 'Pending_Legal'
+      handover.verifierId = verifierId
+      saveDb()
+      return HttpResponse.json({ verificationId: nextId('verification') })
+    }),
+  ),
+
+  http.post(
+    '*/api/executor/handovers/:requestId/start',
+    executorRoute(({ userId, params }) => {
+      const handover = ownHandover(userId, params.requestId)
+      if (!handover) return problem(404, 'Handover request not found.')
+      if (handover.status !== 'Approved') return problem(409, 'Approved legal verification required.')
+      handover.status = 'In_Progress'
+      handover.cases.forEach((item) => (item.status = 'In_Progress'))
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+
+  http.post(
+    '*/api/executor/handovers/:requestId/complete',
+    executorRoute(async ({ userId, params, request }) => {
+      const handover = ownHandover(userId, params.requestId)
+      if (!handover) return problem(404, 'Handover request not found.')
+      if (!['Approved', 'In_Progress'].includes(handover.status)) return problem(409, 'Request must be approved or in progress.')
+      const form = await readForm(request)
+      if (!form) return problem(400, 'Request must be multipart/form-data.')
+      if (hasUnknownFormFields(form, ['File', 'Signature'])) return problem(400, 'Unexpected form field.')
+      if (!isValidDocument(fieldOf(form, 'File'))) return problem(400, 'File must be 1 byte to 10 MB and a PDF, PNG, JPEG or text file.')
+      if (!isValidSignature(fieldOf(form, 'Signature'))) return problem(400, 'Invalid detached signature size.')
+      handover.status = 'Completed'
+      handover.cases.forEach((item) => (item.status = 'Completed'))
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+
+  http.get(
+    '*/api/executor/handovers/:requestId/documents/:documentId/content',
+    executorRoute(({ userId, params }) => {
+      const handover = ownHandover(userId, params.requestId)
+      const found = handover?.documents.find((item) => item.documentId === Number(params.documentId))
+      if (!found) return problem(404, 'Document not found.')
+      const content = `Tệp mô phỏng cho giấy tờ "${found.fileName}".\nĐây là nội dung mô phỏng, không phải bản gốc đã mã hóa lưu trên máy chủ.\n`
+      return new HttpResponse(content, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Signature-Valid': found.hasSignature ? 'true' : 'false' },
+      })
     }),
   ),
 ]

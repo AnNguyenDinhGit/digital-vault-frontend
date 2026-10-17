@@ -3,7 +3,7 @@ import { computeProofOfLife } from '../utils/proofOfLife'
 import { LIMITS, isStrongPassword, isValidPhone, validateEmailOnly } from '../utils/validators'
 import { getDb, getFrontendEmail, isMockHybrid, nextId, saveDb } from './db'
 import { forwardToBackend } from './forward'
-import { hasUnknownFields, ownerRoute, problem, route } from './helpers'
+import { executorRoute, hasUnknownFields, ownerRoute, problem, route } from './helpers'
 
 // Các API mà BE chưa có (điểm danh, nhật ký, executor, bảo mật...). Dùng được ở cả chế độ mock đầy đủ lẫn hỗn hợp.
 
@@ -190,6 +190,21 @@ const executorHandlers = [
 
 ]
 
+// Mô phỏng người xác minh pháp lý duyệt hồ sơ để Executor đi tiếp được (BE chưa có giao diện cho LegalVerifier)
+const legalApprovalSimulation = [
+  http.post(
+    '*/api/executor/handovers/:requestId/simulate-approval',
+    executorRoute(({ userId, params }) => {
+      const handover = getDb().handovers.find((item) => item.requestId === Number(params.requestId) && item.executorId === userId)
+      if (!handover) return problem(404, 'Handover request not found.')
+      if (handover.status !== 'Pending_Legal') return problem(409, 'Only requests waiting for legal review can be approved.')
+      handover.status = 'Approved'
+      saveDb()
+      return HttpResponse.json({ requestId: handover.requestId, status: handover.status })
+    }),
+  ),
+]
+
 // Quên mật khẩu: OTP chỉ tồn tại trong mock và được trả về trong mockOtp để demo (BE thật sẽ gửi qua email).
 // Email không tồn tại vẫn nhận phản hồi giống hệt nhưng không có OTP để không lộ tài khoản nào đã đăng ký.
 const OTP_TTL_MS = 5 * 60 * 1000
@@ -351,4 +366,4 @@ const securityHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...securityHandlers, ...passwordResetHandlers]
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...legalApprovalSimulation, ...securityHandlers, ...passwordResetHandlers]

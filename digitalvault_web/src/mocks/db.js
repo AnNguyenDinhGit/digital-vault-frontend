@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 13
+const DB_VERSION = 14
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -53,7 +53,7 @@ const hoursAgo = (hours) => new Date(Date.now() - hours * 60 * 60 * 1000).toISOS
 function createSeed() {
   return {
     version: DB_VERSION,
-    nextIds: { user: 9, vault: 2, asset: 7, document: 20, log: 13, contract: 2, assignment: 7 },
+    nextIds: { user: 9, vault: 2, asset: 7, document: 20, log: 13, contract: 2, assignment: 7, handover: 1, handoverCase: 1, verification: 1 },
     users: [
       {
         userId: 1,
@@ -141,6 +141,8 @@ function createSeed() {
     proofOfLife: {
       1: { frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), missedCount: 0 },
     },
+    // Hồ sơ bàn giao do Executor xử lý: { requestId, vaultId, executorId, status, initiatedAt, documents, cases }
+    handovers: [],
     // Quên mật khẩu: mã OTP đang chờ xác nhận theo email, và mã đặt lại (reset token) đã được xác nhận
     passwordResets: {},
     // Refresh token đang lưu hành (như bảng RefreshTokens của BE): token -> { userId, revoked }

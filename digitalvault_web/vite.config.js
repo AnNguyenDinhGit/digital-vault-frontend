@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: './src/setupTests.js',
       css: false,
+      // Bộ test lớn chạy song song, các test gõ phím nhiều (đăng ký, đăng nhập) dễ vượt 5 giây mặc định khi máy bận
+      testTimeout: 20000,
     },
   }
 })
