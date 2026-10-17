@@ -1,6 +1,5 @@
 import { http, HttpResponse } from 'msw'
 import { computeProofOfLife } from '../utils/proofOfLife'
-import { parseAllocation, parseAssetUpdate } from './assetInput'
 import { LIMITS, isStrongPassword, isValidPhone, validateEmailOnly } from '../utils/validators'
 import { getDb, getFrontendEmail, isMockHybrid, nextId, saveDb } from './db'
 import { hasUnknownFields, ownerRoute, problem, route } from './helpers'
@@ -186,106 +185,6 @@ const executorHandlers = [
   ),
 ]
 
-// Sửa/xóa tài sản trong mock đầy đủ. Ở chế độ hỗn hợp các handler này bị lớp phủ (mocks/overlay.js) đặt trước nên không được dùng.
-function findOwnedAsset(db, userId, assetId) {
-  const vaultIds = db.vaults.filter((vault) => vault.ownerId === userId).map((vault) => vault.vaultId)
-  return db.assets.find((asset) => asset.assetId === assetId && vaultIds.includes(asset.vaultId))
-}
-
-const assetEditHandlers = [
-  http.put(
-    '*/api/owner/assets/:assetId',
-    ownerRoute(({ userId, params, body }) => {
-      const parsed = parseAssetUpdate(body)
-      if (parsed.error) return problem(400, parsed.error)
-      const asset = findOwnedAsset(getDb(), userId, Number(params.assetId))
-      if (!asset) return problem(404, 'Asset not found.')
-      Object.assign(asset, parsed.value)
-      saveDb()
-      const { assetId, name, type, description, status, documents } = asset
-      return HttpResponse.json({ assetId, name, type, description, status, documents })
-    }),
-  ),
-
-  // Xóa tài sản kéo theo phân bổ người thụ hưởng của tài sản đó
-  http.delete(
-    '*/api/owner/assets/:assetId',
-    ownerRoute(({ userId, params }) => {
-      const db = getDb()
-      const asset = findOwnedAsset(db, userId, Number(params.assetId))
-      if (!asset) return problem(404, 'Asset not found.')
-      db.assets = db.assets.filter((item) => item.assetId !== asset.assetId)
-      db.assignments = db.assignments.filter((item) => item.assetId !== asset.assetId)
-      saveDb()
-      return new HttpResponse(null, { status: 204 })
-    }),
-  ),
-]
-
-// Sửa tỷ lệ và gỡ người thụ hưởng khỏi một tài sản (mock đầy đủ; chế độ hỗn hợp dùng lớp phủ ở mocks/overlay.js)
-const beneficiaryRow = (db, assignment) => ({
-  assetId: assignment.assetId,
-  beneficiaryId: assignment.beneficiaryId,
-  fullName: db.users.find((user) => user.userId === assignment.beneficiaryId)?.fullName ?? '',
-  allocation: assignment.allocation,
-  status: assignment.status,
-})
-
-const findAssignment = (db, assetId, beneficiaryId) =>
-  db.assignments.find((item) => item.assetId === assetId && item.beneficiaryId === beneficiaryId)
-
-const beneficiaryEditHandlers = [
-  http.put(
-    '*/api/owner/assets/:assetId/beneficiaries/:beneficiaryId',
-    ownerRoute(({ userId, params, body }) => {
-      const parsed = parseAllocation(body)
-      if (parsed.error) return problem(400, parsed.error)
-      const db = getDb()
-      const asset = findOwnedAsset(db, userId, Number(params.assetId))
-      const assignment = asset && findAssignment(db, asset.assetId, Number(params.beneficiaryId))
-      if (!assignment) return problem(404, 'Beneficiary assignment not found.')
-      const others = db.assignments.filter((item) => item.assetId === asset.assetId && item !== assignment)
-      const total = others.reduce((sum, item) => sum + item.allocation, 0)
-      if (Math.round((total + parsed.value) * 100) / 100 > 100) return problem(409, 'Total allocation exceeds 100%.')
-      assignment.allocation = parsed.value
-      saveDb()
-      return HttpResponse.json(beneficiaryRow(db, assignment))
-    }),
-  ),
-
-  http.delete(
-    '*/api/owner/assets/:assetId/beneficiaries/:beneficiaryId',
-    ownerRoute(({ userId, params }) => {
-      const db = getDb()
-      const asset = findOwnedAsset(db, userId, Number(params.assetId))
-      const assignment = asset && findAssignment(db, asset.assetId, Number(params.beneficiaryId))
-      if (!assignment) return problem(404, 'Beneficiary assignment not found.')
-      db.assignments = db.assignments.filter((item) => item !== assignment)
-      saveDb()
-      return new HttpResponse(null, { status: 204 })
-    }),
-  ),
-]
-
-// Tải giấy tờ: BE chưa có API nên mock trả một tệp văn bản mô phỏng (không phải nội dung thật của giấy tờ)
-const downloadHandlers = [
-  http.get(
-    '*/api/owner/assets/:assetId/documents/:documentId/download',
-    ownerRoute(({ userId, params }) => {
-      let fileName = `giay-to-${params.documentId}`
-      // Ở chế độ hỗn hợp tài sản nằm ở BE thật nên không tra được tên file trong mock
-      if (!isMockHybrid()) {
-        const asset = findOwnedAsset(getDb(), userId, Number(params.assetId))
-        const found = asset?.documents.find((item) => item.documentId === Number(params.documentId))
-        if (!found) return problem(404, 'Document not found.')
-        fileName = found.fileName
-      }
-      const content = `Tệp mô phỏng cho giấy tờ "${fileName}".\nĐây là nội dung mô phỏng, không phải bản gốc đã mã hóa lưu trên máy chủ.\n`
-      return new HttpResponse(content, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
-    }),
-  ),
-]
-
 // Quên mật khẩu: OTP chỉ tồn tại trong mock và được trả về trong mockOtp để demo (BE thật sẽ gửi qua email).
 // Email không tồn tại vẫn nhận phản hồi giống hệt nhưng không có OTP để không lộ tài khoản nào đã đăng ký.
 const OTP_TTL_MS = 5 * 60 * 1000
@@ -447,4 +346,4 @@ const securityHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...assetEditHandlers, ...beneficiaryEditHandlers, ...downloadHandlers, ...securityHandlers, ...passwordResetHandlers]
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...securityHandlers, ...passwordResetHandlers]

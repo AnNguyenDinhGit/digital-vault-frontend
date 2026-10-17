@@ -16,7 +16,7 @@ import { assetCode, assetTypeLabel, fileTypeLabel, formatAllocation, getInitials
 import { downloadBlob } from '../../utils/download'
 
 const BENEFICIARY_STATUS_LABELS = { Active: 'Đang hiệu lực' }
-const ASSET_STATUS_LABELS = { Active: 'Đang hoạt động' }
+const ASSET_STATUS_LABELS = { Active: 'Đang hoạt động', Revoked: 'Đã thu hồi' }
 
 function BackLink() {
   return (
@@ -211,7 +211,7 @@ export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
                 Thêm giấy tờ
               </Button>
             </div>
-            <MockNotice mode={mockMode} message="Nội dung tải về là bản mô phỏng: máy chủ chưa có API tải giấy tờ." />
+            <MockNotice mode={mockMode === 'full' ? mockMode : 'off'} message="Nội dung tải về là bản mô phỏng (chế độ mock đầy đủ), không phải giấy tờ gốc." />
             {downloadError && <Alert variant="danger" className="av-alert mb-0">{downloadError}</Alert>}
             {asset.documents.length === 0 ? (
               <p className="av-empty mb-0">Chưa có giấy tờ nào.</p>
@@ -260,7 +260,7 @@ export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
             setToast({ title: 'Đã cập nhật tài sản' })
             refresh()
           }}
-          onDeleted={() => navigate('/owner/assets')}
+          onRevoked={() => navigate('/owner/assets')}
         />
       )}
       <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />

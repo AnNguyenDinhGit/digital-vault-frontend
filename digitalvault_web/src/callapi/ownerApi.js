@@ -25,9 +25,10 @@ export async function createVault({ name, description }) {
   return data
 }
 
+// BE không xoá tài sản mà chỉ đánh dấu Revoked và vẫn trả trong danh sách, nên ẩn các tài sản đã thu hồi
 export async function getAssets() {
   const { data } = await axiosClient.get('/owner/assets')
-  return data
+  return data.filter((asset) => asset.status !== 'Revoked')
 }
 
 export async function getAsset(assetId) {
@@ -92,7 +93,8 @@ export async function getBeneficiaries(assetId) {
   const { data } = await axiosClient.get('/owner/beneficiaries', {
     params: assetId === undefined ? undefined : { assetId },
   })
-  return data
+  // BE giữ cả phân bổ đã thu hồi (Revoked) để lưu lịch sử, giao diện chỉ hiển thị phân bổ đang hiệu lực
+  return data.filter((row) => row.status === 'Active')
 }
 
 export async function assignBeneficiary(assetId, { email, allocation }) {
@@ -151,7 +153,7 @@ export async function setTwoFactor(enabled) {
   return data
 }
 
-// Sửa và xóa tài sản (BE chưa có API, đang dùng mock); không gửi vaultId vì tài sản không được chuyển kho
+// Sửa tài sản; không gửi vaultId vì tài sản không được chuyển kho
 export async function updateAsset(assetId, { name, type, description }) {
   const { data } = await axiosClient.put(`/owner/assets/${assetId}`, {
     name: name.trim(),
@@ -161,24 +163,38 @@ export async function updateAsset(assetId, { name, type, description }) {
   return data
 }
 
-export async function deleteAsset(assetId) {
-  await axiosClient.delete(`/owner/assets/${assetId}`)
+// BE không xoá hẳn tài sản mà thu hồi (Status = Revoked), dữ liệu và lịch sử vẫn giữ
+export async function revokeAsset(assetId) {
+  await axiosClient.post(`/owner/assets/${assetId}/revoke`)
 }
 
-// Sửa tỷ lệ và gỡ người thụ hưởng khỏi một tài sản (BE chưa có API, đang dùng mock)
-export async function updateBeneficiaryAllocation(assetId, beneficiaryId, allocation) {
-  const { data } = await axiosClient.put(`/owner/assets/${assetId}/beneficiaries/${beneficiaryId}`, {
-    allocation: Number(allocation),
-  })
+// Danh sách phân bổ của một tài sản kèm assignmentId (BeneficiaryDto của /owner/beneficiaries không có id này)
+export async function getAllocations(assetId) {
+  const { data } = await axiosClient.get(`/owner/assets/${assetId}/allocations`)
   return data
 }
 
-export async function removeBeneficiary(assetId, beneficiaryId) {
-  await axiosClient.delete(`/owner/assets/${assetId}/beneficiaries/${beneficiaryId}`)
+// BE sửa/thu hồi phân bổ theo assignmentId nên tra id của phân bổ đang hiệu lực theo người thụ hưởng
+async function findActiveAssignment(assetId, beneficiaryId) {
+  const assignment = (await getAllocations(assetId)).find((row) => row.beneficiaryId === beneficiaryId && row.status === 'Active')
+  if (!assignment) throw Object.assign(new Error('Assignment not found.'), { status: 404 })
+  return assignment
 }
 
-// Tải giấy tờ về dạng Blob (BE chưa có API, đang dùng mock trả nội dung mô phỏng)
+export async function updateBeneficiaryAllocation(assetId, beneficiaryId, allocation) {
+  const { assignmentId } = await findActiveAssignment(assetId, beneficiaryId)
+  const { data } = await axiosClient.put(`/owner/assets/${assetId}/allocations/${assignmentId}`, { allocation: Number(allocation) })
+  return data
+}
+
+// Gỡ người thụ hưởng = thu hồi phân bổ (Status = Revoked), phần trăm trả về chưa phân bổ
+export async function removeBeneficiary(assetId, beneficiaryId) {
+  const { assignmentId } = await findActiveAssignment(assetId, beneficiaryId)
+  await axiosClient.post(`/owner/assets/${assetId}/allocations/${assignmentId}/revoke`)
+}
+
+// Tải nội dung giấy tờ (đã giải mã) về dạng Blob
 export async function downloadDocument(assetId, documentId) {
-  const { data } = await axiosClient.get(`/owner/assets/${assetId}/documents/${documentId}/download`, { responseType: 'blob' })
+  const { data } = await axiosClient.get(`/owner/assets/${assetId}/documents/${documentId}/content`, { responseType: 'blob' })
   return data
 }

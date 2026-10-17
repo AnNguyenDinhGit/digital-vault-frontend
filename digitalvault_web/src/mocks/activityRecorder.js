@@ -19,8 +19,10 @@ export function recordActivity({ userId, action, entityType = null, entityId = n
 
 const ASSET_DOCUMENTS = /^\/owner\/assets\/(\d+)\/documents$/
 const ASSET_BENEFICIARIES = /^\/owner\/assets\/(\d+)\/beneficiaries$/
-const ASSET_ASSIGNMENT = /^\/owner\/assets\/(\d+)\/beneficiaries\/\d+$/
-const DOCUMENT_DOWNLOAD = /^\/owner\/assets\/(\d+)\/documents\/\d+\/download$/
+const ASSET_ALLOCATION = /^\/owner\/assets\/(\d+)\/allocations\/\d+$/
+const ASSET_ALLOCATION_REVOKE = /^\/owner\/assets\/(\d+)\/allocations\/\d+\/revoke$/
+const ASSET_REVOKE = /^\/owner\/assets\/(\d+)\/revoke$/
+const DOCUMENT_DOWNLOAD = /^\/owner\/assets\/(\d+)\/documents\/\d+\/content$/
 const ASSET_ITEM = /^\/owner\/assets\/(\d+)$/
 const VAULT_EXECUTOR = /^\/owner\/vaults\/(\d+)\/executor$/
 
@@ -54,12 +56,14 @@ export function describeRequest({ method, url }, status, data) {
   }
   const download = verb === 'get' ? DOCUMENT_DOWNLOAD.exec(path) : null
   if (download) return { action: 'DownloadDocument', entityType: 'DigitalAsset', entityId: Number(download[1]), result: 'Success' }
-  const assignment = ASSET_ASSIGNMENT.exec(path)
-  if (assignment && verb === 'put') return { action: 'UpdateAllocation', entityType: 'DigitalAsset', entityId: Number(assignment[1]), result: 'Success' }
-  if (assignment && verb === 'delete') return { action: 'RemoveBeneficiary', entityType: 'DigitalAsset', entityId: Number(assignment[1]), result: 'Success' }
+  const allocation = ASSET_ALLOCATION.exec(path)
+  if (allocation && verb === 'put') return { action: 'UpdateAllocation', entityType: 'DigitalAsset', entityId: Number(allocation[1]), result: 'Success' }
+  const allocationRevoke = verb === 'post' ? ASSET_ALLOCATION_REVOKE.exec(path) : null
+  if (allocationRevoke) return { action: 'RemoveBeneficiary', entityType: 'DigitalAsset', entityId: Number(allocationRevoke[1]), result: 'Success' }
+  const assetRevoke = verb === 'post' ? ASSET_REVOKE.exec(path) : null
+  if (assetRevoke) return { action: 'RevokeAsset', entityType: 'DigitalAsset', entityId: Number(assetRevoke[1]), result: 'Success' }
   const asset = ASSET_ITEM.exec(path)
   if (asset && verb === 'put') return { action: 'UpdateAsset', entityType: 'DigitalAsset', entityId: Number(asset[1]), result: 'Success' }
-  if (asset && verb === 'delete') return { action: 'DeleteAsset', entityType: 'DigitalAsset', entityId: Number(asset[1]), result: 'Success' }
   const executor = VAULT_EXECUTOR.exec(path)
   if (executor && verb === 'put') return { action: 'AssignExecutor', entityType: 'DigitalVault', entityId: Number(executor[1]), result: 'Success' }
   if (executor && verb === 'delete') return { action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: Number(executor[1]), result: 'Success' }

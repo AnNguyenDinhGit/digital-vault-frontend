@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
+import axiosClient from '../../callapi/axiosClient'
 import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
@@ -152,6 +153,13 @@ describe('AssetDetailPage group A details', () => {
     expect(screen.getByText('2 người thụ hưởng')).toBeInTheDocument()
   })
 
+  it('header_RevokedAsset_ShowsRevokedBadge', async () => {
+    await axiosClient.post('/owner/assets/1/revoke')
+    renderDetail(1)
+    await waitForDetail()
+    expect(screen.getByText('Đã thu hồi')).toBeInTheDocument()
+  })
+
   it('header_EditButton_IsEnabled', async () => {
     renderDetail(1)
     await waitForDetail()
@@ -172,12 +180,12 @@ describe('AssetDetailPage group A details', () => {
     expect(screen.getByText('Đã cập nhật tài sản')).toBeInTheDocument()
   })
 
-  it('delete_Confirm_ReturnsToCatalog', async () => {
+  it('revoke_Confirm_ReturnsToCatalog', async () => {
     renderDetail(1)
     await waitForDetail()
     await userEvent.click(screen.getByRole('button', { name: 'Chỉnh sửa' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xóa tài sản' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Thu hồi tài sản' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận thu hồi' }))
     expect(await screen.findByText('catalog-page')).toBeInTheDocument()
   })
 
@@ -262,7 +270,7 @@ describe('AssetDetailPage group A details', () => {
     })
 
     it('download_ServerError_ShowsAlertAndDoesNotSaveFile', async () => {
-      server.use(http.get('*/api/owner/assets/:assetId/documents/:documentId/download', () => HttpResponse.json({ status: 500, detail: 'Kho lưu trữ đang bảo trì.' }, { status: 500 })))
+      server.use(http.get('*/api/owner/assets/:assetId/documents/:documentId/content', () => HttpResponse.json({ status: 500, detail: 'Kho lưu trữ đang bảo trì.' }, { status: 500 })))
       renderDetail(2)
       await waitForDetail()
       await userEvent.click(within(screen.getByRole('list', { name: 'Giấy tờ đính kèm' })).getByRole('button', { name: 'Tải về' }))
@@ -271,15 +279,24 @@ describe('AssetDetailPage group A details', () => {
     })
 
     it('download_NotFound_ShowsNotFoundMessage', async () => {
-      server.use(http.get('*/api/owner/assets/:assetId/documents/:documentId/download', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+      server.use(http.get('*/api/owner/assets/:assetId/documents/:documentId/content', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
       renderDetail(2)
       await waitForDetail()
       await userEvent.click(within(screen.getByRole('list', { name: 'Giấy tờ đính kèm' })).getByRole('button', { name: 'Tải về' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('Không tìm thấy giấy tờ')
     })
 
-    it('download_MockMode_ShowsPlaceholderNotice', async () => {
+    it('download_HybridMode_ShowsNoPlaceholderNoticeBecauseBackendIsReal', async () => {
       renderWithProviders(<AssetDetailPage mockMode="hybrid" />, {
+        route: '/owner/assets/2',
+        path: '/owner/assets/:assetId',
+      })
+      await waitForDetail()
+      expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    })
+
+    it('download_MockMode_ShowsPlaceholderNotice', async () => {
+      renderWithProviders(<AssetDetailPage mockMode="full" />, {
         route: '/owner/assets/2',
         path: '/owner/assets/:assetId',
       })

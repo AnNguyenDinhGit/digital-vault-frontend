@@ -23,6 +23,7 @@ const call = async (promise) => {
 }
 
 const edit = (assetId, body) => call(axiosClient.put(`/owner/assets/${assetId}`, { name: 'Tên mới', type: 'BankAccount', description: 'Mô tả mới', ...body }))
+const revoke = (assetId) => call(axiosClient.post(`/owner/assets/${assetId}/revoke`))
 
 describe('mock update asset', () => {
   it('put_ValidInput_ReturnsUpdatedAssetAndKeepsDocuments', async () => {
@@ -66,35 +67,45 @@ describe('mock update asset', () => {
     await axiosClient.post('/auth/login', { email, password })
     expect((await edit(1, {})).status).toBe(403)
   })
+
+  it('put_RevokedAsset_Returns409', async () => {
+    await revoke(1)
+    expect((await edit(1, {})).status).toBe(409)
+  })
 })
 
-describe('mock delete asset', () => {
-  it('delete_ExistingAsset_Returns204AndRemovesItEverywhere', async () => {
-    expect((await call(axiosClient.delete('/owner/assets/1'))).status).toBe(204)
-    expect((await call(axiosClient.get('/owner/assets/1'))).status).toBe(404)
-    const assets = (await axiosClient.get('/owner/assets')).data
-    expect(assets.map((a) => a.assetId)).not.toContain(1)
-    expect(assets).toHaveLength(5)
+describe('mock revoke asset', () => {
+  it('post_ExistingAsset_Returns204AndKeepsDataWithRevokedStatus', async () => {
+    expect((await revoke(1)).status).toBe(204)
+    expect((await axiosClient.get('/owner/assets/1')).data).toMatchObject({ assetId: 1, status: 'Revoked' })
+    const list = (await axiosClient.get('/owner/assets')).data
+    expect(list).toHaveLength(6)
+    expect(list.find((asset) => asset.assetId === 1).status).toBe('Revoked')
   })
 
-  it('delete_AssetWithBeneficiaries_RemovesTheirAssignments', async () => {
-    await axiosClient.delete('/owner/assets/1')
+  it('post_AssetWithBeneficiaries_KeepsTheirAllocationRows', async () => {
+    await revoke(1)
     const rows = (await axiosClient.get('/owner/beneficiaries')).data
-    expect(rows.some((row) => row.assetId === 1)).toBe(false)
-    expect(rows.some((row) => row.assetId === 2)).toBe(true)
+    expect(rows.filter((row) => row.assetId === 1)).toHaveLength(2)
   })
 
-  it('delete_UnknownAsset_Returns404', async () => {
-    expect((await call(axiosClient.delete('/owner/assets/999'))).status).toBe(404)
+  it('post_UnknownAsset_Returns404', async () => {
+    expect((await revoke(999)).status).toBe(404)
   })
 
-  it('delete_AlreadyDeleted_Returns404', async () => {
-    await axiosClient.delete('/owner/assets/1')
-    expect((await call(axiosClient.delete('/owner/assets/1'))).status).toBe(404)
+  it('post_AlreadyRevoked_Returns409', async () => {
+    await revoke(1)
+    expect((await revoke(1)).status).toBe(409)
   })
 
-  it('delete_AssetOfSomeoneElse_Returns404', async () => {
+  it('post_AssetOfSomeoneElse_Returns404', async () => {
     await axiosClient.post('/auth/login', { email: 'long.tran@example.com', password: 'Owner@123456' })
-    expect((await call(axiosClient.delete('/owner/assets/1'))).status).toBe(404)
+    expect((await revoke(1)).status).toBe(404)
+  })
+
+  it('post_NonOwnerRole_Returns403', async () => {
+    const [{ email, password }] = ROLE_ACCOUNTS
+    await axiosClient.post('/auth/login', { email, password })
+    expect((await revoke(1)).status).toBe(403)
   })
 })

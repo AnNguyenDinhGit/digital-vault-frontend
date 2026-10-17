@@ -91,7 +91,7 @@ describe('EditAllocationModal', () => {
   })
 
   it('save_OneRowFails_ShowsWhichAssetAndStillReportsChangeOnClose', async () => {
-    server.use(http.put('*/api/owner/assets/3/beneficiaries/:beneficiaryId', () => HttpResponse.json({ status: 500, detail: 'x' }, { status: 500 })))
+    server.use(http.put('*/api/owner/assets/3/allocations/:assignmentId', () => HttpResponse.json({ status: 500, detail: 'x' }, { status: 500 })))
     const props = await renderEdit()
     for (const [name, value] of [[/Ví Lạnh Trữ Crypto/, '30'], [/Kho Lưu Trữ Kỷ Niệm/, '20']]) {
       await userEvent.clear(rowInput(name))
@@ -143,14 +143,14 @@ describe('RemoveBeneficiaryModal', () => {
   })
 
   it('confirm_AlreadyRemovedOnServer_IsTreatedAsSuccess', async () => {
-    server.use(http.delete('*/api/owner/assets/1/beneficiaries/:beneficiaryId', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+    server.use(http.post('*/api/owner/assets/1/allocations/:assignmentId/revoke', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
     const props = await renderRemove()
     await userEvent.click(within(dialog()).getByRole('button', { name: 'Xác nhận xóa' }))
     await waitFor(() => expect(props.onRemoved).toHaveBeenCalledTimes(1))
   })
 
   it('confirm_ServerError_ShowsAlertAndKeepsDialog', async () => {
-    server.use(http.delete('*/api/owner/assets/:assetId/beneficiaries/:beneficiaryId', () => HttpResponse.json({ status: 500, detail: 'Không xóa được.' }, { status: 500 })))
+    server.use(http.post('*/api/owner/assets/:assetId/allocations/:assignmentId/revoke', () => HttpResponse.json({ status: 500, detail: 'Không xóa được.' }, { status: 500 })))
     const props = await renderRemove()
     await userEvent.click(within(dialog()).getByRole('button', { name: 'Xác nhận xóa' }))
     expect(await within(dialog()).findByRole('alert')).toHaveTextContent('Không xóa được.')

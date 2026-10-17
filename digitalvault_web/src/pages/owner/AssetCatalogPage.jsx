@@ -173,7 +173,7 @@ export default function AssetCatalogPage() {
           impact={{ documents: editingAsset.documents.length, beneficiaries: editingAsset.beneficiaries.length }}
           onClose={() => setEditingAsset(null)}
           onSaved={() => finishEdit('Đã cập nhật tài sản')}
-          onDeleted={() => finishEdit('Đã xóa tài sản')}
+          onRevoked={() => finishEdit('Đã thu hồi tài sản')}
         />
       )}
       {createVaultModal}

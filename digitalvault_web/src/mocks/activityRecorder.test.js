@@ -46,18 +46,18 @@ describe('describeRequest', () => {
     expect(run('delete', '/owner/vaults/3/executor', 204)).toMatchObject({ action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: 3 })
   })
 
-  it('describeRequest_UpdateAndDeleteAsset_UseAssetIdFromUrl', () => {
+  it('describeRequest_UpdateAndRevokeAsset_UseAssetIdFromUrl', () => {
     expect(run('put', '/owner/assets/7', 200)).toMatchObject({ action: 'UpdateAsset', entityType: 'DigitalAsset', entityId: 7 })
-    expect(run('delete', '/owner/assets/7', 204)).toMatchObject({ action: 'DeleteAsset', entityType: 'DigitalAsset', entityId: 7 })
+    expect(run('post', '/owner/assets/7/revoke', 204)).toMatchObject({ action: 'RevokeAsset', entityType: 'DigitalAsset', entityId: 7 })
   })
 
   it('describeRequest_UpdateAndRemoveBeneficiary_UseAssetIdFromUrl', () => {
-    expect(run('put', '/owner/assets/7/beneficiaries/2', 200)).toMatchObject({ action: 'UpdateAllocation', entityType: 'DigitalAsset', entityId: 7 })
-    expect(run('delete', '/owner/assets/7/beneficiaries/2', 204)).toMatchObject({ action: 'RemoveBeneficiary', entityType: 'DigitalAsset', entityId: 7 })
+    expect(run('put', '/owner/assets/7/allocations/2', 200)).toMatchObject({ action: 'UpdateAllocation', entityType: 'DigitalAsset', entityId: 7 })
+    expect(run('post', '/owner/assets/7/allocations/2/revoke', 200)).toMatchObject({ action: 'RemoveBeneficiary', entityType: 'DigitalAsset', entityId: 7 })
   })
 
   it('describeRequest_DownloadDocument_UsesAssetIdFromUrl', () => {
-    expect(run('get', '/owner/assets/7/documents/12/download', 200)).toMatchObject({ action: 'DownloadDocument', entityType: 'DigitalAsset', entityId: 7 })
+    expect(run('get', '/owner/assets/7/documents/12/content', 200)).toMatchObject({ action: 'DownloadDocument', entityType: 'DigitalAsset', entityId: 7 })
   })
 
   it('describeRequest_ExecutorAcceptSimulation_IsNotRecorded', () => {

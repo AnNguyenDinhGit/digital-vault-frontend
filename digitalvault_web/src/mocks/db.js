@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 12
+const DB_VERSION = 13
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -53,7 +53,7 @@ const hoursAgo = (hours) => new Date(Date.now() - hours * 60 * 60 * 1000).toISOS
 function createSeed() {
   return {
     version: DB_VERSION,
-    nextIds: { user: 9, vault: 2, asset: 7, document: 20, log: 13, contract: 2 },
+    nextIds: { user: 9, vault: 2, asset: 7, document: 20, log: 13, contract: 2, assignment: 7 },
     users: [
       {
         userId: 1,
@@ -148,8 +148,6 @@ function createSeed() {
     // Mã xác thực hai lớp đang chờ nhập, theo challengeId: { userId, code, expiresAt, attempts, lastSentAt }
     twoFactorChallenges: {},
     resetTokens: {},
-    // Lớp phủ chế độ hỗn hợp theo userId: chỉnh sửa/xóa lên dữ liệu BE thật chưa cho sửa (xem mocks/overlay.js)
-    overlay: {},
     // Chỉnh sửa hồ sơ theo userId (tên, số điện thoại); phủ lên dữ liệu gốc, dùng được cả khi tài khoản nằm ở BE thật
     profiles: {},
     // Cài đặt bảo mật theo userId; thiếu thì coi như chưa bật 2FA và chưa từng đổi mật khẩu
@@ -180,12 +178,12 @@ function createSeed() {
       { logId: 12, userId: 1, action: 'Logout', entityType: null, entityId: null, timestamp: hoursAgo(200), ipAddress: '14.161.42.90', result: 'Success' },
     ],
     assignments: [
-      { assetId: 1, beneficiaryId: 2, allocation: 40, status: 'Active' },
-      { assetId: 1, beneficiaryId: 3, allocation: 60, status: 'Active' },
-      { assetId: 2, beneficiaryId: 3, allocation: 100, status: 'Active' },
-      { assetId: 3, beneficiaryId: 2, allocation: 50, status: 'Active' },
-      { assetId: 3, beneficiaryId: 3, allocation: 50, status: 'Active' },
-      { assetId: 5, beneficiaryId: 2, allocation: 100, status: 'Active' },
+      { assignmentId: 1, assetId: 1, beneficiaryId: 2, allocation: 40, status: 'Active' },
+      { assignmentId: 2, assetId: 1, beneficiaryId: 3, allocation: 60, status: 'Active' },
+      { assignmentId: 3, assetId: 2, beneficiaryId: 3, allocation: 100, status: 'Active' },
+      { assignmentId: 4, assetId: 3, beneficiaryId: 2, allocation: 50, status: 'Active' },
+      { assignmentId: 5, assetId: 3, beneficiaryId: 3, allocation: 50, status: 'Active' },
+      { assignmentId: 6, assetId: 5, beneficiaryId: 2, allocation: 100, status: 'Active' },
     ],
   }
 }

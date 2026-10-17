@@ -24,7 +24,7 @@ async function renderModal(overrides = {}) {
     impact: { documents: 2, beneficiaries: 2 },
     onClose: vi.fn(),
     onSaved: vi.fn(),
-    onDeleted: vi.fn(),
+    onRevoked: vi.fn(),
     ...overrides,
   }
   render(<EditAssetModal {...props} />)
@@ -91,36 +91,36 @@ describe('EditAssetModal form', () => {
 })
 
 describe('EditAssetModal delete', () => {
-  it('delete_Clicked_ShowsConfirmationWithImpact', async () => {
+  it('revoke_Clicked_ShowsConfirmationWithImpact', async () => {
     await renderModal()
-    await userEvent.click(within(dialog()).getByRole('button', { name: 'Xóa tài sản' }))
-    const confirm = screen.getByRole('dialog', { name: 'Xác Nhận Xóa Tài Sản' })
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Thu hồi tài sản' }))
+    const confirm = screen.getByRole('dialog', { name: 'Xác Nhận Thu Hồi Tài Sản' })
     expect(confirm).toHaveTextContent('Kho Lưu Trữ Kỷ Niệm Gia Đình & Thư Di Nguyện')
     expect(confirm).toHaveTextContent('2 giấy tờ')
     expect(confirm).toHaveTextContent('2 người thụ hưởng')
   })
 
-  it('delete_ConfirmationBack_ReturnsToForm', async () => {
+  it('revoke_ConfirmationBack_ReturnsToForm', async () => {
     await renderModal()
-    await userEvent.click(within(dialog()).getByRole('button', { name: 'Xóa tài sản' }))
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Thu hồi tài sản' }))
     await userEvent.click(screen.getByRole('button', { name: 'Quay lại' }))
     expect(within(dialog()).getByLabelText(/Tên tài sản/)).toBeInTheDocument()
   })
 
-  it('delete_Confirmed_DeletesAssetAndCallsOnDeleted', async () => {
+  it('revoke_Confirmed_RevokesAssetAndCallsOnRevoked', async () => {
     const props = await renderModal()
-    await userEvent.click(within(dialog()).getByRole('button', { name: 'Xóa tài sản' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa' }))
-    await waitFor(() => expect(props.onDeleted).toHaveBeenCalledTimes(1))
-    await expect(getAsset(3)).rejects.toMatchObject({ status: 404 })
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Thu hồi tài sản' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận thu hồi' }))
+    await waitFor(() => expect(props.onRevoked).toHaveBeenCalledTimes(1))
+    expect((await getAsset(3)).status).toBe('Revoked')
   })
 
-  it('delete_ServerError_ShowsAlertAndDoesNotCallOnDeleted', async () => {
-    server.use(http.delete('*/api/owner/assets/:assetId', () => HttpResponse.json({ status: 500, detail: 'Không xóa được.' }, { status: 500 })))
+  it('revoke_ServerError_ShowsAlertAndDoesNotCallOnDeleted', async () => {
+    server.use(http.post('*/api/owner/assets/:assetId/revoke', () => HttpResponse.json({ status: 500, detail: 'Không xóa được.' }, { status: 500 })))
     const props = await renderModal()
-    await userEvent.click(within(dialog()).getByRole('button', { name: 'Xóa tài sản' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa' }))
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Thu hồi tài sản' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận thu hồi' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Không xóa được.')
-    expect(props.onDeleted).not.toHaveBeenCalled()
+    expect(props.onRevoked).not.toHaveBeenCalled()
   })
 })

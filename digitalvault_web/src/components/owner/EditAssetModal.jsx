@@ -1,24 +1,24 @@
 import { PackageCheck, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Alert, Button, Form, Modal } from 'react-bootstrap'
-import { deleteAsset, updateAsset } from '../../callapi/ownerApi'
+import { revokeAsset, updateAsset } from '../../callapi/ownerApi'
 import { ASSET_TYPE_LABELS } from '../../utils/catalog'
 import { validateAsset } from '../../utils/validators'
 import TextField from '../common/TextField'
 
-// Chuyển lỗi API sửa/xóa tài sản sang thông báo tiếng Việt
+// Chuyển lỗi API sửa/thu hồi tài sản sang thông báo tiếng Việt
 function assetErrorMessage(error) {
   if (error?.status === 404) return 'Không tìm thấy tài sản. Vui lòng tải lại trang.'
   if (error?.status === 400) return 'Thông tin tài sản không hợp lệ. Vui lòng kiểm tra lại.'
   return error?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
 }
 
-// Modal sửa tài sản, có bước xác nhận khi xóa. Chỉ mount khi mở để form luôn lấy dữ liệu mới nhất.
-// impact = { documents, beneficiaries } là những gì sẽ mất theo tài sản khi xóa.
-export default function EditAssetModal({ asset, impact, onClose, onSaved, onDeleted }) {
+// Modal sửa tài sản, có bước xác nhận khi thu hồi (BE không xóa dữ liệu, chỉ đánh dấu Revoked). Chỉ mount khi mở để form luôn lấy dữ liệu mới nhất.
+// impact = { documents, beneficiaries } là những gì đi kèm tài sản bị thu hồi.
+export default function EditAssetModal({ asset, impact, onClose, onSaved, onRevoked }) {
   const [form, setForm] = useState({ name: asset.name, type: asset.type, description: asset.description ?? '' })
   const [errors, setErrors] = useState({})
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [confirmingRevoke, setConfirmingRevoke] = useState(false)
   const [busy, setBusy] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
@@ -50,31 +50,31 @@ export default function EditAssetModal({ asset, impact, onClose, onSaved, onDele
     }
   }
 
-  const handleDelete = async () => {
+  const handleRevoke = async () => {
     setBusy(true)
     setSubmitError('')
     try {
-      await deleteAsset(asset.assetId)
-      onDeleted()
+      await revokeAsset(asset.assetId)
+      onRevoked()
     } catch (error) {
       setBusy(false)
       setSubmitError(assetErrorMessage(error))
     }
   }
 
-  const titleId = confirmingDelete ? 'delete-asset-title' : 'edit-asset-title'
+  const titleId = confirmingRevoke ? 'revoke-asset-title' : 'edit-asset-title'
 
   return (
     <Modal show onHide={handleClose} centered animation={false} dialogClassName="av-modal" aria-labelledby={titleId}>
       <div className="av-modal-head">
         <div className="d-flex align-items-center gap-3">
           <span className="av-icon-tile">
-            {confirmingDelete ? <Trash2 size={20} aria-hidden="true" /> : <PackageCheck size={20} aria-hidden="true" />}
+            {confirmingRevoke ? <Trash2 size={20} aria-hidden="true" /> : <PackageCheck size={20} aria-hidden="true" />}
           </span>
           <div>
             <span className="av-modal-tag av-mono-tag">DIGITAL ASSET</span>
             <h2 id={titleId} className="mt-1 mb-0 fw-bold text-ink" style={{ fontSize: 19, letterSpacing: '-0.025em' }}>
-              {confirmingDelete ? 'Xác Nhận Xóa Tài Sản' : 'Chỉnh Sửa Tài Sản'}
+              {confirmingRevoke ? 'Xác Nhận Thu Hồi Tài Sản' : 'Chỉnh Sửa Tài Sản'}
             </h2>
           </div>
         </div>
@@ -83,20 +83,20 @@ export default function EditAssetModal({ asset, impact, onClose, onSaved, onDele
         </button>
       </div>
 
-      {confirmingDelete ? (
+      {confirmingRevoke ? (
         <>
           <div className="av-modal-body d-flex flex-column gap-3">
             <p className="mb-0 fs-13 text-slate-600">
-              {`Bạn sắp xóa tài sản "${asset.name}". Thao tác này sẽ xóa ${impact.documents} giấy tờ đính kèm và gỡ ${impact.beneficiaries} người thụ hưởng khỏi tài sản, không thể hoàn tác.`}
+              {`Bạn sắp thu hồi tài sản "${asset.name}" cùng ${impact.documents} giấy tờ đính kèm và ${impact.beneficiaries} người thụ hưởng. Tài sản sẽ không còn hiển thị và không thể chỉnh sửa; dữ liệu vẫn được lưu để đối chiếu.`}
             </p>
             {submitError && <Alert variant="danger" className="av-alert mb-0">{submitError}</Alert>}
           </div>
           <div className="av-modal-foot justify-content-end gap-2">
-            <Button type="button" variant="light" onClick={() => setConfirmingDelete(false)} disabled={busy} className="av-btn av-btn-md border">
+            <Button type="button" variant="light" onClick={() => setConfirmingRevoke(false)} disabled={busy} className="av-btn av-btn-md border">
               Quay lại
             </Button>
-            <Button type="button" variant="danger" onClick={handleDelete} disabled={busy} className="av-btn av-btn-md">
-              {busy ? 'Đang xử lý dữ liệu...' : 'Xác nhận xóa'}
+            <Button type="button" variant="danger" onClick={handleRevoke} disabled={busy} className="av-btn av-btn-md">
+              {busy ? 'Đang xử lý dữ liệu...' : 'Xác nhận thu hồi'}
             </Button>
           </div>
         </>
@@ -154,9 +154,9 @@ export default function EditAssetModal({ asset, impact, onClose, onSaved, onDele
           </div>
 
           <div className="av-modal-foot justify-content-between gap-2">
-            <Button type="button" variant="light" onClick={() => setConfirmingDelete(true)} disabled={busy} className="av-btn av-btn-md border text-danger">
+            <Button type="button" variant="light" onClick={() => setConfirmingRevoke(true)} disabled={busy} className="av-btn av-btn-md border text-danger">
               <Trash2 size={14} aria-hidden="true" />
-              Xóa tài sản
+              Thu hồi tài sản
             </Button>
             <div className="d-flex gap-2">
               <Button type="button" variant="light" onClick={handleClose} disabled={busy} className="av-btn av-btn-md border">

@@ -138,24 +138,24 @@ describe('AssetCatalogPage asset list', () => {
     expect(screen.getByText('Đã cập nhật tài sản')).toBeInTheDocument()
   })
 
-  it('delete_ConfirmFromCard_RemovesAssetAndUpdatesTotal', async () => {
+  it('revoke_ConfirmFromCard_HidesAssetAndUpdatesTotal', async () => {
     renderPage()
     await waitForCatalog()
     await userEvent.click(within(screen.getByRole('article', { name: /Ví Lạnh Trữ Crypto/ })).getByRole('button', { name: 'Chỉnh sửa' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xóa tài sản' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận xóa' }))
-    expect(await screen.findByText('Đã xóa tài sản')).toBeInTheDocument()
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Thu hồi tài sản' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Xác nhận thu hồi' }))
+    expect(await screen.findByText('Đã thu hồi tài sản')).toBeInTheDocument()
     expect(within(screen.getByRole('group', { name: 'TỔNG TÀI SẢN SỐ' })).getByText('05')).toBeInTheDocument()
     expect(screen.queryByRole('article', { name: /Ví Lạnh Trữ Crypto/ })).not.toBeInTheDocument()
   })
 
-  it('delete_ConfirmationShowsDocumentAndBeneficiaryImpact', async () => {
+  it('revoke_ConfirmationShowsDocumentAndBeneficiaryImpact', async () => {
     renderPage()
     await waitForCatalog()
     await userEvent.click(within(screen.getByRole('article', { name: /Kho Lưu Trữ Kỷ Niệm/ })).getByRole('button', { name: 'Chỉnh sửa' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xóa tài sản' }))
-    expect(screen.getByRole('dialog', { name: 'Xác Nhận Xóa Tài Sản' })).toHaveTextContent('2 giấy tờ')
-    expect(screen.getByRole('dialog', { name: 'Xác Nhận Xóa Tài Sản' })).toHaveTextContent('2 người thụ hưởng')
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Thu hồi tài sản' }))
+    expect(screen.getByRole('dialog', { name: 'Xác Nhận Thu Hồi Tài Sản' })).toHaveTextContent('2 giấy tờ')
+    expect(screen.getByRole('dialog', { name: 'Xác Nhận Thu Hồi Tài Sản' })).toHaveTextContent('2 người thụ hưởng')
   })
 
   it('pagination_NextPage_ShowsRemainingAssets', async () => {

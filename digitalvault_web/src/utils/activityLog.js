@@ -9,6 +9,7 @@ const ACTION_LABELS = {
   CreateAsset: 'Tạo tài sản',
   UpdateAsset: 'Chỉnh sửa tài sản',
   DeleteAsset: 'Xóa tài sản',
+  RevokeAsset: 'Thu hồi tài sản',
   AssignBeneficiary: 'Chỉ định người thụ hưởng',
   UpdateAllocation: 'Sửa phân bổ người thụ hưởng',
   RemoveBeneficiary: 'Xóa người thụ hưởng',

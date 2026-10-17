@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { getDb, nextId, saveDb, setSessionUserId } from './db'
 import { extraHandlers } from './extraHandlers'
 import { hasUnknownFields, isBlank, ownerRoute, problem, route } from './helpers'
-import { createAssetOverlayHandlers } from './overlay'
+import { parseAllocation, parseAssetUpdate } from './assetInput'
 
 const vaultDto = ({ vaultId, name, description, status }) => ({ vaultId, name, description, status })
 const assetDto = ({ assetId, name, type, description, status, documents }) => ({
@@ -21,6 +21,18 @@ function ownedVaults(db, userId) {
 function ownedAssets(db, userId) {
   const vaultIds = ownedVaults(db, userId).map((vault) => vault.vaultId)
   return db.assets.filter((asset) => vaultIds.includes(asset.vaultId))
+}
+
+function assignmentDto(db, assignment) {
+  const user = db.users.find((u) => u.userId === assignment.beneficiaryId)
+  return {
+    assignmentId: assignment.assignmentId,
+    assetId: assignment.assetId,
+    beneficiaryId: assignment.beneficiaryId,
+    fullName: user?.fullName ?? '',
+    allocation: assignment.allocation,
+    status: assignment.status,
+  }
 }
 
 function beneficiaryDto(db, assignment) {
@@ -394,15 +406,101 @@ const coreHandlers = [
       const total = current.reduce((sum, a) => sum + a.allocation, 0)
       if (Math.round((total + allocation) * 100) / 100 > 100) return problem(409, 'Total allocation exceeds 100%.')
 
-      const assignment = { assetId: asset.assetId, beneficiaryId: target.userId, allocation, status: 'Active' }
+      const assignment = { assignmentId: nextId('assignment'), assetId: asset.assetId, beneficiaryId: target.userId, allocation, status: 'Active' }
       db.assignments.push(assignment)
       if (!target.roles.includes('Beneficiary')) target.roles.push('Beneficiary')
       saveDb()
       return HttpResponse.json(beneficiaryDto(db, assignment), { status: 201 })
     }),
   ),
+
+  // Sửa tài sản (cùng đường dẫn với BE)
+  http.put(
+    '*/api/owner/assets/:assetId',
+    ownerRoute(({ userId, params, body }) => {
+      const parsed = parseAssetUpdate(body)
+      if (parsed.error) return problem(400, parsed.error)
+      const asset = ownedAssets(getDb(), userId).find((a) => a.assetId === Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+      if (asset.status !== 'Active') return problem(409, 'Asset is not active.')
+      Object.assign(asset, parsed.value)
+      saveDb()
+      return HttpResponse.json(assetDto(asset))
+    }),
+  ),
+
+  // BE không xoá tài sản mà thu hồi: Status = Revoked, dữ liệu vẫn nằm trong danh sách
+  http.post(
+    '*/api/owner/assets/:assetId/revoke',
+    ownerRoute(({ userId, params }) => {
+      const asset = ownedAssets(getDb(), userId).find((a) => a.assetId === Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+      if (asset.status !== 'Active') return problem(409, 'Asset is not active.')
+      asset.status = 'Revoked'
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+
+  http.get(
+    '*/api/owner/assets/:assetId/allocations',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const asset = ownedAssets(db, userId).find((a) => a.assetId === Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+      return HttpResponse.json(db.assignments.filter((a) => a.assetId === asset.assetId).map((a) => assignmentDto(db, a)))
+    }),
+  ),
+
+  http.put(
+    '*/api/owner/assets/:assetId/allocations/:assignmentId',
+    ownerRoute(({ userId, params, body }) => {
+      const parsed = parseAllocation(body)
+      if (parsed.error) return problem(400, parsed.error)
+      const db = getDb()
+      const asset = ownedAssets(db, userId).find((a) => a.assetId === Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+      const assignment = db.assignments.find((a) => a.assetId === asset.assetId && a.assignmentId === Number(params.assignmentId))
+      if (!assignment) return problem(404, 'Assignment not found.')
+      if (asset.status !== 'Active' || assignment.status !== 'Active') return problem(409, 'Assignment is not active.')
+      const others = db.assignments.filter((a) => a.assetId === asset.assetId && a.status === 'Active' && a !== assignment)
+      const total = others.reduce((sum, a) => sum + a.allocation, 0)
+      if (Math.round((total + parsed.value) * 100) / 100 > 100) return problem(409, 'Allocation total exceeds 100 percent.')
+      assignment.allocation = parsed.value
+      saveDb()
+      return HttpResponse.json(assignmentDto(db, assignment))
+    }),
+  ),
+
+  // Thu hồi phân bổ: hàng vẫn còn với Status = Revoked, phần trăm trả về chưa phân bổ
+  http.post(
+    '*/api/owner/assets/:assetId/allocations/:assignmentId/revoke',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const asset = ownedAssets(db, userId).find((a) => a.assetId === Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+      const assignment = db.assignments.find((a) => a.assetId === asset.assetId && a.assignmentId === Number(params.assignmentId))
+      if (!assignment) return problem(404, 'Assignment not found.')
+      if (asset.status !== 'Active' || assignment.status !== 'Active') return problem(409, 'Assignment is not active.')
+      assignment.status = 'Revoked'
+      saveDb()
+      return HttpResponse.json(assignmentDto(db, assignment))
+    }),
+  ),
+
+  // Nội dung giấy tờ: mock trả một tệp văn bản mô phỏng (không phải nội dung thật), kèm header chữ ký như BE
+  http.get(
+    '*/api/owner/assets/:assetId/documents/:documentId/content',
+    ownerRoute(({ userId, params }) => {
+      const asset = ownedAssets(getDb(), userId).find((a) => a.assetId === Number(params.assetId))
+      const found = asset?.documents.find((item) => item.documentId === Number(params.documentId))
+      if (!found) return problem(404, 'Document not found.')
+      const content = `Tệp mô phỏng cho giấy tờ "${found.fileName}".\nĐây là nội dung mô phỏng, không phải bản gốc đã mã hóa lưu trên máy chủ.\n`
+      return new HttpResponse(content, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Signature-Valid': 'true' } })
+    }),
+  ),
 ]
 
 // Mock đầy đủ = API đã có ở BE + API chưa có; chế độ hỗn hợp chỉ mock phần BE chưa có
 export const handlers = [...coreHandlers, ...extraHandlers]
-export const hybridHandlers = [...createAssetOverlayHandlers(), ...extraHandlers]
+export const hybridHandlers = [...extraHandlers]

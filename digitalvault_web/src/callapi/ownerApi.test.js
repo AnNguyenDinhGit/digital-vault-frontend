@@ -3,8 +3,8 @@ import {
   assignBeneficiary,
   createAsset,
   createVault,
-  deleteAsset,
   downloadDocument,
+  getAllocations,
   getAsset,
   getAssets,
   assignExecutor,
@@ -19,6 +19,7 @@ import {
   getVaults,
   pingProofOfLife,
   removeBeneficiary,
+  revokeAsset,
   revokeExecutor,
   saveProofOfLife,
   setTwoFactor,
@@ -67,6 +68,16 @@ describe('ownerApi', () => {
     axiosClient.get.mockResolvedValue({ data: [{ assetId: 1 }] })
     await expect(getAssets()).resolves.toEqual([{ assetId: 1 }])
     expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets')
+  })
+
+  it('getAssets_RevokedAssets_AreHiddenBecauseBackendOnlyMarksThemRevoked', async () => {
+    axiosClient.get.mockResolvedValue({ data: [{ assetId: 1, status: 'Active' }, { assetId: 2, status: 'Revoked' }] })
+    await expect(getAssets()).resolves.toEqual([{ assetId: 1, status: 'Active' }])
+  })
+
+  it('getBeneficiaries_RevokedAllocations_AreHidden', async () => {
+    axiosClient.get.mockResolvedValue({ data: [{ beneficiaryId: 1, status: 'Active' }, { beneficiaryId: 2, status: 'Revoked' }] })
+    await expect(getBeneficiaries()).resolves.toEqual([{ beneficiaryId: 1, status: 'Active' }])
   })
 
   it('getAsset_WithId_GetsAssetById', async () => {
@@ -206,21 +217,46 @@ describe('ownerApi', () => {
       const blob = new Blob(['x'])
       axiosClient.get.mockResolvedValue({ data: blob })
       await expect(downloadDocument(4, 12)).resolves.toBe(blob)
-      expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets/4/documents/12/download', { responseType: 'blob' })
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets/4/documents/12/content', { responseType: 'blob' })
     })
   })
 
   describe('manage beneficiaries', () => {
-    it('updateBeneficiaryAllocation_Values_PutsNumberAllocation', async () => {
-      axiosClient.put.mockResolvedValue({ data: { allocation: 25 } })
-      await expect(updateBeneficiaryAllocation(4, 9, '25')).resolves.toEqual({ allocation: 25 })
-      expect(axiosClient.put).toHaveBeenCalledWith('/owner/assets/4/beneficiaries/9', { allocation: 25 })
+    const rows = [
+      { assignmentId: 31, assetId: 4, beneficiaryId: 8, status: 'Revoked' },
+      { assignmentId: 32, assetId: 4, beneficiaryId: 9, status: 'Active' },
+    ]
+
+    it('getAllocations_AssetId_GetsAllocationsOfThatAsset', async () => {
+      axiosClient.get.mockResolvedValue({ data: rows })
+      await expect(getAllocations(4)).resolves.toEqual(rows)
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets/4/allocations')
     })
 
-    it('removeBeneficiary_Ids_SendsDelete', async () => {
-      axiosClient.delete.mockResolvedValue({ data: undefined })
+    it('updateBeneficiaryAllocation_Values_PutsToTheActiveAssignmentId', async () => {
+      axiosClient.get.mockResolvedValue({ data: rows })
+      axiosClient.put.mockResolvedValue({ data: { allocation: 25 } })
+      await expect(updateBeneficiaryAllocation(4, 9, '25')).resolves.toEqual({ allocation: 25 })
+      expect(axiosClient.put).toHaveBeenCalledWith('/owner/assets/4/allocations/32', { allocation: 25 })
+    })
+
+    it('updateBeneficiaryAllocation_NoActiveAssignment_Throws404WithoutPut', async () => {
+      axiosClient.get.mockResolvedValue({ data: rows })
+      await expect(updateBeneficiaryAllocation(4, 8, 10)).rejects.toMatchObject({ status: 404 })
+      expect(axiosClient.put).not.toHaveBeenCalled()
+    })
+
+    it('removeBeneficiary_Ids_PostsRevokeOfTheActiveAssignment', async () => {
+      axiosClient.get.mockResolvedValue({ data: rows })
+      axiosClient.post.mockResolvedValue({ data: { status: 'Revoked' } })
       await removeBeneficiary(4, 9)
-      expect(axiosClient.delete).toHaveBeenCalledWith('/owner/assets/4/beneficiaries/9')
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/assets/4/allocations/32/revoke')
+    })
+
+    it('removeBeneficiary_AlreadyRevoked_Throws404', async () => {
+      axiosClient.get.mockResolvedValue({ data: rows })
+      await expect(removeBeneficiary(4, 8)).rejects.toMatchObject({ status: 404 })
+      expect(axiosClient.post).not.toHaveBeenCalled()
     })
   })
 
@@ -231,10 +267,10 @@ describe('ownerApi', () => {
       expect(axiosClient.put).toHaveBeenCalledWith('/owner/assets/4', { name: 'Ví mới', type: 'CryptoWallet', description: null })
     })
 
-    it('deleteAsset_AssetId_SendsDelete', async () => {
-      axiosClient.delete.mockResolvedValue({ data: undefined })
-      await deleteAsset(4)
-      expect(axiosClient.delete).toHaveBeenCalledWith('/owner/assets/4')
+    it('revokeAsset_AssetId_PostsRevoke', async () => {
+      axiosClient.post.mockResolvedValue({ data: undefined })
+      await revokeAsset(4)
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/assets/4/revoke')
     })
   })
 
