@@ -30,16 +30,10 @@ describe('describeRequest', () => {
     expect(run('post', '/owner/assets/12/beneficiaries', 201)).toMatchObject({ action: 'AssignBeneficiary', entityType: 'DigitalAsset', entityId: 12 })
   })
 
-  it('describeRequest_UploadAlive_ResultIsAliveSigned', () => {
+  it('describeRequest_UploadDocument_IsRecordedAsSignedUpload', () => {
     const form = new FormData()
-    form.append('ownerAlive', 'true')
-    expect(run('post', '/owner/assets/3/documents', 200, {}, form)).toMatchObject({ action: 'UploadAssetDocument', entityId: 3, result: 'Alive_Signed' })
-  })
-
-  it('describeRequest_UploadDeceased_ResultIsPendingLegal', () => {
-    const form = new FormData()
-    form.append('ownerAlive', 'false')
-    expect(run('post', '/owner/assets/3/documents', 200, {}, form)).toMatchObject({ result: 'Pending_Legal' })
+    form.append('File', 'x')
+    expect(run('post', '/owner/assets/3/documents', 200, {}, form)).toMatchObject({ action: 'UploadAssetDocument', entityType: 'DigitalAsset', entityId: 3, result: 'Alive_Signed' })
   })
 
   it('describeRequest_ProofOfLifeSaveAndPing_ReturnActions', () => {

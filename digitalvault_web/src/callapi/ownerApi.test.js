@@ -107,36 +107,33 @@ describe('ownerApi', () => {
   describe('uploadDocument', () => {
     const file = new File(['pdf'], 'HopDong.pdf', { type: 'application/pdf' })
     const signature = new File(['sig'], 'HopDong.sig')
-    const certificate = new File(['cert'], 'ChungTu.pdf', { type: 'application/pdf' })
 
     const sentForm = () => axiosClient.post.mock.calls[0][1]
 
-    it('uploadDocument_Alive_PostsMultipartWithSignatureAndNoCertificate', async () => {
+    it('uploadDocument_FileAndSignature_PostsMultipartWithContractFieldNames', async () => {
       axiosClient.post.mockResolvedValue({ data: { documentId: 9 } })
-      await expect(uploadDocument(4, { file, beneficiaryId: 11, ownerAlive: true, signature })).resolves.toEqual({ documentId: 9 })
+      await expect(uploadDocument(4, { file, signature })).resolves.toEqual({ documentId: 9 })
       expect(axiosClient.post.mock.calls[0][0]).toBe('/owner/assets/4/documents')
       const form = sentForm()
       expect(form).toBeInstanceOf(FormData)
-      expect(form.get('file').name).toBe('HopDong.pdf')
-      expect(form.get('beneficiaryId')).toBe('11')
-      expect(form.get('ownerAlive')).toBe('true')
-      expect(form.get('signature').name).toBe('HopDong.sig')
-      expect(form.has('deathCertificate')).toBe(false)
+      expect(form.get('File').name).toBe('HopDong.pdf')
+      expect(form.get('Signature').name).toBe('HopDong.sig')
+      expect([...form.keys()].sort()).toEqual(['File', 'Signature'])
     })
 
-    it('uploadDocument_Dead_PostsMultipartWithCertificateAndNoSignature', async () => {
+    it('uploadDocument_WithBeneficiary_AddsBeneficiaryId', async () => {
       axiosClient.post.mockResolvedValue({ data: {} })
-      await uploadDocument(4, { file, beneficiaryId: 11, ownerAlive: false, deathCertificate: certificate })
-      const form = sentForm()
-      expect(form.get('ownerAlive')).toBe('false')
-      expect(form.get('deathCertificate').name).toBe('ChungTu.pdf')
-      expect(form.has('signature')).toBe(false)
+      await uploadDocument(4, { file, signature, beneficiaryId: '11' })
+      expect(sentForm().get('BeneficiaryId')).toBe('11')
     })
 
-    it('uploadDocument_AliveBranch_IgnoresStrayCertificate', async () => {
+    it('uploadDocument_StrayLegacyFields_AreNeverSent', async () => {
       axiosClient.post.mockResolvedValue({ data: {} })
-      await uploadDocument(4, { file, beneficiaryId: 11, ownerAlive: true, signature, deathCertificate: certificate })
-      expect(sentForm().has('deathCertificate')).toBe(false)
+      await uploadDocument(4, { file, signature, ownerAlive: false, deathCertificate: file })
+      const keys = [...sentForm().keys()]
+      expect(keys).not.toContain('OwnerAlive')
+      expect(keys).not.toContain('DeathCertificate')
+      expect(keys).not.toContain('ownerAlive')
     })
   })
 

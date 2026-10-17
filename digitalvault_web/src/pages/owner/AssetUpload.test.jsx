@@ -16,9 +16,9 @@ vi.mock('../../callapi/ownerApi', async (importOriginal) => ({ ...(await importO
 const server = setupServer(...handlers)
 
 // Giả lập BE đã nhận file: thêm giấy tờ vào dữ liệu mock để lần tải lại trang thấy file mới
-function fakeSuccessfulUpload(fileName) {
+function fakeSuccessfulUpload() {
   uploadDocument.mockImplementation(async (assetId, input) => {
-    const document = { documentId: 99, fileName: input.file.name ?? fileName, fileType: input.file.type, isEncrypted: true, signatureValid: null }
+    const document = { documentId: 99, fileName: input.file.name, fileType: input.file.type, isEncrypted: true, signatureValid: null }
     getDb().assets.find((a) => a.assetId === assetId).documents.push(document)
     return document
   })
@@ -55,49 +55,51 @@ const signatureFile = () => new File([new Uint8Array(256)], 'HopDong.sig')
 
 // Tài sản 2 (Vietcombank) có người thụ hưởng Mai; tài sản 4 (YouTube) chưa có ai
 describe('Upload document modal', () => {
-  it('button_AddDocument_OpensDialogWithAliveBranchByDefault', async () => {
+  it('button_AddDocument_OpensDialogWithFileAndSignatureOnly', async () => {
     const user = setupUser()
     await renderDetail(2)
     const dialog = await openModal(user)
-    expect(within(dialog).getByRole('radio', { name: 'Còn sống' })).toBeChecked()
+    expect(within(dialog).getByLabelText(/^Giấy tờ/)).toBeInTheDocument()
     expect(within(dialog).getByLabelText(/^Chữ ký số rời/)).toBeInTheDocument()
+  })
+
+  it('modal_NoLongerOffersOwnerStatusOrDeathCertificate', async () => {
+    const user = setupUser()
+    await renderDetail(2)
+    const dialog = await openModal(user)
+    expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument()
     expect(within(dialog).queryByLabelText(/^Giấy chứng tử/)).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/Người thi hành nộp/)).toBeInTheDocument()
   })
 
-  it('radio_DeadBranch_ShowsCertificateFieldInsteadOfSignature', async () => {
+  it('beneficiarySelect_IsOptionalAndOnlyListsBeneficiariesOfThatAsset', async () => {
     const user = setupUser()
     await renderDetail(2)
     const dialog = await openModal(user)
-    await user.click(within(dialog).getByRole('radio', { name: 'Đã mất' }))
-    expect(within(dialog).getByLabelText(/^Giấy chứng tử/)).toBeInTheDocument()
-    expect(within(dialog).queryByLabelText(/^Chữ ký số rời/)).not.toBeInTheDocument()
-    expect(within(dialog).getByText(/chỉ là khai báo/i)).toBeInTheDocument()
+    const select = within(dialog).getByLabelText(/^Người thụ hưởng/)
+    expect(select).toHaveValue('')
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Không gắn người thụ hưởng cụ thể',
+      'Nguyễn Thị Mai (100%)',
+    ])
   })
 
-  it('beneficiarySelect_OnlyListsBeneficiariesOfThatAsset', async () => {
-    const user = setupUser()
-    await renderDetail(2)
-    const dialog = await openModal(user)
-    const options = within(within(dialog).getByLabelText(/^Người thụ hưởng/)).getAllByRole('option').map((o) => o.textContent)
-    expect(options).toEqual(['Chọn người thụ hưởng', 'Nguyễn Thị Mai (100%)'])
-  })
-
-  it('modal_AssetWithoutBeneficiary_ShowsWarningAndDisablesSubmit', async () => {
+  it('modal_AssetWithoutBeneficiary_StillAllowsUpload', async () => {
     const user = setupUser()
     await renderDetail(4)
     const dialog = await openModal(user)
-    expect(within(dialog).getByText(/chỉ định người thụ hưởng/i)).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Tải lên' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Tải lên' })).toBeEnabled()
   })
 
-  it('submit_EmptyForm_ShowsRequiredErrorsAndDoesNotUpload', async () => {
+  it('submit_EmptyForm_ShowsFileAndSignatureErrorsOnly', async () => {
     const user = setupUser()
     await renderDetail(2)
     const dialog = await openModal(user)
     await user.click(within(dialog).getByRole('button', { name: 'Tải lên' }))
     expect(within(dialog).getByText('Vui lòng chọn file giấy tờ.')).toBeInTheDocument()
     expect(within(dialog).getByText('Vui lòng chọn file chữ ký rời.')).toBeInTheDocument()
-    expect(within(dialog).getByText('Vui lòng chọn người thụ hưởng.')).toBeInTheDocument()
+    expect(within(dialog).queryByText('Vui lòng chọn người thụ hưởng.')).not.toBeInTheDocument()
+    expect(uploadDocument).not.toHaveBeenCalled()
   })
 
   it('submit_UnsupportedFileType_ShowsTypeError', async () => {
@@ -127,12 +129,11 @@ describe('Upload document modal', () => {
     expect(within(dialog).getByText(/Moi\.pdf/)).toBeInTheDocument()
   })
 
-  it('submit_AliveWithAllFields_ClosesDialogAndListsNewDocument', async () => {
+  it('submit_FileAndSignature_ClosesDialogAndListsNewDocument', async () => {
     fakeSuccessfulUpload()
     const user = setupUser()
     await renderDetail(2)
     const dialog = await openModal(user)
-    await user.selectOptions(within(dialog).getByLabelText(/^Người thụ hưởng/), '3')
     await user.upload(within(dialog).getByLabelText(/^Giấy tờ/), pdf('HopDongMoi.pdf'))
     await user.upload(within(dialog).getByLabelText(/^Chữ ký số rời/), signatureFile())
     await user.click(within(dialog).getByRole('button', { name: 'Tải lên' }))
@@ -140,7 +141,7 @@ describe('Upload document modal', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const [assetId, input] = uploadDocument.mock.calls[0]
     expect(assetId).toBe(2)
-    expect(input).toMatchObject({ beneficiaryId: 3, ownerAlive: true })
+    expect(input.beneficiaryId).toBeUndefined()
     expect(input.file.name).toBe('HopDongMoi.pdf')
     expect(input.signature.name).toBe('HopDong.sig')
     const list = await screen.findByRole('list', { name: 'Giấy tờ đính kèm' })
@@ -148,26 +149,8 @@ describe('Upload document modal', () => {
     expect(screen.getByText('2 giấy tờ')).toBeInTheDocument()
   })
 
-  it('submit_DeadWithCertificate_ClosesDialogAndListsNewDocument', async () => {
+  it('submit_WithChosenBeneficiary_SendsBeneficiaryId', async () => {
     fakeSuccessfulUpload()
-    const user = setupUser()
-    await renderDetail(2)
-    const dialog = await openModal(user)
-    await user.click(within(dialog).getByRole('radio', { name: 'Đã mất' }))
-    await user.selectOptions(within(dialog).getByLabelText(/^Người thụ hưởng/), '3')
-    await user.upload(within(dialog).getByLabelText(/^Giấy tờ/), pdf('DiChuc.pdf'))
-    await user.upload(within(dialog).getByLabelText(/^Giấy chứng tử/), pdf('ChungTu.pdf'))
-    await user.click(within(dialog).getByRole('button', { name: 'Tải lên' }))
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(uploadDocument.mock.calls[0][1]).toMatchObject({ ownerAlive: false })
-    expect(uploadDocument.mock.calls[0][1].deathCertificate.name).toBe('ChungTu.pdf')
-    const list = await screen.findByRole('list', { name: 'Giấy tờ đính kèm' })
-    await waitFor(() => expect(within(list).getByText('DiChuc.pdf')).toBeInTheDocument())
-  })
-
-  it('submit_ServerRejectsSignature_ShowsErrorInsideDialog', async () => {
-    uploadDocument.mockRejectedValue(new ApiError(400, 'Signature is invalid.'))
     const user = setupUser()
     await renderDetail(2)
     const dialog = await openModal(user)
@@ -175,7 +158,21 @@ describe('Upload document modal', () => {
     await user.upload(within(dialog).getByLabelText(/^Giấy tờ/), pdf())
     await user.upload(within(dialog).getByLabelText(/^Chữ ký số rời/), signatureFile())
     await user.click(within(dialog).getByRole('button', { name: 'Tải lên' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('chữ ký')
+    await waitFor(() => expect(uploadDocument).toHaveBeenCalled())
+    expect(uploadDocument.mock.calls[0][1]).toMatchObject({ beneficiaryId: 3 })
+  })
+
+  it('submit_ServerRejectsSignature_ShowsVietnameseMessageAndServerDetail', async () => {
+    uploadDocument.mockRejectedValue(new ApiError(400, 'Invalid signature, untrusted/expired certificate, or signer certificate not configured.'))
+    const user = setupUser()
+    await renderDetail(2)
+    const dialog = await openModal(user)
+    await user.upload(within(dialog).getByLabelText(/^Giấy tờ/), pdf())
+    await user.upload(within(dialog).getByLabelText(/^Chữ ký số rời/), signatureFile())
+    await user.click(within(dialog).getByRole('button', { name: 'Tải lên' }))
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent('chữ ký')
+    expect(alert).toHaveTextContent('signer certificate not configured')
   })
 
   it('cancel_Button_ClosesDialog', async () => {

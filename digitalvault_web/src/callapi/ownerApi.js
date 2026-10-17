@@ -45,14 +45,13 @@ export async function createAsset({ vaultId, name, type, description }) {
   return data
 }
 
-// Upload giấy tờ (multipart): còn sống thì kèm chữ ký rời, đã mất thì kèm giấy chứng tử
-export async function uploadDocument(assetId, { file, beneficiaryId, ownerAlive, signature, deathCertificate }) {
+// Upload giấy tờ của Owner (multipart): File và Signature (chữ ký rời) bắt buộc, BeneficiaryId tuỳ chọn.
+// BE từ chối mọi trường khác; giấy chứng tử do Người thi hành nộp ở hồ sơ bàn giao.
+export async function uploadDocument(assetId, { file, signature, beneficiaryId }) {
   const form = new FormData()
-  form.append('file', file)
-  form.append('beneficiaryId', String(beneficiaryId))
-  form.append('ownerAlive', ownerAlive ? 'true' : 'false')
-  if (ownerAlive && signature) form.append('signature', signature)
-  if (!ownerAlive && deathCertificate) form.append('deathCertificate', deathCertificate)
+  form.append('File', file)
+  form.append('Signature', signature)
+  if (beneficiaryId) form.append('BeneficiaryId', String(beneficiaryId))
   const { data } = await axiosClient.post(`/owner/assets/${assetId}/documents`, form)
   return data
 }

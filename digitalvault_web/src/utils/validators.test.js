@@ -231,68 +231,38 @@ describe('validateAssignment', () => {
 describe('validateUpload', () => {
   const file = { name: 'HopDong.pdf', type: 'application/pdf', size: 2048 }
   const signature = { name: 'HopDong.sig', type: '', size: 256 }
-  const certificate = { name: 'ChungTu.pdf', type: 'application/pdf', size: 1024 }
-  const alive = { file, signature, deathCertificate: null, beneficiaryId: '11', ownerStatus: 'alive' }
-  const dead = { file, signature: null, deathCertificate: certificate, beneficiaryId: '11', ownerStatus: 'dead' }
 
-  it('validateUpload_AliveWithAllFields_ReturnsEmptyObject', () => {
-    expect(validateUpload(alive)).toEqual({})
+  it('validateUpload_FileAndSignature_ReturnsEmptyObject', () => {
+    expect(validateUpload({ file, signature, beneficiaryId: '' })).toEqual({})
   })
 
-  it('validateUpload_DeadWithCertificate_ReturnsEmptyObject', () => {
-    expect(validateUpload(dead)).toEqual({})
+  it('validateUpload_WithBeneficiary_ReturnsEmptyObject', () => {
+    expect(validateUpload({ file, signature, beneficiaryId: '11' })).toEqual({})
   })
 
-  it('validateUpload_NothingSelected_ReturnsRequiredErrorsForAliveBranch', () => {
-    expect(validateUpload({ file: null, signature: null, deathCertificate: null, beneficiaryId: '', ownerStatus: 'alive' })).toEqual({
+  it('validateUpload_NothingSelected_RequiresFileAndSignatureButNotBeneficiary', () => {
+    expect(validateUpload({ file: null, signature: null, beneficiaryId: '' })).toEqual({
       file: 'Vui lòng chọn file giấy tờ.',
       signature: 'Vui lòng chọn file chữ ký rời.',
-      beneficiaryId: 'Vui lòng chọn người thụ hưởng.',
     })
-  })
-
-  it('validateUpload_DeadWithoutCertificate_ReturnsCertificateError', () => {
-    expect(validateUpload({ ...dead, deathCertificate: null })).toEqual({ deathCertificate: 'Vui lòng chọn giấy chứng tử.' })
-  })
-
-  it('validateUpload_DeadBranch_DoesNotRequireSignature', () => {
-    expect(validateUpload({ ...dead, signature: null })).toEqual({})
-  })
-
-  it('validateUpload_AliveBranch_DoesNotRequireCertificate', () => {
-    expect(validateUpload({ ...alive, deathCertificate: null })).toEqual({})
   })
 
   it('validateUpload_FileOverTenMegabytes_ReturnsSizeError', () => {
-    expect(validateUpload({ ...alive, file: { ...file, size: 10 * 1024 * 1024 + 1 } })).toEqual({
-      file: 'File phải từ 1 byte đến 10 MB.',
-    })
+    expect(validateUpload({ file: { ...file, size: 10 * 1024 * 1024 + 1 }, signature })).toEqual({ file: 'File phải từ 1 byte đến 10 MB.' })
   })
 
-  it('validateUpload_EmptyFile_ReturnsSizeError', () => {
-    expect(validateUpload({ ...alive, file: { ...file, size: 0 } })).toEqual({ file: 'File phải từ 1 byte đến 10 MB.' })
-  })
-
-  it('validateUpload_UnsupportedType_ReturnsTypeError', () => {
-    expect(validateUpload({ ...alive, file: { name: 'virus.exe', type: 'application/x-msdownload', size: 10 } })).toEqual({
+  it('validateUpload_UnsupportedFileType_ReturnsTypeError', () => {
+    expect(validateUpload({ file: { name: 'virus.exe', type: 'application/x-msdownload', size: 10 }, signature })).toEqual({
       file: 'Chỉ hỗ trợ PDF, PNG, JPEG hoặc văn bản (.txt).',
     })
   })
 
-  it('validateUpload_EmptyMimeButKnownExtension_IsAccepted', () => {
-    expect(validateUpload({ ...alive, file: { name: 'scan.JPG', type: '', size: 10 } })).toEqual({})
+  it('validateUpload_SignatureOverSixteenKilobytes_ReturnsSizeError', () => {
+    expect(validateUpload({ file, signature: { ...signature, size: 16385 } })).toEqual({ signature: 'File chữ ký phải từ 1 byte đến 16 KB.' })
   })
 
-  it('validateUpload_SignatureOverSixteenKilobytes_ReturnsSignatureError', () => {
-    expect(validateUpload({ ...alive, signature: { ...signature, size: 16385 } })).toEqual({
-      signature: 'File chữ ký phải từ 1 byte đến 16 KB.',
-    })
-  })
-
-  it('validateUpload_CertificateUnsupportedType_ReturnsCertificateError', () => {
-    expect(validateUpload({ ...dead, deathCertificate: { name: 'a.zip', type: 'application/zip', size: 5 } })).toEqual({
-      deathCertificate: 'Chỉ hỗ trợ PDF, PNG, JPEG hoặc văn bản (.txt).',
-    })
+  it('validateUpload_EmptySignature_ReturnsSizeError', () => {
+    expect(validateUpload({ file, signature: { ...signature, size: 0 } })).toEqual({ signature: 'File chữ ký phải từ 1 byte đến 16 KB.' })
   })
 })
 

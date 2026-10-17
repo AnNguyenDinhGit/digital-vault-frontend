@@ -1,8 +1,11 @@
 // Chuyển lỗi API upload giấy tờ sang thông báo tiếng Việt
 export function uploadErrorMessage(error) {
   switch (error?.status) {
-    case 400:
-      return 'File hoặc chữ ký không hợp lệ. Hãy kiểm tra định dạng, dung lượng và chữ ký rời (RSA-SHA256, tạo bằng chứng thư đã đăng ký).'
+    case 400: {
+      const base = 'File hoặc chữ ký không hợp lệ. Hãy kiểm tra định dạng, dung lượng và chữ ký rời (RSA-SHA256, tạo bằng chứng thư đã đăng ký).'
+      // Kèm nguyên văn lý do từ máy chủ để biết chính xác lỗi (vd chưa đăng ký chứng thư người ký)
+      return error.message ? `${base} Chi tiết từ máy chủ: ${error.message}` : base
+    }
     case 403:
       return 'Bạn không có quyền tải giấy tờ cho tài sản này.'
     case 404:

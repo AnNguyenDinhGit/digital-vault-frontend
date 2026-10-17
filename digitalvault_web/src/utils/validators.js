@@ -127,23 +127,16 @@ function validateDocumentFile(file, requiredMessage) {
   return undefined
 }
 
-// Validate form upload giấy tờ: còn sống thì cần chữ ký rời, đã mất thì cần giấy chứng tử
-export function validateUpload({ file, signature, deathCertificate, beneficiaryId, ownerStatus }) {
+// Validate form upload giấy tờ của Owner: bắt buộc file giấy tờ và chữ ký rời; người thụ hưởng là tuỳ chọn
+export function validateUpload({ file, signature }) {
   const errors = {}
   const fileError = validateDocumentFile(file, 'Vui lòng chọn file giấy tờ.')
   if (fileError) errors.file = fileError
 
-  if (ownerStatus === 'alive') {
-    if (!signature) errors.signature = 'Vui lòng chọn file chữ ký rời.'
-    else if (signature.size <= 0 || signature.size > UPLOAD_LIMITS.maxSignatureBytes) {
-      errors.signature = 'File chữ ký phải từ 1 byte đến 16 KB.'
-    }
-  } else {
-    const certificateError = validateDocumentFile(deathCertificate, 'Vui lòng chọn giấy chứng tử.')
-    if (certificateError) errors.deathCertificate = certificateError
+  if (!signature) errors.signature = 'Vui lòng chọn file chữ ký rời.'
+  else if (signature.size <= 0 || signature.size > UPLOAD_LIMITS.maxSignatureBytes) {
+    errors.signature = 'File chữ ký phải từ 1 byte đến 16 KB.'
   }
-
-  if (!beneficiaryId) errors.beneficiaryId = 'Vui lòng chọn người thụ hưởng.'
   return errors
 }
 

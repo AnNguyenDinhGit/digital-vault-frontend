@@ -48,70 +48,66 @@ const MAI = 3
 const LONG = 2
 
 describe('mock upload document', () => {
-  it('upload_AliveWithSignature_ReturnsDocumentDtoAndAppearsOnAsset', async () => {
-    const result = await attempt(2, { file: pdf('Moi.pdf'), beneficiaryId: MAI, ownerAlive: true, signature: signature() })
+  it('upload_FileAndSignature_ReturnsDocumentDtoAndAppearsOnAsset', async () => {
+    const result = await attempt(2, { file: pdf('Moi.pdf'), signature: signature() })
     expect(result.ok).toBe(true)
     expect(result.data).toMatchObject({ fileName: 'Moi.pdf', fileType: 'application/pdf', isEncrypted: true })
     const asset = (await axiosClient.get('/owner/assets/2')).data
     expect(asset.documents.map((d) => d.fileName)).toContain('Moi.pdf')
   })
 
-  it('upload_DeadWithCertificate_IsAccepted', async () => {
-    const result = await attempt(2, { file: pdf(), beneficiaryId: MAI, ownerAlive: false, deathCertificate: pdf('ChungTu.pdf') })
+  it('upload_BeneficiaryIsOptional_AssetWithoutBeneficiaryAcceptsUpload', async () => {
+    const result = await attempt(4, { file: pdf(), signature: signature() })
     expect(result.ok).toBe(true)
+    expect((await axiosClient.get('/owner/beneficiaries', { params: { assetId: 4 } })).data).toEqual([])
   })
 
-  it('upload_AliveWithoutSignature_Returns400', async () => {
-    const result = await attempt(2, { file: pdf(), beneficiaryId: MAI, ownerAlive: true })
+  it('upload_WithAssignedBeneficiary_IsAccepted', async () => {
+    expect((await attempt(2, { file: pdf(), signature: signature(), beneficiaryId: MAI })).ok).toBe(true)
+  })
+
+  it('upload_WithoutSignature_Returns400', async () => {
+    const result = await attempt(2, { file: pdf() })
     expect(result.ok).toBe(false)
-    expect(result.status).toBe(400)
-  })
-
-  it('upload_DeadWithoutCertificate_Returns400', async () => {
-    const result = await attempt(2, { file: pdf(), beneficiaryId: MAI, ownerAlive: false })
     expect(result.status).toBe(400)
   })
 
   it('upload_SignatureOverSixteenKilobytes_Returns400', async () => {
     const big = new File([new Uint8Array(16385)], 'big.sig')
-    const result = await attempt(2, { file: pdf(), beneficiaryId: MAI, ownerAlive: true, signature: big })
-    expect(result.status).toBe(400)
+    expect((await attempt(2, { file: pdf(), signature: big })).status).toBe(400)
   })
 
   it('upload_UnsupportedFileType_Returns400', async () => {
     const exe = new File(['MZ'], 'virus.exe', { type: 'application/x-msdownload' })
-    const result = await attempt(2, { file: exe, beneficiaryId: MAI, ownerAlive: true, signature: signature() })
-    expect(result.status).toBe(400)
+    expect((await attempt(2, { file: exe, signature: signature() })).status).toBe(400)
+  })
+
+  it('upload_LegacyFieldsOwnerAliveOrDeathCertificate_Returns400', async () => {
+    const form = new FormData()
+    form.append('File', pdf())
+    form.append('Signature', signature())
+    form.append('OwnerAlive', 'false')
+    const rejected = await axiosClient.post('/owner/assets/2/documents', form).catch((error) => error)
+    expect(rejected.status).toBe(400)
+    const withCertificate = new FormData()
+    withCertificate.append('File', pdf())
+    withCertificate.append('Signature', signature())
+    withCertificate.append('DeathCertificate', pdf('ChungTu.pdf'))
+    expect((await axiosClient.post('/owner/assets/2/documents', withCertificate).catch((error) => error)).status).toBe(400)
   })
 
   it('upload_UnknownAsset_Returns404', async () => {
-    const result = await attempt(999, { file: pdf(), beneficiaryId: MAI, ownerAlive: true, signature: signature() })
-    expect(result.status).toBe(404)
+    expect((await attempt(999, { file: pdf(), signature: signature() })).status).toBe(404)
   })
 
-  it('upload_BeneficiaryNotInAssetList_Returns409', async () => {
-    // Tài sản 2 đã có người thụ hưởng nên chỉ được chọn trong danh sách hiện tại
-    const result = await attempt(2, { file: pdf(), beneficiaryId: LONG, ownerAlive: true, signature: signature() })
-    expect(result.status).toBe(409)
-  })
-
-  it('upload_UserWithoutBeneficiaryRole_Returns404', async () => {
-    // userId 4 (Lê Minh Quân) chỉ là Owner, chưa từng được chỉ định
-    const result = await attempt(4, { file: pdf(), beneficiaryId: 4, ownerAlive: true, signature: signature() })
-    expect(result.status).toBe(404)
-  })
-
-  it('upload_AssetWithoutBeneficiary_CreatesFullAssignmentForChosenBeneficiary', async () => {
-    const result = await attempt(4, { file: pdf(), beneficiaryId: LONG, ownerAlive: true, signature: signature() })
-    expect(result.ok).toBe(true)
-    const list = (await axiosClient.get('/owner/beneficiaries', { params: { assetId: 4 } })).data
-    expect(list).toEqual([expect.objectContaining({ beneficiaryId: LONG, allocation: 100, status: 'Active' })])
+  it('upload_BeneficiaryNotInAssetAllocations_Returns409', async () => {
+    // Tài sản 2 chỉ phân bổ cho Mai nên không chọn được Long
+    expect((await attempt(2, { file: pdf(), signature: signature(), beneficiaryId: LONG })).status).toBe(409)
   })
 
   it('upload_NonOwnerRole_Returns403', async () => {
     const [{ email, password }] = ROLE_ACCOUNTS
     await axiosClient.post('/auth/login', { email, password })
-    const result = await attempt(2, { file: pdf(), beneficiaryId: MAI, ownerAlive: true, signature: signature() })
-    expect(result.status).toBe(403)
+    expect((await attempt(2, { file: pdf(), signature: signature() })).status).toBe(403)
   })
 })

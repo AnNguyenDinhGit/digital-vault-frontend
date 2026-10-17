@@ -307,7 +307,8 @@ const coreHandlers = [
     }),
   ),
 
-  // Upload giấy tờ: kiểm tra các ràng buộc như BE (file, chữ ký rời, người thụ hưởng, trạng thái chủ sở hữu)
+  // Upload giấy tờ của Owner: chỉ nhận File + Signature (bắt buộc) và BeneficiaryId (tuỳ chọn), như BE.
+  // Giấy chứng tử không còn qua endpoint này (Executor nộp trong hồ sơ bàn giao).
   http.post(
     '*/api/owner/assets/:assetId/documents',
     ownerRoute(async ({ userId, params, request }) => {
@@ -321,38 +322,31 @@ const coreHandlers = [
       } catch {
         return problem(400, 'Request must be multipart/form-data.')
       }
+      const allowedFields = ['file', 'signature', 'beneficiaryid']
+      if ([...form.keys()].some((key) => !allowedFields.includes(key.toLowerCase()))) {
+        return problem(400, "Only File, Signature and optional BeneficiaryId are accepted. Legal evidence belongs to the assigned Executor's handover.")
+      }
+      const field = (name) => [...form.entries()].find(([key]) => key.toLowerCase() === name)?.[1] ?? null
       const isFile = (value) => value !== null && typeof value === 'object' && typeof value.size === 'number'
       const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'text/plain']
-      const badDocument = (value) => !isFile(value) || value.size <= 0 || value.size > 10 * 1024 * 1024 || !allowedTypes.includes(value.type)
 
-      const file = form.get('file')
-      if (badDocument(file)) return problem(400, 'File must be 1 byte to 10 MB and a PDF, PNG, JPEG or text file.')
-      const beneficiaryId = Number(form.get('beneficiaryId'))
-      if (!Number.isInteger(beneficiaryId) || beneficiaryId < 1) return problem(400, 'BeneficiaryId is required.')
-      const aliveText = String(form.get('ownerAlive') ?? '').toLowerCase()
-      if (aliveText !== 'true' && aliveText !== 'false') return problem(400, 'OwnerAlive is required.')
-      const ownerAlive = aliveText === 'true'
-
-      if (ownerAlive) {
-        const signature = form.get('signature')
-        if (!isFile(signature) || signature.size <= 0 || signature.size > 16384) return problem(400, 'Detached signature is required (max 16 KB).')
-      } else if (badDocument(form.get('deathCertificate'))) {
-        return problem(400, 'Death certificate is required.')
+      const file = field('file')
+      if (!isFile(file) || file.size <= 0 || file.size > 10 * 1024 * 1024 || !allowedTypes.includes(file.type)) {
+        return problem(400, 'File must be 1 byte to 10 MB and a PDF, PNG, JPEG or text file.')
       }
+      const signature = field('signature')
+      if (!isFile(signature) || signature.size <= 0 || signature.size > 16384) return problem(400, 'Invalid detached signature size.')
 
-      const target = db.users.find((u) => u.userId === beneficiaryId)
-      if (!target || !target.roles.includes('Beneficiary')) return problem(404, 'Beneficiary not found.')
-      const active = db.assignments.filter((a) => a.assetId === asset.assetId && a.status === 'Active')
-      if (active.length > 0 && !active.some((a) => a.beneficiaryId === beneficiaryId)) {
-        return problem(409, 'Choose a beneficiary currently assigned to this asset.')
+      const rawBeneficiary = field('beneficiaryid')
+      if (rawBeneficiary !== null) {
+        const beneficiaryId = Number(rawBeneficiary)
+        if (!Number.isInteger(beneficiaryId) || beneficiaryId < 1) return problem(400, 'BeneficiaryId must be a positive integer.')
+        const assigned = db.assignments.some((a) => a.assetId === asset.assetId && a.status === 'Active' && a.beneficiaryId === beneficiaryId)
+        if (!assigned) return problem(409, 'Choose a beneficiary currently assigned to this asset.')
       }
 
       const document = { documentId: nextId('document'), fileName: file.name, fileType: file.type, isEncrypted: true, signatureValid: null }
       asset.documents.push(document)
-      // Tài sản chưa có người thụ hưởng thì BE tạo phân bổ 100% cho người được chọn
-      if (active.length === 0) {
-        db.assignments.push({ assetId: asset.assetId, beneficiaryId, allocation: 100, status: 'Active' })
-      }
       saveDb()
       return HttpResponse.json(document)
     }),

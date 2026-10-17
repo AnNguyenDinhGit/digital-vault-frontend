@@ -25,7 +25,7 @@ const ASSET_ITEM = /^\/owner\/assets\/(\d+)$/
 const VAULT_EXECUTOR = /^\/owner\/vaults\/(\d+)\/executor$/
 
 // Từ một request thành công, suy ra dòng nhật ký tương ứng; trả null nếu không phải thao tác cần ghi
-export function describeRequest({ method, url, data: body }, status, data) {
+export function describeRequest({ method, url }, status, data) {
   const verb = (method ?? 'get').toLowerCase()
   const path = (url ?? '').split('?')[0]
 
@@ -45,12 +45,11 @@ export function describeRequest({ method, url, data: body }, status, data) {
   }
   const documents = verb === 'post' ? ASSET_DOCUMENTS.exec(path) : null
   if (documents) {
-    const deceased = body?.get?.('ownerAlive') === 'false'
     return {
       action: 'UploadAssetDocument',
       entityType: 'DigitalAsset',
       entityId: Number(documents[1]),
-      result: deceased ? 'Pending_Legal' : 'Alive_Signed',
+      result: 'Alive_Signed',
     }
   }
   const download = verb === 'get' ? DOCUMENT_DOWNLOAD.exec(path) : null
