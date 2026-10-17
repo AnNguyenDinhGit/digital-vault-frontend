@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login, register } from '../../callapi/authApi'
-import { assignExecutor, createVault } from '../../callapi/ownerApi'
+import { assignExecutor, createVault, getVaults } from '../../callapi/ownerApi'
 import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
@@ -19,7 +19,7 @@ beforeEach(async () => {
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
-const renderPage = (props = {}) => renderWithProviders(<ExecutorManagementPage {...props} />)
+const renderPage = (props = {}) => renderWithProviders(<ExecutorManagementPage mockMode="full" {...props} />)
 const waitForPage = () => screen.findByRole('heading', { level: 1, name: 'Người thi hành (Executor)' })
 
 // Chủ sở hữu mới có đúng một kho và chưa gán người thi hành
@@ -104,7 +104,7 @@ describe('ExecutorManagementPage assign', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận ủy quyền' }))
     const card = await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
     expect(card).toHaveTextContent('LS. Trần Đăng Khoa')
-    expect(card).toHaveTextContent('Chờ chấp nhận')
+    expect(card).toHaveTextContent('Đang hiệu lực')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
@@ -117,7 +117,7 @@ describe('ExecutorManagementPage assign', () => {
     await userEvent.click(await within(dialog).findByRole('radio', { name: /Nguyễn Hải Yến/ }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận ủy quyền' }))
     expect(await screen.findByRole('heading', { name: 'LS. Nguyễn Hải Yến' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Người thi hành hiện tại' })).toHaveTextContent('Chờ chấp nhận')
+    expect(screen.getByRole('region', { name: 'Người thi hành hiện tại' })).toHaveTextContent('Đang hiệu lực')
   })
 
   it('assign_ServerRejects_ShowsErrorInsideDialog', async () => {
@@ -178,7 +178,7 @@ describe('ExecutorManagementPage legal profile', () => {
 
   it('legalProfile_NoProofOfLifeConfig_ExplainsConditionNotSet', async () => {
     await loginAsOwnerWithEmptyVault()
-    await assignExecutor((await (await import('../../callapi/ownerApi')).getVaults())[0].vaultId, 5)
+    await assignExecutor((await getVaults())[0].vaultId, 5)
     renderPage()
     const card = await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
     await userEvent.click(within(card).getByRole('button', { name: 'Xem hồ sơ pháp lý' }))
@@ -194,22 +194,73 @@ describe('ExecutorManagementPage legal profile', () => {
   })
 })
 
-describe('ExecutorManagementPage mock simulation', () => {
-  it('simulation_MockOff_IsHidden', async () => {
-    await loginAsOwnerWithEmptyVault()
-    await assignExecutor((await (await import('../../callapi/ownerApi')).getVaults())[0].vaultId, 5)
-    renderPage({ mockMode: 'off' })
-    await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
-    expect(screen.queryByRole('button', { name: 'Mô phỏng Executor chấp nhận' })).not.toBeInTheDocument()
+describe('ExecutorManagementPage backend integration', () => {
+  it('notice_FullMock_UsesDefaultMockMessage', async () => {
+    renderPage({ mockMode: 'full' })
+    await waitForPage()
+    expect(screen.getByRole('note')).toHaveTextContent('Dữ liệu mô phỏng')
   })
 
-  it('simulation_PendingAndMockOn_AcceptMakesExecutorActive', async () => {
-    await assignExecutor(1, 22)
+  it('notice_Hybrid_ExplainsOnlyAssigningReachesTheServer', async () => {
     renderPage({ mockMode: 'hybrid' })
-    const card = await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
-    expect(card).toHaveTextContent('Chờ chấp nhận')
-    await userEvent.click(screen.getByRole('button', { name: 'Mô phỏng Executor chấp nhận' }))
-    expect(await screen.findByText('Đang hiệu lực')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Mô phỏng Executor chấp nhận' })).not.toBeInTheDocument()
+    await waitForPage()
+    expect(screen.getByRole('note')).toHaveTextContent('Chỉ thao tác gán hoặc đổi Executor được gửi lên máy chủ')
+  })
+
+  it('notice_Off_IsHidden', async () => {
+    renderPage({ mockMode: 'off' })
+    await waitForPage()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
+  it('card_NoLongerOffersAcceptSimulationBecauseBackendHasNoAcceptStep', async () => {
+    renderPage({ mockMode: 'full' })
+    await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
+    expect(screen.queryByRole('button', { name: /Mô phỏng Executor chấp nhận/ })).not.toBeInTheDocument()
+  })
+
+  it('picker_HybridMode_AsksForExecutorIdBecauseMockProfilesDoNotMatchRealAccounts', async () => {
+    await loginAsOwnerWithEmptyVault()
+    renderPage({ mockMode: 'hybrid' })
+    await screen.findByText('Kho này chưa có người thi hành.')
+    await userEvent.click(screen.getByRole('button', { name: 'Chọn người thi hành' }))
+    const dialog = screen.getByRole('dialog', { name: 'Chọn Người Thi Hành' })
+    expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument()
+    expect(within(dialog).getByLabelText(/^ID người thi hành/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Xác nhận ủy quyền' })).toBeEnabled()
+  })
+
+  it('picker_HybridModeInvalidId_ShowsErrorWithoutCallingServer', async () => {
+    await loginAsOwnerWithEmptyVault()
+    renderPage({ mockMode: 'hybrid' })
+    await screen.findByText('Kho này chưa có người thi hành.')
+    await userEvent.click(screen.getByRole('button', { name: 'Chọn người thi hành' }))
+    const dialog = screen.getByRole('dialog', { name: 'Chọn Người Thi Hành' })
+    await userEvent.type(within(dialog).getByLabelText(/^ID người thi hành/), '0')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận ủy quyền' }))
+    expect(await within(dialog).findByText('ID người thi hành phải là số nguyên dương.')).toBeInTheDocument()
+  })
+
+  it('picker_HybridModeValidId_AssignsAndShowsExecutorCard', async () => {
+    await loginAsOwnerWithEmptyVault()
+    renderPage({ mockMode: 'hybrid' })
+    await screen.findByText('Kho này chưa có người thi hành.')
+    await userEvent.click(screen.getByRole('button', { name: 'Chọn người thi hành' }))
+    const dialog = screen.getByRole('dialog', { name: 'Chọn Người Thi Hành' })
+    await userEvent.type(within(dialog).getByLabelText(/^ID người thi hành/), '22')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận ủy quyền' }))
+    expect(await screen.findByRole('heading', { name: 'LS. Nguyễn Hải Yến' })).toBeInTheDocument()
+  })
+
+  it('picker_HybridModeServerRejects_ShowsErrorInsideDialog', async () => {
+    await loginAsOwnerWithEmptyVault()
+    server.use(http.put('*/api/owner/vaults/:vaultId/executor', () => HttpResponse.json({ status: 409, detail: 'Executor is not available.' }, { status: 409 })))
+    renderPage({ mockMode: 'hybrid' })
+    await screen.findByText('Kho này chưa có người thi hành.')
+    await userEvent.click(screen.getByRole('button', { name: 'Chọn người thi hành' }))
+    const dialog = screen.getByRole('dialog', { name: 'Chọn Người Thi Hành' })
+    await userEvent.type(within(dialog).getByLabelText(/^ID người thi hành/), '22')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận ủy quyền' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Người thi hành này không khả dụng')
   })
 })

@@ -58,19 +58,18 @@ describe('mock vault executor', () => {
     expect((await call(axiosClient.get('/owner/vaults/1/executor'))).status).toBe(404)
   })
 
-  it('put_NewAssignment_CreatesPendingAssignmentWithNewContract', async () => {
+  it('put_NewAssignment_Returns204AndCreatesActiveAssignmentWithNewContract', async () => {
     const vaultId = await createSecondVault()
-    const result = await call(axiosClient.put(`/owner/vaults/${vaultId}/executor`, { executorId: 21 }))
-    expect(result.status).toBe(200)
-    expect(result.data).toMatchObject({ vaultId, executorId: 21, status: 'Pending' })
-    expect(result.data.contractNumber).toMatch(/^HD-UQ-\d{4}-\d{4}$/)
-    expect(result.data.contractNumber).not.toBe('HD-UQ-2026-0001')
+    expect((await call(axiosClient.put(`/owner/vaults/${vaultId}/executor`, { executorId: 21 }))).status).toBe(204)
+    const assignment = (await axiosClient.get(`/owner/vaults/${vaultId}/executor`)).data
+    expect(assignment).toMatchObject({ vaultId, executorId: 21, status: 'Active' })
+    expect(assignment.contractNumber).toMatch(/^HD-UQ-\d{4}-\d{4}$/)
+    expect(assignment.contractNumber).not.toBe('HD-UQ-2026-0001')
   })
 
-  it('put_ChangeExecutor_ReplacesAssignmentAndResetsToPending', async () => {
-    const result = await call(axiosClient.put('/owner/vaults/1/executor', { executorId: 22 }))
-    expect(result.data).toMatchObject({ executorId: 22, status: 'Pending' })
-    expect((await axiosClient.get('/owner/vaults/1/executor')).data.executorId).toBe(22)
+  it('put_ChangeExecutor_ReplacesAssignmentAndKeepsItActive', async () => {
+    expect((await call(axiosClient.put('/owner/vaults/1/executor', { executorId: 22 }))).status).toBe(204)
+    expect((await axiosClient.get('/owner/vaults/1/executor')).data).toMatchObject({ executorId: 22, status: 'Active' })
   })
 
   it('put_UnknownExecutor_Returns404', async () => {
@@ -93,17 +92,5 @@ describe('mock vault executor', () => {
   it('delete_NoAssignment_Returns404', async () => {
     const vaultId = await createSecondVault()
     expect((await call(axiosClient.delete(`/owner/vaults/${vaultId}/executor`))).status).toBe(404)
-  })
-
-  it('accept_PendingAssignment_BecomesActive', async () => {
-    await axiosClient.put('/owner/vaults/1/executor', { executorId: 22 })
-    const result = await call(axiosClient.post('/owner/vaults/1/executor/accept'))
-    expect(result.status).toBe(200)
-    expect(result.data.status).toBe('Active')
-  })
-
-  it('accept_NoAssignment_Returns404', async () => {
-    const vaultId = await createSecondVault()
-    expect((await call(axiosClient.post(`/owner/vaults/${vaultId}/executor/accept`))).status).toBe(404)
   })
 })

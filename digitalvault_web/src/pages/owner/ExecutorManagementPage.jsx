@@ -1,7 +1,7 @@
 import { Mail, MapPin, Phone, Scale, UserCog } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { Alert, Button, Form } from 'react-bootstrap'
-import { assignExecutor, revokeExecutor, simulateExecutorAccept } from '../../callapi/ownerApi'
+import { assignExecutor, revokeExecutor } from '../../callapi/ownerApi'
 import AppToast from '../../components/common/AppToast'
 import MockNotice from '../../components/common/MockNotice'
 import ExecutorLegalModal from '../../components/owner/ExecutorLegalModal'
@@ -13,7 +13,7 @@ import { MOCK_MODE } from '../../mocks/mode'
 import { countVaultAssets, executorBadgeClass, executorStatusLabel } from '../../utils/executor'
 import { formatDate } from '../../utils/proofOfLife'
 
-function ExecutorCard({ executor, assetCount, showSimulation, busy, onChange, onRevoke, onLegal, onAccept }) {
+function ExecutorCard({ executor, assetCount, onChange, onRevoke, onLegal }) {
   return (
     <section className="av-panel d-flex flex-column gap-3" aria-label="Người thi hành hiện tại">
       <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
@@ -65,13 +65,6 @@ function ExecutorCard({ executor, assetCount, showSimulation, busy, onChange, on
         {assetCount !== null && <span>{`Phạm vi: ${assetCount} tài sản`}</span>}
       </div>
 
-      {showSimulation && executor.status === 'Pending' && (
-        <div>
-          <button type="button" className="av-ghost-btn" disabled={busy} onClick={onAccept}>
-            Mô phỏng Executor chấp nhận
-          </button>
-        </div>
-      )}
     </section>
   )
 }
@@ -79,14 +72,13 @@ function ExecutorCard({ executor, assetCount, showSimulation, busy, onChange, on
 function VaultExecutor({ vault, assetCount, proofOfLife, mockMode, notify }) {
   const { status, data: executor, error, reload, apply } = useVaultExecutor(vault.vaultId)
   const [dialog, setDialog] = useState(null)
-  const [accepting, setAccepting] = useState(false)
   const closeDialog = () => setDialog(null)
 
   const handleAssign = async (executorId) => {
     const result = await assignExecutor(vault.vaultId, executorId)
     apply(result)
     setDialog(null)
-    notify({ title: 'Đã gửi lời ủy quyền', detail: `Đang chờ ${result.fullName} chấp nhận.` })
+    notify({ title: 'Đã gán người thi hành', detail: `${result.fullName} là Executor của kho này.` })
   }
 
   const handleRevoke = async () => {
@@ -94,16 +86,6 @@ function VaultExecutor({ vault, assetCount, proofOfLife, mockMode, notify }) {
     apply(null)
     setDialog(null)
     notify({ title: 'Đã thu hồi ủy quyền', detail: 'Kho này hiện chưa có người thi hành.' })
-  }
-
-  const handleAccept = async () => {
-    setAccepting(true)
-    try {
-      apply(await simulateExecutorAccept(vault.vaultId))
-      notify({ title: 'Executor đã chấp nhận', detail: 'Lời ủy quyền đã có hiệu lực.' })
-    } finally {
-      setAccepting(false)
-    }
   }
 
   if (status === 'loading') {
@@ -132,12 +114,9 @@ function VaultExecutor({ vault, assetCount, proofOfLife, mockMode, notify }) {
         <ExecutorCard
           executor={executor}
           assetCount={assetCount}
-          showSimulation={mockMode !== 'off'}
-          busy={accepting}
           onChange={() => setDialog('pick')}
           onRevoke={() => setDialog('revoke')}
           onLegal={() => setDialog('legal')}
-          onAccept={handleAccept}
         />
       ) : (
         <section className="av-panel av-empty" aria-label="Chưa có người thi hành">
@@ -149,7 +128,7 @@ function VaultExecutor({ vault, assetCount, proofOfLife, mockMode, notify }) {
       )}
 
       {dialog === 'pick' && (
-        <ExecutorPickerModal currentExecutorId={executor?.executorId} onConfirm={handleAssign} onClose={closeDialog} />
+        <ExecutorPickerModal currentExecutorId={executor?.executorId} mockMode={mockMode} onConfirm={handleAssign} onClose={closeDialog} />
       )}
       {dialog === 'revoke' && executor && <RevokeExecutorModal executor={executor} onConfirm={handleRevoke} onClose={closeDialog} />}
       {dialog === 'legal' && executor && (
@@ -218,7 +197,14 @@ export default function ExecutorManagementPage({ mockMode = MOCK_MODE }) {
         )}
       </section>
 
-      <MockNotice mode={mockMode} />
+      <MockNotice
+        mode={mockMode}
+        message={
+          mockMode === 'hybrid'
+            ? 'Chỉ thao tác gán hoặc đổi Executor được gửi lên máy chủ; thông tin hiển thị, hồ sơ pháp lý và thu hồi là dữ liệu mô phỏng.'
+            : undefined
+        }
+      />
 
       {vault ? (
         <VaultExecutor
@@ -238,7 +224,7 @@ export default function ExecutorManagementPage({ mockMode = MOCK_MODE }) {
           Quy trình thi hành bàn giao
         </h2>
         <ol className="mb-0 fs-13 text-slate-600" style={{ lineHeight: 1.7 }}>
-          <li>Bạn chọn Executor và gửi lời ủy quyền; Executor cần chấp nhận để hợp đồng có hiệu lực.</li>
+          <li>Bạn chọn một Executor đang hoạt động để ủy quyền cho kho; việc gán có hiệu lực ngay.</li>
           <li>Khi điểm danh sự sống quá hạn và hết ân hạn, Executor được thông báo để bắt đầu bàn giao.</li>
           <li>Executor nộp giấy chứng tử, người xác minh pháp lý kiểm tra trước khi tài sản được mở cho người thụ hưởng.</li>
         </ol>

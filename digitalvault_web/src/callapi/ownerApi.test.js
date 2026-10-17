@@ -23,7 +23,6 @@ import {
   revokeExecutor,
   saveProofOfLife,
   setTwoFactor,
-  simulateExecutorAccept,
   simulateTimePassing,
   updateAsset,
   updateBeneficiaryAllocation,
@@ -167,10 +166,24 @@ describe('ownerApi', () => {
       expect(axiosClient.get).toHaveBeenCalledWith('/owner/vaults/3/executor')
     })
 
-    it('assignExecutor_VaultAndExecutor_PutsExecutorId', async () => {
-      axiosClient.put.mockResolvedValue({ data: { status: 'Pending' } })
-      await expect(assignExecutor(3, '21')).resolves.toEqual({ status: 'Pending' })
+    it('assignExecutor_VaultAndExecutor_PutsExecutorIdThenReadsTheAssignmentBack', async () => {
+      axiosClient.put.mockResolvedValue({ status: 204 })
+      axiosClient.get.mockResolvedValue({ data: { vaultId: 3, executorId: 21, status: 'Active' } })
+      await expect(assignExecutor(3, '21')).resolves.toEqual({ vaultId: 3, executorId: 21, status: 'Active' })
       expect(axiosClient.put).toHaveBeenCalledWith('/owner/vaults/3/executor', { executorId: 21 })
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/vaults/3/executor')
+    })
+
+    it('assignExecutor_ReadBackUnavailable_FallsBackToMinimalActiveAssignment', async () => {
+      axiosClient.put.mockResolvedValue({ status: 204 })
+      axiosClient.get.mockRejectedValue({ status: 404 })
+      await expect(assignExecutor(3, 21)).resolves.toMatchObject({ vaultId: 3, executorId: 21, fullName: 'Executor #21', status: 'Active' })
+    })
+
+    it('assignExecutor_PutFails_Throws', async () => {
+      axiosClient.put.mockRejectedValue({ status: 409 })
+      await expect(assignExecutor(3, 21)).rejects.toEqual({ status: 409 })
+      expect(axiosClient.get).not.toHaveBeenCalled()
     })
 
     it('revokeExecutor_VaultId_SendsDelete', async () => {
@@ -179,11 +192,7 @@ describe('ownerApi', () => {
       expect(axiosClient.delete).toHaveBeenCalledWith('/owner/vaults/3/executor')
     })
 
-    it('simulateExecutorAccept_VaultId_PostsAccept', async () => {
-      axiosClient.post.mockResolvedValue({ data: { status: 'Active' } })
-      await expect(simulateExecutorAccept(3)).resolves.toEqual({ status: 'Active' })
-      expect(axiosClient.post).toHaveBeenCalledWith('/owner/vaults/3/executor/accept')
-    })
+
   })
 
   describe('proof of life', () => {

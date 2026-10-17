@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { computeProofOfLife } from '../utils/proofOfLife'
 import { LIMITS, isStrongPassword, isValidPhone, validateEmailOnly } from '../utils/validators'
 import { getDb, getFrontendEmail, isMockHybrid, nextId, saveDb } from './db'
+import { forwardToBackend } from './forward'
 import { hasUnknownFields, ownerRoute, problem, route } from './helpers'
 
 // Các API mà BE chưa có (điểm danh, nhật ký, executor, bảo mật...). Dùng được ở cả chế độ mock đầy đủ lẫn hỗn hợp.
@@ -109,8 +110,19 @@ const executorProfile = ({ executorId, fullName, organization, licenseNumber, em
   address,
 })
 
+// Executor thật ở BE không có trong dữ liệu mock nên chỉ biết ID
+const placeholderProfile = (executorId) => ({
+  executorId,
+  fullName: `Executor #${executorId}`,
+  organization: 'Chưa có thông tin hồ sơ',
+  licenseNumber: '—',
+  email: '—',
+  hotline: '—',
+  address: '—',
+})
+
 function executorDto(db, vaultId, assignment) {
-  const profile = db.executors.find((executor) => executor.executorId === assignment.executorId)
+  const profile = db.executors.find((executor) => executor.executorId === assignment.executorId) ?? placeholderProfile(assignment.executorId)
   return {
     vaultId,
     ...executorProfile(profile),
@@ -140,21 +152,27 @@ const executorHandlers = [
     }),
   ),
 
-  // Gán hoặc đổi Executor: luôn tạo hợp đồng ủy quyền mới ở trạng thái chờ Executor chấp nhận
+  // Gán hoặc đổi Executor (BE trả 204). Chế độ hỗn hợp gửi thao tác thật lên BE rồi mới ghi nhận vào dữ liệu mô phỏng;
+  // chế độ mock đầy đủ chỉ nhận Executor có trong danh sách mock. BE không có bước chấp nhận nên trạng thái luôn là Active.
   http.put(
     '*/api/owner/vaults/:vaultId/executor',
-    ownerRoute(({ userId, params, body }) => {
-      if (hasUnknownFields(body, ['executorId']) || !Number.isInteger(body?.executorId)) {
+    ownerRoute(async ({ userId, params, body, request }) => {
+      if (hasUnknownFields(body, ['executorId']) || !Number.isInteger(body?.executorId) || body.executorId < 1) {
         return problem(400, 'Request contains fields outside the contract.')
       }
       const db = getDb()
       const vaultId = Number(params.vaultId)
-      if (!canUseVault(db, userId, vaultId)) return problem(404, 'Vault not found.')
-      if (!db.executors.some((executor) => executor.executorId === body.executorId)) return problem(404, 'Executor not found.')
+      if (isMockHybrid()) {
+        const upstream = await forwardToBackend(request, body)
+        if (!upstream.ok) return upstream
+      } else {
+        if (!canUseVault(db, userId, vaultId)) return problem(404, 'Vault not found.')
+        if (!db.executors.some((executor) => executor.executorId === body.executorId)) return problem(404, 'Executor not found.')
+      }
       const contractNumber = `HD-UQ-${new Date().getFullYear()}-${String(nextId('contract')).padStart(4, '0')}`
-      db.executorAssignments[vaultId] ={ executorId: body.executorId, status: 'Pending', assignedAt: new Date().toISOString(), contractNumber }
+      db.executorAssignments[vaultId] = { executorId: body.executorId, status: 'Active', assignedAt: new Date().toISOString(), contractNumber }
       saveDb()
-      return HttpResponse.json(executorDto(db, vaultId, db.executorAssignments[vaultId]))
+      return new HttpResponse(null, { status: 204 })
     }),
   ),
 
@@ -170,19 +188,6 @@ const executorHandlers = [
     }),
   ),
 
-  // Chỉ có ở mock: giả lập Executor bấm chấp nhận lời ủy quyền
-  http.post(
-    '*/api/owner/vaults/:vaultId/executor/accept',
-    ownerRoute(({ userId, params }) => {
-      const db = getDb()
-      const vaultId = Number(params.vaultId)
-      const assignment = canUseVault(db, userId, vaultId) ? db.executorAssignments[vaultId] : null
-      if (!assignment) return problem(404, 'Executor is not assigned.')
-      assignment.status = 'Active'
-      saveDb()
-      return HttpResponse.json(executorDto(db, vaultId, assignment))
-    }),
-  ),
 ]
 
 // Quên mật khẩu: OTP chỉ tồn tại trong mock và được trả về trong mockOtp để demo (BE thật sẽ gửi qua email).

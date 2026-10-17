@@ -2,15 +2,22 @@ import { UserCog, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Alert, Button, Modal } from 'react-bootstrap'
 import { getExecutors } from '../../callapi/ownerApi'
+import { MOCK_MODE } from '../../mocks/mode'
 import { executorErrorMessage } from '../../utils/executor'
+import TextField from '../common/TextField'
 
 // Hộp thoại chọn Executor để ủy quyền cho một kho. Chỉ mount khi mở nên mỗi lần mở đều tải lại danh sách.
-export default function ExecutorPickerModal({ currentExecutorId, onConfirm, onClose }) {
+// Mock đầy đủ có danh sách ứng viên; chế độ hỗn hợp/thật chưa có API liệt kê Executor nên nhập ID tài khoản Executor.
+export default function ExecutorPickerModal({ currentExecutorId, mockMode = MOCK_MODE, onConfirm, onClose }) {
+  const manual = mockMode !== 'full'
+  const [manualId, setManualId] = useState('')
+  const [manualError, setManualError] = useState('')
   const [candidates, setCandidates] = useState({ status: 'loading', items: [], error: '' })
   const [selectedId, setSelectedId] = useState(currentExecutorId ?? null)
   const [submit, setSubmit] = useState({ busy: false, error: '' })
 
   useEffect(() => {
+    if (manual) return undefined
     let cancelled = false
     getExecutors()
       .then((items) => {
@@ -22,12 +29,20 @@ export default function ExecutorPickerModal({ currentExecutorId, onConfirm, onCl
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [manual])
 
   const handleConfirm = async () => {
+    let executorId = selectedId
+    if (manual) {
+      executorId = Number(manualId)
+      if (!Number.isInteger(executorId) || executorId < 1) {
+        setManualError('ID người thi hành phải là số nguyên dương.')
+        return
+      }
+    }
     setSubmit({ busy: true, error: '' })
     try {
-      await onConfirm(selectedId)
+      await onConfirm(executorId)
     } catch (error) {
       setSubmit({ busy: false, error: executorErrorMessage(error) })
     }
@@ -37,7 +52,7 @@ export default function ExecutorPickerModal({ currentExecutorId, onConfirm, onCl
     if (!submit.busy) onClose()
   }
 
-  const unchanged = selectedId === null || selectedId === currentExecutorId
+  const unchanged = !manual && (selectedId === null || selectedId === currentExecutorId)
 
   return (
     <Modal show onHide={handleClose} centered animation={false} dialogClassName="av-modal" aria-labelledby="executor-picker-title">
@@ -63,15 +78,33 @@ export default function ExecutorPickerModal({ currentExecutorId, onConfirm, onCl
           Executor là luật sư hoặc công chứng viên được bạn ủy quyền thực hiện bàn giao kho khi điều kiện kích hoạt xảy ra.
         </p>
 
-        {candidates.status === 'loading' && (
+        {manual && (
+          <TextField
+            id="executor-id"
+            name="executorId"
+            type="number"
+            min="1"
+            label="ID người thi hành"
+            required
+            disabled={submit.busy}
+            value={manualId}
+            onChange={(event) => {
+              setManualId(event.target.value)
+              setManualError('')
+            }}
+            error={manualError}
+          />
+        )}
+
+        {!manual && candidates.status === 'loading' && (
           <p className="mb-0 d-flex align-items-center gap-2 fs-12 text-slate-500">
             <span className="spinner-border spinner-border-sm text-brand" aria-hidden="true" />
             Đang tải danh sách người thi hành...
           </p>
         )}
-        {candidates.status === 'error' && <Alert variant="danger" className="av-alert mb-0">{candidates.error}</Alert>}
+        {!manual && candidates.status === 'error' && <Alert variant="danger" className="av-alert mb-0">{candidates.error}</Alert>}
 
-        {candidates.status === 'ready' && (
+        {!manual && candidates.status === 'ready' && (
           <div role="radiogroup" aria-label="Danh sách người thi hành" className="d-flex flex-column gap-2">
             {candidates.items.map((item) => (
               <label key={item.executorId} className="av-info-box d-flex align-items-start gap-3" style={{ cursor: 'pointer' }}>

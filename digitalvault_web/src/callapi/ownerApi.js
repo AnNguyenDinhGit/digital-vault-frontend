@@ -116,20 +116,34 @@ export async function getVaultExecutor(vaultId) {
   return data
 }
 
+// Gán hoặc đổi Executor: PUT thật lên BE (204, không trả dữ liệu), sau đó đọc lại bản xem mô phỏng để hiển thị
 export async function assignExecutor(vaultId, executorId) {
-  const { data } = await axiosClient.put(`/owner/vaults/${vaultId}/executor`, { executorId: Number(executorId) })
-  return data
+  const id = Number(executorId)
+  await axiosClient.put(`/owner/vaults/${vaultId}/executor`, { executorId: id })
+  try {
+    return await getVaultExecutor(vaultId)
+  } catch {
+    // Không có bản xem (không chạy mock): chỉ biết ID vừa gán
+    return {
+      vaultId,
+      executorId: id,
+      fullName: `Executor #${id}`,
+      organization: 'Chưa có thông tin hồ sơ',
+      licenseNumber: '—',
+      email: '—',
+      hotline: '—',
+      address: '—',
+      status: 'Active',
+      assignedAt: new Date().toISOString(),
+      contractNumber: '—',
+    }
+  }
 }
 
 export async function revokeExecutor(vaultId) {
   await axiosClient.delete(`/owner/vaults/${vaultId}/executor`)
 }
 
-// Chỉ có ở mock: giả lập Executor chấp nhận lời ủy quyền
-export async function simulateExecutorAccept(vaultId) {
-  const { data } = await axiosClient.post(`/owner/vaults/${vaultId}/executor/accept`)
-  return data
-}
 
 // Cài đặt bảo mật (BE chưa có API, đang dùng mock)
 export async function getProfile() {
