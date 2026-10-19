@@ -93,8 +93,8 @@ export async function getBeneficiaries(assetId) {
   const { data } = await axiosClient.get('/owner/beneficiaries', {
     params: assetId === undefined ? undefined : { assetId },
   })
-  // BE giữ cả phân bổ đã thu hồi (Revoked) để lưu lịch sử, giao diện chỉ hiển thị phân bổ đang hiệu lực
-  return data.filter((row) => row.status === 'Active')
+  // BE giữ cả phân bổ đã thu hồi/từ chối để lưu lịch sử; giao diện chỉ hiển thị phân bổ hiệu lực (Active) và đang chờ người thụ hưởng xác nhận (Pending)
+  return data.filter((row) => row.status === 'Active' || row.status === 'Pending')
 }
 
 export async function assignBeneficiary(assetId, { email, allocation }) {
@@ -222,4 +222,10 @@ export async function getOwnerHandovers() {
 // Chỉ hủy được hồ sơ Draft hoặc Rejected; hủy xong kho được sửa lại bình thường
 export async function cancelHandover(requestId) {
   await axiosClient.post(`/owner/handovers/${requestId}/cancel`)
+}
+
+// Chỉ có ở mock: giả lập người thụ hưởng xác nhận lời chỉ định (BE đã có logic nhưng chưa mở API xác nhận)
+export async function simulateBeneficiaryAccept(assetId, beneficiaryId) {
+  const { data } = await axiosClient.post(`/owner/assets/${assetId}/beneficiaries/${beneficiaryId}/simulate-accept`)
+  return data
 }

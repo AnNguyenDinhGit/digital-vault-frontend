@@ -115,7 +115,7 @@ describe('AssetDetailPage assign beneficiary', () => {
     await fill('long.tran@example.com', '50')
     const table = await screen.findByRole('table', { name: 'Danh sách người thụ hưởng' })
     expect(within(table).getByRole('row', { name: /Trần Bảo Long/ })).toHaveTextContent('50%')
-    expect(screen.getByText('Đã phân bổ 50%')).toBeInTheDocument()
+    expect(within(table).getByRole('row', { name: /Trần Bảo Long/ })).toHaveTextContent('Chờ xác nhận')
   })
 
   it('assign_UnregisteredEmail_ShowsNotFoundError', async () => {
@@ -135,10 +135,11 @@ describe('AssetDetailPage assign beneficiary', () => {
   })
 
   it('assign_AllocationOverRemaining_ShowsRemainingError', async () => {
+    // Chỉ tỷ lệ của người đã xác nhận (Active) mới chiếm phần trăm nên seed rồi mô phỏng xác nhận trước
+    await axiosClient.post('/owner/assets/4/beneficiaries', { email: 'long.tran@example.com', allocation: 70 })
+    await axiosClient.post('/owner/assets/4/beneficiaries/2/simulate-accept')
     renderDetail(4)
     await waitForDetail()
-    await fill('long.tran@example.com', '70')
-    await screen.findByRole('table', { name: 'Danh sách người thụ hưởng' })
     const form = await fill('mai.nguyen@example.com', '40')
     expect(within(form).getByText('Chỉ còn 30% có thể phân bổ.')).toBeInTheDocument()
   })
@@ -203,15 +204,54 @@ describe('AssetDetailPage group A details', () => {
     expect(screen.getByText('Còn chưa phân bổ 100%')).toBeInTheDocument()
   })
 
-  it('allocation_AfterAssign_UpdatesBarAndRemaining', async () => {
+  it('allocation_AfterAssign_ShowsPendingRowAndKeepsAllocationUntilConfirmed', async () => {
     renderDetail(4)
     await waitForDetail()
     const form = screen.getByRole('form', { name: 'Chỉ định người thụ hưởng' })
     await userEvent.type(within(form).getByLabelText(/^Email người thụ hưởng/), 'long.tran@example.com')
     await userEvent.type(within(form).getByLabelText(/^Tỷ lệ phân bổ/), '50')
     await userEvent.click(within(form).getByRole('button', { name: 'Chỉ định' }))
-    expect(await screen.findByText('Còn chưa phân bổ 50%')).toBeInTheDocument()
-    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ đã phân bổ' })).toHaveAttribute('aria-valuenow', '50')
+    const table = await screen.findByRole('table', { name: 'Danh sách người thụ hưởng' })
+    expect(within(table).getByText('Chờ xác nhận')).toBeInTheDocument()
+    expect(screen.getByText('Còn chưa phân bổ 100%')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ đã phân bổ' })).toHaveAttribute('aria-valuenow', '0')
+  })
+
+  describe('pending beneficiary', () => {
+    const seedPending = () => axiosClient.post('/owner/assets/4/beneficiaries', { email: 'long.tran@example.com', allocation: 50 })
+
+    it('pending_Row_ShowsWaitingBadgeAndExplanation', async () => {
+      await seedPending()
+      renderDetail(4)
+      await waitForDetail()
+      expect(screen.getByText('Chờ xác nhận')).toBeInTheDocument()
+      expect(screen.getByText(/chưa được tính vào tỷ lệ phân bổ/)).toBeInTheDocument()
+      expect(screen.getByText('1 người thụ hưởng')).toBeInTheDocument()
+    })
+
+    it('pending_Row_DoesNotCountInAllocationBar', async () => {
+      await seedPending()
+      renderDetail(4)
+      await waitForDetail()
+      expect(screen.getByRole('progressbar', { name: 'Tỷ lệ đã phân bổ' })).toHaveAttribute('aria-valuenow', '0')
+      expect(screen.getByText('Đã phân bổ 0%')).toBeInTheDocument()
+    })
+
+    it('pending_FullMock_OffersSimulatedAcceptanceThatMakesItActive', async () => {
+      await seedPending()
+      renderWithProviders(<AssetDetailPage mockMode="full" />, { route: '/owner/assets/4', path: '/owner/assets/:assetId' })
+      await waitForDetail()
+      await userEvent.click(screen.getByRole('button', { name: 'Mô phỏng xác nhận' }))
+      expect(await screen.findByText('Đã phân bổ 50%')).toBeInTheDocument()
+      expect(screen.queryByText('Chờ xác nhận')).not.toBeInTheDocument()
+    })
+
+    it('pending_Hybrid_HasNoSimulatedAcceptanceBecauseBackendOwnsIt', async () => {
+      await seedPending()
+      renderWithProviders(<AssetDetailPage mockMode="hybrid" />, { route: '/owner/assets/4', path: '/owner/assets/:assetId' })
+      await waitForDetail()
+      expect(screen.queryByRole('button', { name: 'Mô phỏng xác nhận' })).not.toBeInTheDocument()
+    })
   })
 
   it('beneficiaries_Row_ShowsInitialsAvatar', async () => {

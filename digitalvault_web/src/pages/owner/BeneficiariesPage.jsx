@@ -25,6 +25,9 @@ function StatBox({ label, icon: Icon, tone, children }) {
   )
 }
 
+// Các hộp thoại sửa/gỡ chỉ làm việc với phân bổ đang hiệu lực, bỏ phân bổ chờ xác nhận
+const onlyActive = (person) => ({ ...person, items: person.items.filter((item) => item.status !== 'Pending') })
+
 // Trang "Người thụ hưởng": gom theo từng người, tìm kiếm và chỉ định thêm người thụ hưởng
 export default function BeneficiariesPage() {
   const { status, error, assets, beneficiaries, reload } = useOwnerCatalog()
@@ -133,8 +136,8 @@ export default function BeneficiariesPage() {
                   <BeneficiaryPersonCard
                     key={person.beneficiaryId}
                     person={person}
-                    onEdit={(target) => setAction({ type: 'edit', person: target })}
-                    onRemove={(target) => setAction({ type: 'remove', person: target })}
+                    onEdit={(target) => setAction({ type: 'edit', person: onlyActive(target) })}
+                    onRemove={(target) => setAction({ type: 'remove', person: onlyActive(target) })}
                   />
                 ))}
               </div>

@@ -76,9 +76,15 @@ describe('ownerApi', () => {
     await expect(getAssets()).resolves.toEqual([{ assetId: 1, status: 'Active' }])
   })
 
-  it('getBeneficiaries_RevokedAllocations_AreHidden', async () => {
-    axiosClient.get.mockResolvedValue({ data: [{ beneficiaryId: 1, status: 'Active' }, { beneficiaryId: 2, status: 'Revoked' }] })
-    await expect(getBeneficiaries()).resolves.toEqual([{ beneficiaryId: 1, status: 'Active' }])
+  it('getBeneficiaries_RevokedAndRejectedAllocations_AreHiddenButPendingIsKept', async () => {
+    const rows = [
+      { beneficiaryId: 1, status: 'Active' },
+      { beneficiaryId: 2, status: 'Revoked' },
+      { beneficiaryId: 3, status: 'Pending' },
+      { beneficiaryId: 4, status: 'Rejected' },
+    ]
+    axiosClient.get.mockResolvedValue({ data: rows })
+    await expect(getBeneficiaries()).resolves.toEqual([rows[0], rows[2]])
   })
 
   it('getAsset_WithId_GetsAssetById', async () => {

@@ -1,8 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login, register } from '../../callapi/authApi'
+import axiosClient from '../../callapi/axiosClient'
 import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
@@ -91,6 +92,52 @@ describe('BeneficiariesPage list', () => {
     expect(screen.queryByRole('article', { name: 'Trần Bảo Long' })).not.toBeInTheDocument()
   })
 
+  describe('pending beneficiaries', () => {
+    // Quân chỉ có phân bổ chờ xác nhận; Long vừa có phân bổ hiệu lực vừa có thêm một phân bổ chờ xác nhận ở tài sản 4
+    async function seedPending() {
+      await axiosClient.post('/owner/assets/4/beneficiaries', { email: 'quan.le@example.com', allocation: 30 })
+      await axiosClient.post('/owner/assets/4/beneficiaries', { email: 'long.tran@example.com', allocation: 20 })
+    }
+
+    it('card_OnlyPendingAllocations_ShowsBadgeAndDisablesEditAndRemove', async () => {
+      await seedPending()
+      renderPage()
+      await waitForPage()
+      const card = screen.getByRole('article', { name: 'Lê Minh Quân' })
+      expect(within(card).getByText('Chờ xác nhận')).toBeInTheDocument()
+      expect(within(card).getByRole('button', { name: 'Sửa phân quyền' })).toBeDisabled()
+      expect(within(card).getByRole('button', { name: 'Xóa' })).toBeDisabled()
+    })
+
+    it('card_ActiveAndPendingMixed_StillAllowsEditingTheActiveOnes', async () => {
+      await seedPending()
+      renderPage()
+      await waitForPage()
+      const card = screen.getByRole('article', { name: 'Trần Bảo Long' })
+      expect(within(card).getByRole('button', { name: 'Sửa phân quyền' })).toBeEnabled()
+      await userEvent.click(within(card).getByRole('button', { name: 'Sửa phân quyền' }))
+      const dialog = screen.getByRole('dialog', { name: 'Sửa Phân Quyền Người Thụ Hưởng' })
+      expect(within(dialog).queryByLabelText(/Kênh YouTube/)).not.toBeInTheDocument()
+      expect(within(dialog).getAllByRole('spinbutton')).toHaveLength(3)
+    })
+
+    it('removeModal_ActiveAndPendingMixed_ListsOnlyActiveAllocations', async () => {
+      await seedPending()
+      renderPage()
+      await waitForPage()
+      await userEvent.click(within(screen.getByRole('article', { name: 'Trần Bảo Long' })).getByRole('button', { name: 'Xóa' }))
+      const list = within(screen.getByRole('dialog', { name: 'Xóa Người Thụ Hưởng' })).getByRole('list', { name: 'Tài sản bị ảnh hưởng' })
+      expect(within(list).getAllByRole('listitem')).toHaveLength(3)
+    })
+
+    it('stats_PendingPeople_AreStillCountedAsDesignated', async () => {
+      await seedPending()
+      renderPage()
+      await waitForPage()
+      expect(within(screen.getByRole('group', { name: 'NGƯỜI THỤ HƯỞNG' })).getByText('03')).toBeInTheDocument()
+    })
+  })
+
   it('stats_Ready_CountsPeopleAndAllocatedAssets', async () => {
     renderPage()
     await waitForPage()
@@ -176,18 +223,12 @@ describe('BeneficiariesPage add beneficiary', () => {
   })
 
   it('addModal_AllocationOverRemaining_ShowsRemainingError', async () => {
+    // Chỉ tỷ lệ của người đã xác nhận (Active) mới chiếm phần trăm nên seed rồi mô phỏng xác nhận trước
+    await axiosClient.post('/owner/assets/6/beneficiaries', { email: 'long.tran@example.com', allocation: 70 })
+    await axiosClient.post('/owner/assets/6/beneficiaries/2/simulate-accept')
     renderPage()
     await waitForPage()
-    let dialog = await openModal()
-    await userEvent.selectOptions(within(dialog).getByLabelText(/^Tài sản/), '6')
-    await userEvent.type(within(dialog).getByLabelText(/^Email người thụ hưởng/), 'long.tran@example.com')
-    await userEvent.type(within(dialog).getByLabelText(/^Tỷ lệ phân bổ/), '70')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Chỉ định' }))
-    // Đợi modal đóng và danh sách tải lại xong rồi mới mở modal lần hai
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    await waitForPage()
-
-    dialog = await openModal()
+    const dialog = await openModal()
     await userEvent.selectOptions(within(dialog).getByLabelText(/^Tài sản/), '6')
     await userEvent.type(within(dialog).getByLabelText(/^Email người thụ hưởng/), 'mai.nguyen@example.com')
     await userEvent.type(within(dialog).getByLabelText(/^Tỷ lệ phân bổ/), '40')

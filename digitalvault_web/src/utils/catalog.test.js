@@ -150,6 +150,19 @@ describe('getAssignableAssets', () => {
     ])
   })
 
+  it('getAssignableAssets_PendingAllocation_DoesNotCountTowardsTotalLikeBackend', () => {
+    const withPending = [
+      {
+        assetId: 9,
+        name: 'Có người chờ xác nhận',
+        type: 'Other',
+        documents: [],
+        beneficiaries: [{ allocation: 70, status: 'Active' }, { allocation: 20, status: 'Pending' }],
+      },
+    ]
+    expect(getAssignableAssets(withPending)[0]).toMatchObject({ allocated: 70, remaining: 30 })
+  })
+
   it('getAssignableAssets_FullyAllocated_AreExcluded', () => {
     expect(getAssignableAssets(withBeneficiaries).map((a) => a.assetId)).toEqual([3, 4])
   })

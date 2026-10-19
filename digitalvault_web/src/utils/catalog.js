@@ -95,7 +95,8 @@ export function filterPeople(people, query) {
 export function getAssignableAssets(assets) {
   return assets
     .map((asset) => {
-      const allocated = Math.round(asset.beneficiaries.reduce((sum, b) => sum + b.allocation, 0) * 100) / 100
+      // BE chỉ tính tỷ lệ của người thụ hưởng đã xác nhận (Active), phân bổ chờ xác nhận chưa chiếm phần trăm
+      const allocated = Math.round(asset.beneficiaries.filter((b) => b.status !== 'Pending').reduce((sum, b) => sum + b.allocation, 0) * 100) / 100
       return { ...asset, allocated, remaining: Math.round((100 - allocated) * 100) / 100 }
     })
     .filter((asset) => asset.remaining > 0)

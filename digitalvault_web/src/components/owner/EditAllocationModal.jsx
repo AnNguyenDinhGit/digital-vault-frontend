@@ -11,7 +11,7 @@ const round2 = (value) => Math.round(value * 100) / 100
 function withMaximum(person, beneficiaries) {
   return person.items.map((item) => {
     const others = beneficiaries
-      .filter((row) => row.assetId === item.assetId && row.beneficiaryId !== person.beneficiaryId)
+      .filter((row) => row.assetId === item.assetId && row.beneficiaryId !== person.beneficiaryId && row.status !== 'Pending')
       .reduce((sum, row) => sum + row.allocation, 0)
     return { ...item, max: round2(100 - others) }
   })

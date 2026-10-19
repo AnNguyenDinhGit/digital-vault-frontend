@@ -41,7 +41,7 @@ export default function AssetCard({ asset, onEdit }) {
               </span>
             ) : (
               <span className="fw-semibold text-ink">
-                {asset.beneficiaries.map((b) => `${b.fullName} (${formatAllocation(b.allocation)})`).join(', ')}
+                {asset.beneficiaries.map((b) => `${b.fullName} (${formatAllocation(b.allocation)}${b.status === 'Pending' ? ', chờ xác nhận' : ''})`).join(', ')}
               </span>
             )}
           </p>
