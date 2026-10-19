@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Alert, Button, Form, Modal } from 'react-bootstrap'
 import { revokeAsset, updateAsset } from '../../callapi/ownerApi'
 import { ASSET_TYPE_LABELS } from '../../utils/catalog'
+import { conflictMessage } from '../../utils/ownerErrors'
 import { validateAsset } from '../../utils/validators'
 import TextField from '../common/TextField'
 
@@ -10,6 +11,7 @@ import TextField from '../common/TextField'
 function assetErrorMessage(error) {
   if (error?.status === 404) return 'Không tìm thấy tài sản. Vui lòng tải lại trang.'
   if (error?.status === 400) return 'Thông tin tài sản không hợp lệ. Vui lòng kiểm tra lại.'
+  if (error?.status === 409) return conflictMessage(error.message)
   return error?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
 }
 

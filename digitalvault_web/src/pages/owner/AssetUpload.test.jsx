@@ -175,6 +175,19 @@ describe('Upload document modal', () => {
     expect(alert).toHaveTextContent('signer certificate not configured')
   })
 
+  it('submit_VaultProtectedByHandover409_ExplainsInsteadOfBlamingBeneficiary', async () => {
+    uploadDocument.mockRejectedValue(new ApiError(409, 'Handover records protect this vault from mutation.'))
+    const user = setupUser()
+    await renderDetail(2)
+    const dialog = await openModal(user)
+    await user.upload(within(dialog).getByLabelText(/^Giấy tờ/), pdf())
+    await user.upload(within(dialog).getByLabelText(/^Chữ ký số rời/), signatureFile())
+    await user.click(within(dialog).getByRole('button', { name: 'Tải lên' }))
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent('Kho này đang có hồ sơ bàn giao')
+    expect(alert).not.toHaveTextContent('Người thụ hưởng không nằm')
+  })
+
   it('cancel_Button_ClosesDialog', async () => {
     const user = setupUser()
     await renderDetail(2)

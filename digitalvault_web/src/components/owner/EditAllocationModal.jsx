@@ -2,6 +2,7 @@ import { Percent, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Alert, Button, Modal } from 'react-bootstrap'
 import { updateBeneficiaryAllocation } from '../../callapi/ownerApi'
+import { ownerMutationErrorMessage } from '../../utils/ownerErrors'
 import TextField from '../common/TextField'
 
 const round2 = (value) => Math.round(value * 100) / 100
@@ -59,12 +60,14 @@ export default function EditAllocationModal({ person, beneficiaries, onClose, on
 
     setBusy(true)
     const failed = []
+    let firstError = null
     for (const row of changedRows) {
       try {
         await updateBeneficiaryAllocation(row.assetId, person.beneficiaryId, values[row.assetId])
         savedAny.current = true
-      } catch {
+      } catch (error) {
         failed.push(row.assetName)
+        firstError ??= error
       }
     }
     if (failed.length === 0) {
@@ -72,7 +75,7 @@ export default function EditAllocationModal({ person, beneficiaries, onClose, on
       return
     }
     setBusy(false)
-    setSubmitError(`Không cập nhật được: ${failed.join(', ')}.`)
+    setSubmitError(`Không cập nhật được: ${failed.join(', ')}. ${ownerMutationErrorMessage(firstError)}`)
   }
 
   return (

@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { Alert, Button, Modal } from 'react-bootstrap'
 import { removeBeneficiary } from '../../callapi/ownerApi'
 import { formatAllocation } from '../../utils/catalog'
+import { ownerMutationErrorMessage } from '../../utils/ownerErrors'
 
 // Modal xác nhận gỡ một người thụ hưởng khỏi mọi tài sản họ đang hưởng. Chỉ mount khi mở.
 // onRemoved: đã gỡ được ít nhất một tài sản (trang cần tải lại); onClose: đóng mà không đổi gì.
@@ -36,7 +37,7 @@ export default function RemoveBeneficiaryModal({ person, onClose, onRemoved }) {
       return
     }
     setBusy(false)
-    setSubmitError(firstError.message || 'Đã có lỗi xảy ra, vui lòng thử lại.')
+    setSubmitError(ownerMutationErrorMessage(firstError))
   }
 
   return (

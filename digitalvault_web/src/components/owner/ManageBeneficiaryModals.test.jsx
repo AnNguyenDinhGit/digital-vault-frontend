@@ -157,6 +157,14 @@ describe('RemoveBeneficiaryModal', () => {
     expect(props.onRemoved).not.toHaveBeenCalled()
   })
 
+  it('confirm_VaultProtectedByHandover409_ExplainsHandoverBlocksTheChange', async () => {
+    server.use(http.post('*/api/owner/assets/:assetId/allocations/:assignmentId/revoke', () => HttpResponse.json({ status: 409, detail: 'Handover records protect this vault from mutation.' }, { status: 409 })))
+    const props = await renderRemove()
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Xác nhận xóa' }))
+    expect(await within(dialog()).findByRole('alert')).toHaveTextContent('Kho này đang có hồ sơ bàn giao')
+    expect(props.onRemoved).not.toHaveBeenCalled()
+  })
+
   it('cancel_Clicked_CallsOnCloseWithoutDeleting', async () => {
     const props = await renderRemove()
     await userEvent.click(within(dialog()).getByRole('button', { name: 'Hủy' }))

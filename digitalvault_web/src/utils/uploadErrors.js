@@ -1,3 +1,5 @@
+import { conflictMessage } from './ownerErrors'
+
 // Chuyển lỗi API upload giấy tờ sang thông báo tiếng Việt
 export function uploadErrorMessage(error) {
   switch (error?.status) {
@@ -11,7 +13,10 @@ export function uploadErrorMessage(error) {
     case 404:
       return 'Không tìm thấy tài sản hoặc người thụ hưởng.'
     case 409:
-      return 'Người thụ hưởng không nằm trong danh sách của tài sản này hoặc tài sản chưa sẵn sàng nhận giấy tờ.'
+      // Chọn người thụ hưởng chưa được phân bổ thì BE nhắc chọn phân bổ hiện có; các lý do khác (hồ sơ bàn giao, tài sản không hoạt động) giải thích riêng
+      return /allocation/i.test(error.message ?? '')
+        ? 'Người thụ hưởng này chưa có phân bổ hiện hành trên tài sản. Hãy chỉ định phân bổ trước hoặc để trống ô người thụ hưởng.'
+        : conflictMessage(error.message)
     case 413:
       return 'File quá lớn. Mỗi file tối đa 10 MB.'
     case 503:
