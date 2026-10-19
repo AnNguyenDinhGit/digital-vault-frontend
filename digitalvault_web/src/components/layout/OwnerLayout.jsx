@@ -1,4 +1,4 @@
-import { Activity, FolderLock, History, LogOut, Settings, ShieldCheck, UserCog, Users } from 'lucide-react'
+import { Activity, ClipboardList, FolderLock, History, LogOut, Settings, ShieldCheck, UserCog, Users } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import BrandLogo from '../common/BrandLogo'
@@ -9,6 +9,7 @@ const VAULT_ITEMS = [
   { label: 'Danh mục tài sản số', icon: FolderLock, to: '/owner/assets' },
   { label: 'Người thụ hưởng', icon: Users, to: '/owner/beneficiaries' },
   { label: 'Người thi hành (Executor)', icon: UserCog, to: '/owner/executor' },
+  { label: 'Hồ sơ bàn giao', icon: ClipboardList, to: '/owner/handovers' },
 ]
 
 const MONITOR_ITEMS = [

@@ -73,6 +73,10 @@ async function uploadHandoverDocument({ userId, params, request }, purpose) {
   return HttpResponse.json(handoverDocumentDto(document))
 }
 
+// BE chặn mọi thao tác sửa của Owner trên kho còn hồ sơ bàn giao chưa hủy
+const HANDOVER_LOCK = 'Handover records protect this vault from mutation.'
+const vaultLocked = (db, vaultId) => db.handovers.some((item) => item.vaultId === vaultId && item.status !== 'Cancelled')
+
 function assignmentDto(db, assignment) {
   const user = db.users.find((u) => u.userId === assignment.beneficiaryId)
   return {
@@ -377,6 +381,7 @@ const coreHandlers = [
       const db = getDb()
       const asset = ownedAssets(db, userId).find((a) => a.assetId === Number(params.assetId))
       if (!asset) return problem(404, 'Asset not found.')
+      if (vaultLocked(db, asset.vaultId)) return problem(409, HANDOVER_LOCK)
 
       let form
       try {
@@ -439,6 +444,7 @@ const coreHandlers = [
       const db = getDb()
       const asset = ownedAssets(db, userId).find((a) => a.assetId === Number(params.assetId))
       if (!asset) return problem(404, 'Asset not found.')
+      if (vaultLocked(db, asset.vaultId)) return problem(409, HANDOVER_LOCK)
 
       const allocation = body?.allocation ?? 100
       const hasTwoDecimals = Number.isFinite(allocation) && Math.round(allocation * 100) / 100 === allocation
@@ -472,6 +478,7 @@ const coreHandlers = [
       if (parsed.error) return problem(400, parsed.error)
       const asset = ownedAssets(getDb(), userId).find((a) => a.assetId === Number(params.assetId))
       if (!asset) return problem(404, 'Asset not found.')
+      if (vaultLocked(getDb(), asset.vaultId)) return problem(409, HANDOVER_LOCK)
       if (asset.status !== 'Active') return problem(409, 'Asset is not active.')
       Object.assign(asset, parsed.value)
       saveDb()
@@ -485,6 +492,7 @@ const coreHandlers = [
     ownerRoute(({ userId, params }) => {
       const asset = ownedAssets(getDb(), userId).find((a) => a.assetId === Number(params.assetId))
       if (!asset) return problem(404, 'Asset not found.')
+      if (vaultLocked(getDb(), asset.vaultId)) return problem(409, HANDOVER_LOCK)
       if (asset.status !== 'Active') return problem(409, 'Asset is not active.')
       asset.status = 'Revoked'
       saveDb()
@@ -512,6 +520,7 @@ const coreHandlers = [
       if (!asset) return problem(404, 'Asset not found.')
       const assignment = db.assignments.find((a) => a.assetId === asset.assetId && a.assignmentId === Number(params.assignmentId))
       if (!assignment) return problem(404, 'Assignment not found.')
+      if (vaultLocked(db, asset.vaultId)) return problem(409, HANDOVER_LOCK)
       if (asset.status !== 'Active' || assignment.status !== 'Active') return problem(409, 'Assignment is not active.')
       const others = db.assignments.filter((a) => a.assetId === asset.assetId && a.status === 'Active' && a !== assignment)
       const total = others.reduce((sum, a) => sum + a.allocation, 0)
@@ -531,6 +540,7 @@ const coreHandlers = [
       if (!asset) return problem(404, 'Asset not found.')
       const assignment = db.assignments.find((a) => a.assetId === asset.assetId && a.assignmentId === Number(params.assignmentId))
       if (!assignment) return problem(404, 'Assignment not found.')
+      if (vaultLocked(db, asset.vaultId)) return problem(409, HANDOVER_LOCK)
       if (asset.status !== 'Active' || assignment.status !== 'Active') return problem(409, 'Assignment is not active.')
       assignment.status = 'Revoked'
       saveDb()
@@ -547,6 +557,40 @@ const coreHandlers = [
       if (!found) return problem(404, 'Document not found.')
       const content = `Tệp mô phỏng cho giấy tờ "${found.fileName}".\nĐây là nội dung mô phỏng, không phải bản gốc đã mã hóa lưu trên máy chủ.\n`
       return new HttpResponse(content, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Signature-Valid': 'true' } })
+    }),
+  ),
+
+  // ---- Hồ sơ bàn giao nhìn từ Owner ----
+  http.get(
+    '*/api/owner/handovers',
+    ownerRoute(({ userId, request }) => {
+      const db = getDb()
+      const url = new URL(request.url)
+      const page = Math.max(Number(url.searchParams.get('page')) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize')) || 20, 1), 100)
+      const status = url.searchParams.get('status')
+      const vaultIds = ownedVaults(db, userId).map((vault) => vault.vaultId)
+      const items = db.handovers
+        .filter((item) => vaultIds.includes(item.vaultId) && (!status || item.status === status))
+        .sort((a, b) => b.requestId - a.requestId)
+        .slice((page - 1) * pageSize, page * pageSize)
+        .map(handoverDto)
+      return HttpResponse.json({ page, pageSize, items })
+    }),
+  ),
+
+  // Owner chỉ hủy được hồ sơ Draft hoặc Rejected
+  http.post(
+    '*/api/owner/handovers/:requestId/cancel',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const vaultIds = ownedVaults(db, userId).map((vault) => vault.vaultId)
+      const handover = db.handovers.find((item) => item.requestId === Number(params.requestId) && vaultIds.includes(item.vaultId))
+      if (!handover) return problem(404, 'Handover request not found.')
+      if (!['Draft', 'Rejected'].includes(handover.status)) return problem(409, 'Only draft or rejected requests can be cancelled.')
+      handover.status = 'Cancelled'
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
     }),
   ),
 

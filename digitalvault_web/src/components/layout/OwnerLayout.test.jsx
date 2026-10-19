@@ -63,6 +63,11 @@ describe('OwnerLayout', () => {
     expect(screen.getByRole('link', { name: /Nhật ký hoạt động/ })).toHaveAttribute('href', '/owner/activity-log')
   })
 
+  it('render_HandoversLink_IsEnabled', () => {
+    renderLayout()
+    expect(screen.getByRole('link', { name: /Hồ sơ bàn giao/ })).toHaveAttribute('href', '/owner/handovers')
+  })
+
   it('render_SecuritySettingsLink_IsEnabled', () => {
     renderLayout()
     expect(screen.getByRole('link', { name: /Cài đặt bảo mật/ })).toHaveAttribute('href', '/owner/security')
@@ -72,7 +77,7 @@ describe('OwnerLayout', () => {
     renderLayout()
     const nav = screen.getByRole('navigation', { name: 'Điều hướng Vault Owner' })
     expect(within(nav).queryAllByRole('button')).toHaveLength(0)
-    expect(within(nav).getAllByRole('link')).toHaveLength(6)
+    expect(within(nav).getAllByRole('link')).toHaveLength(7)
   })
 
   it('render_LoggedInUser_ShowsEmailAndInitials', () => {

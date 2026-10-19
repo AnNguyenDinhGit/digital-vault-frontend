@@ -8,10 +8,12 @@ import {
   getAsset,
   getAssets,
   assignExecutor,
+  cancelHandover,
   changePassword,
   getActivityLogs,
   getBeneficiaries,
   getExecutors,
+  getOwnerHandovers,
   getProfile,
   getProofOfLife,
   getVault,
@@ -227,6 +229,20 @@ describe('ownerApi', () => {
       axiosClient.get.mockResolvedValue({ data: blob })
       await expect(downloadDocument(4, 12)).resolves.toBe(blob)
       expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets/4/documents/12/content', { responseType: 'blob' })
+    })
+  })
+
+  describe('owner handovers', () => {
+    it('getOwnerHandovers_Called_GetsFirstPageOf100AndReturnsItems', async () => {
+      axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [{ requestId: 4 }] } })
+      await expect(getOwnerHandovers()).resolves.toEqual([{ requestId: 4 }])
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/handovers', { params: { page: 1, pageSize: 100 } })
+    })
+
+    it('cancelHandover_RequestId_PostsCancel', async () => {
+      axiosClient.post.mockResolvedValue({ status: 204 })
+      await cancelHandover(4)
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/handovers/4/cancel')
     })
   })
 

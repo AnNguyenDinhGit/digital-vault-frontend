@@ -212,3 +212,14 @@ export async function downloadDocument(assetId, documentId) {
   const { data } = await axiosClient.get(`/owner/assets/${assetId}/documents/${documentId}/content`, { responseType: 'blob' })
   return data
 }
+
+// Hồ sơ bàn giao của các kho của Owner (PageDto của BE); lấy trang đầu tối đa 100 hồ sơ
+export async function getOwnerHandovers() {
+  const { data } = await axiosClient.get('/owner/handovers', { params: { page: 1, pageSize: 100 } })
+  return data.items
+}
+
+// Chỉ hủy được hồ sơ Draft hoặc Rejected; hủy xong kho được sửa lại bình thường
+export async function cancelHandover(requestId) {
+  await axiosClient.post(`/owner/handovers/${requestId}/cancel`)
+}
