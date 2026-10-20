@@ -48,3 +48,6 @@ export const ownerRoute = (handler) => route(handler, { role: 'Owner' })
 
 // Endpoint của Executor: BE yêu cầu role Executor, sai role trả 403
 export const executorRoute = (handler) => route(handler, { role: 'Executor' })
+
+// Endpoint của System Admin: BE yêu cầu role Admin, sai role trả 403
+export const adminRoute = (handler) => route(handler, { role: 'Admin' })

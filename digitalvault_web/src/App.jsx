@@ -15,6 +15,7 @@ import ActivityLogPage from './pages/owner/ActivityLogPage'
 import ExecutorHandoverDetailPage from './pages/executor/ExecutorHandoverDetailPage'
 import ExecutorHandoverListPage from './pages/executor/ExecutorHandoverListPage'
 import ExecutorOrdersPage from './pages/executor/ExecutorOrdersPage'
+import AdminUsersPage from './pages/admin/AdminUsersPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
 import ExecutorManagementPage from './pages/owner/ExecutorManagementPage'
 import OwnerHandoversPage from './pages/owner/OwnerHandoversPage'
@@ -131,7 +132,7 @@ function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<RolePlaceholderPage title="Trung tâm kiểm soát quản trị hệ thống" />} />
-              <Route path="users" element={<RolePlaceholderPage title="Quản lý người dùng & Thẩm định KYC" />} />
+              <Route path="users" element={<AdminUsersPage />} />
               <Route path="hsm" element={<RolePlaceholderPage title="Giám sát mã hóa & Mô-đun HSM" />} />
               <Route path="handovers" element={<RolePlaceholderPage title="Giám sát quy trình bàn giao (Handover)" />} />
               <Route path="plans" element={<RolePlaceholderPage title="Gói dịch vụ & Giao dịch thanh toán" />} />
