@@ -15,6 +15,7 @@ import ActivityLogPage from './pages/owner/ActivityLogPage'
 import ExecutorHandoverDetailPage from './pages/executor/ExecutorHandoverDetailPage'
 import ExecutorHandoverListPage from './pages/executor/ExecutorHandoverListPage'
 import ExecutorOrdersPage from './pages/executor/ExecutorOrdersPage'
+import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
 import ExecutorManagementPage from './pages/owner/ExecutorManagementPage'
@@ -136,7 +137,7 @@ function App() {
               <Route path="hsm" element={<RolePlaceholderPage title="Giám sát mã hóa & Mô-đun HSM" />} />
               <Route path="handovers" element={<RolePlaceholderPage title="Giám sát quy trình bàn giao (Handover)" />} />
               <Route path="plans" element={<RolePlaceholderPage title="Gói dịch vụ & Giao dịch thanh toán" />} />
-              <Route path="audit-logs" element={<RolePlaceholderPage title="Tra cứu nhật ký kiểm toán hệ thống" />} />
+              <Route path="audit-logs" element={<AdminAuditLogsPage />} />
               <Route path="settings" element={<RolePlaceholderPage title="Cấu hình tham số hệ thống" />} />
             </Route>
           </Route>

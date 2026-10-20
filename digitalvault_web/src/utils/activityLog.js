@@ -25,7 +25,13 @@ const ACTION_LABELS = {
   CreateHandoverRequest: 'Tạo đơn bàn giao',
   RequestLegalVerification: 'Gửi xác minh pháp lý',
   CompleteHandover: 'Hoàn tất bàn giao',
+  AdminCreateUser: 'Admin tạo người dùng',
+  UpdateUserRoles: 'Admin đổi vai trò người dùng',
+  UpdateUserStatus: 'Admin đổi trạng thái người dùng',
 }
+
+// Danh sách mã thao tác đã biết, dùng cho ô lọc của Admin (BE lọc đúng theo mã, không có API liệt kê)
+export const KNOWN_ACTIONS = Object.keys(ACTION_LABELS)
 
 const ENTITY_LABELS = {
   User: 'Tài khoản',

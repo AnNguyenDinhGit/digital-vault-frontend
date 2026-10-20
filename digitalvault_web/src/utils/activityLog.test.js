@@ -4,6 +4,7 @@ import {
   entityLabel,
   filterLogs,
   getActionOptions,
+  KNOWN_ACTIONS,
   resultInfo,
 } from './activityLog'
 
@@ -14,6 +15,18 @@ const logs = [
   { logId: 2, action: 'Login', entityType: 'User', entityId: 1, timestamp: at(2026, 10, 11, 23, 30), ipAddress: '113.190.234.12', result: 'Failed' },
   { logId: 1, action: 'UploadAssetDocument', entityType: 'DigitalAsset', entityId: 7, timestamp: at(2026, 10, 10, 15), ipAddress: '14.161.42.90', result: 'Pending_Legal' },
 ]
+
+describe('admin actions', () => {
+  it('actionLabel_AdminActions_ReturnsVietnamese', () => {
+    expect(actionLabel('AdminCreateUser')).toBe('Admin tạo người dùng')
+    expect(actionLabel('UpdateUserRoles')).toBe('Admin đổi vai trò người dùng')
+    expect(actionLabel('UpdateUserStatus')).toBe('Admin đổi trạng thái người dùng')
+  })
+
+  it('KNOWN_ACTIONS_Always_ContainsLoginAndAdminActionCodes', () => {
+    expect(KNOWN_ACTIONS).toEqual(expect.arrayContaining(['Login', 'AdminCreateUser', 'UpdateUserRoles', 'UpdateUserStatus']))
+  })
+})
 
 describe('labels', () => {
   it('actionLabel_KnownAction_ReturnsVietnamese', () => {

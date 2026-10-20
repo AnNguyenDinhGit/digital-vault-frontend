@@ -141,3 +141,46 @@ describe('mock admin update roles and status', () => {
     expect((await call(axiosClient.put('/admin/users/999/status', { status: 'Locked' }))).status).toBe(404)
   })
 })
+
+describe('mock admin audit logs', () => {
+  it('getAuditLogs_Default_ReturnsPageDtoNewestFirstWithActorEmail', async () => {
+    const { status, data } = await call(axiosClient.get('/admin/audit-logs'))
+    expect(status).toBe(200)
+    expect(data).toMatchObject({ page: 1, pageSize: 20 })
+    const times = data.items.map((log) => log.timestamp)
+    expect(times).toEqual([...times].sort().reverse())
+    expect(data.items[0]).toEqual(expect.objectContaining({ logId: expect.any(Number), action: expect.any(String), result: expect.any(String) }))
+    expect(data.items.some((log) => log.userEmail === 'owner@example.com')).toBe(true)
+  })
+
+  it('getAuditLogs_ActionFilter_ReturnsExactActionOnly', async () => {
+    const { data } = await axiosClient.get('/admin/audit-logs', { params: { action: 'CreateAsset' } })
+    expect(data.items.length).toBeGreaterThan(0)
+    expect(data.items.every((log) => log.action === 'CreateAsset')).toBe(true)
+  })
+
+  it('getAuditLogs_PageSize_SlicesPages', async () => {
+    const first = (await axiosClient.get('/admin/audit-logs', { params: { page: 1, pageSize: 5 } })).data.items
+    const second = (await axiosClient.get('/admin/audit-logs', { params: { page: 2, pageSize: 5 } })).data.items
+    expect(first).toHaveLength(5)
+    expect(second.map((log) => log.logId)).not.toContain(first[0].logId)
+  })
+
+  it('getAuditLogs_InvalidPaging_Returns400', async () => {
+    expect((await call(axiosClient.get('/admin/audit-logs', { params: { pageSize: 0 } }))).status).toBe(400)
+  })
+
+  it('getAuditLogs_OwnerRole_Returns403', async () => {
+    await axiosClient.post('/auth/login', { email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password })
+    expect((await call(axiosClient.get('/admin/audit-logs'))).status).toBe(403)
+  })
+
+  it('adminActions_AreRecordedInAuditLog', async () => {
+    await axiosClient.post('/admin/users', newUser())
+    await axiosClient.put('/admin/users/2/roles', { roles: ['Owner'] })
+    await axiosClient.put('/admin/users/2/status', { status: 'Locked' })
+    const { data } = await axiosClient.get('/admin/audit-logs', { params: { pageSize: 3 } })
+    expect(data.items.map((log) => log.action)).toEqual(['UpdateUserStatus', 'UpdateUserRoles', 'AdminCreateUser'])
+    expect(data.items.every((log) => log.userEmail === 'admin@example.com')).toBe(true)
+  })
+})

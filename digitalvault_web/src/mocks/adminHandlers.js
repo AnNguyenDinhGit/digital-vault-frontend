@@ -125,4 +125,31 @@ export const adminHandlers = [
       return new HttpResponse(null, { status: 204 })
     }),
   ),
+
+  http.get(
+    '*/api/admin/audit-logs',
+    adminRoute(({ request }) => {
+      const url = new URL(request.url)
+      const paging = readPaging(url)
+      if (!paging) return problem(400, 'Invalid paging parameters.')
+      const action = url.searchParams.get('action')
+      const db = getDb()
+      const items = db.activityLogs
+        .filter((log) => !action?.trim() || log.action === action)
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp) || b.logId - a.logId)
+        .slice((paging.page - 1) * paging.pageSize, paging.page * paging.pageSize)
+        .map((log) => ({
+          logId: log.logId,
+          userId: log.userId ?? null,
+          userEmail: db.users.find((user) => user.userId === log.userId)?.email ?? null,
+          action: log.action,
+          entityType: log.entityType ?? null,
+          entityId: log.entityId ?? null,
+          result: log.result,
+          ipaddress: log.ipAddress ?? null,
+          timestamp: log.timestamp,
+        }))
+      return HttpResponse.json({ ...paging, items })
+    }),
+  ),
 ]
