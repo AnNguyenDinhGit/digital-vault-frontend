@@ -2,6 +2,7 @@ import { Activity, ClipboardList, FolderLock, History, LogOut, Settings, ShieldC
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import BrandLogo from '../common/BrandLogo'
+import PortalSwitcher from './PortalSwitcher'
 
 const COMING_SOON = 'Sắp ra mắt'
 
@@ -88,6 +89,8 @@ export default function OwnerLayout() {
               Dữ liệu tài sản được mã hóa AES-256-GCM trước khi lưu trữ.
             </p>
           </div>
+
+          <PortalSwitcher />
 
           <div className="av-user-box">
             <span className="av-avatar">{initialsFromEmail(user?.email)}</span>

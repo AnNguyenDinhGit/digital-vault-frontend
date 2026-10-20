@@ -2,6 +2,7 @@ import { CreditCard, History, LayoutDashboard, LogOut, ShieldCheck, SlidersHoriz
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import BrandLogo from '../common/BrandLogo'
+import PortalSwitcher from './PortalSwitcher'
 
 const ADMIN_ITEMS = [
   { label: 'Tổng quan hệ thống', icon: LayoutDashboard, to: '/admin/dashboard' },
@@ -74,6 +75,8 @@ export default function AdminLayout() {
               Giám sát hạ tầng mã hóa HSM L4, quản lý người dùng và rà soát audit log.
             </p>
           </div>
+
+          <PortalSwitcher />
 
           <div className="av-user-box">
             <span className="av-avatar">{initialsFromEmail(user?.email)}</span>

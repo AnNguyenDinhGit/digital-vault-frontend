@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as authApi from '../callapi/authApi'
 import { setUnauthorizedHandler } from '../callapi/axiosClient'
+import { clearPortalPreference } from '../utils/portalPreference'
 import { AuthContext, USER_STORAGE_KEY } from './authContextInstance'
 
 // Đọc user đã lưu, trả null nếu không có hoặc dữ liệu hỏng
@@ -101,6 +102,8 @@ export function AuthProvider({ children }) {
     } catch {
       // Vẫn xoá phiên phía FE dù BE lỗi
     } finally {
+      // Đăng xuất chủ động thì quên cổng đã chọn; phiên hết hạn (401) thì giữ để đăng nhập lại vào đúng cổng
+      clearPortalPreference()
       clearUser()
     }
   }, [clearUser])

@@ -2,6 +2,7 @@ import { Activity, Bell, FileCheck2, FolderLock, Key, LogOut, ShieldCheck } from
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import BrandLogo from '../common/BrandLogo'
+import PortalSwitcher from './PortalSwitcher'
 
 const BENEFICIARY_ITEMS = [
   { label: 'Tài sản thụ hưởng', icon: FolderLock, to: '/beneficiary/assets' },
@@ -72,6 +73,8 @@ export default function BeneficiaryLayout() {
               Tiếp nhận, kiểm tra phân bổ và xác nhận nhận tài sản di sản số.
             </p>
           </div>
+
+          <PortalSwitcher />
 
           <div className="av-user-box">
             <span className="av-avatar">{initialsFromEmail(user?.email)}</span>

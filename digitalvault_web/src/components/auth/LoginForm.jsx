@@ -4,6 +4,7 @@ import { Alert, Button } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { validateLogin } from '../../utils/validators'
+import { getPortalPreference } from '../../utils/portalPreference'
 import { getDefaultRouteForRoles } from '../../utils/roleRoutes'
 import TextField from '../common/TextField'
 import ForgotPasswordModal from './ForgotPasswordModal'
@@ -48,7 +49,7 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
 
   // Điều hướng theo role sau khi đã có phiên (đăng nhập thường hoặc sau bước nhập mã hai lớp)
   const enterWorkspace = (user) => {
-    const targetRoute = getDefaultRouteForRoles(user?.roles)
+    const targetRoute = getDefaultRouteForRoles(user?.roles, getPortalPreference())
     if (targetRoute) {
       navigate(targetRoute, { replace: true })
     } else {

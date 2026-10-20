@@ -122,6 +122,8 @@ describe('AdminAuditLogsPage filter and paging', () => {
     await waitForPage()
     await axiosClient.put('/admin/users/2/status', { status: 'Disabled' })
     await userEvent.click(screen.getByRole('button', { name: 'Làm mới' }))
-    expect(await screen.findByText('Admin đổi trạng thái người dùng')).toBeInTheDocument()
+    // Chỉ tìm trong bảng vì nhãn này cũng có trong ô lọc thao tác
+    const table = screen.getByRole('table', { name: 'Nhật ký kiểm toán' })
+    expect(await within(table).findByText('Admin đổi trạng thái người dùng')).toBeInTheDocument()
   })
 })

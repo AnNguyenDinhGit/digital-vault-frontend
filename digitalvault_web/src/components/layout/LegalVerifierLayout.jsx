@@ -2,6 +2,7 @@ import { AlertCircle, BookOpen, FileCheck2, KeyRound, Lock, LogOut, Search, Shie
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import BrandLogo from '../common/BrandLogo'
+import PortalSwitcher from './PortalSwitcher'
 
 const VERIFIER_ITEMS = [
   { label: 'Hồ sơ chờ thẩm định', icon: FileCheck2, to: '/verifier/pending' },
@@ -74,6 +75,8 @@ export default function LegalVerifierLayout() {
               Thẩm định hồ sơ nhân thân, kiểm tra trích lục và cấp dấu niêm phong số RFC 3161.
             </p>
           </div>
+
+          <PortalSwitcher />
 
           <div className="av-user-box">
             <span className="av-avatar">{initialsFromEmail(user?.email)}</span>
