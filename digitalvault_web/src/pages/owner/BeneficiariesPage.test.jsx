@@ -1,10 +1,9 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login, register } from '../../callapi/authApi'
-import axiosClient from '../../callapi/axiosClient'
-import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
+import { DEMO_ACCOUNT, getDb, nextId, resetMockDb, saveDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import BeneficiariesPage from './BeneficiariesPage'
@@ -94,9 +93,9 @@ describe('BeneficiariesPage list', () => {
 
   describe('pending beneficiaries', () => {
     // Quân chỉ có phân bổ chờ xác nhận; Long vừa có phân bổ hiệu lực vừa có thêm một phân bổ chờ xác nhận ở tài sản 4
-    async function seedPending() {
-      await axiosClient.post('/owner/assets/4/beneficiaries', { email: 'quan.le@example.com', allocation: 30 })
-      await axiosClient.post('/owner/assets/4/beneficiaries', { email: 'long.tran@example.com', allocation: 20 })
+    function seedPending() {
+      seedPendingAssignment(4, 'quan.le@example.com', 30)
+      seedPendingAssignment(4, 'long.tran@example.com', 20)
     }
 
     it('card_OnlyPendingAllocations_ShowsBadgeAndDisablesEditAndRemove', async () => {
@@ -171,6 +170,14 @@ describe('BeneficiariesPage without data', () => {
   })
 })
 
+// Seed một phân bổ đang chờ xác nhận (BE hiện chỉ định xong là Active, nhưng FE vẫn xử lý Pending nếu BE trả về)
+function seedPendingAssignment(assetId, email, allocation) {
+  const db = getDb()
+  const user = db.users.find((item) => item.email === email)
+  db.assignments.push({ assignmentId: nextId('assignment'), assetId, beneficiaryId: user.userId, allocation, status: 'Pending' })
+  saveDb()
+}
+
 describe('BeneficiariesPage add beneficiary', () => {
   const openModal = async () => {
     await userEvent.click(screen.getByRole('button', { name: 'Thêm người thụ hưởng' }))
@@ -223,12 +230,18 @@ describe('BeneficiariesPage add beneficiary', () => {
   })
 
   it('addModal_AllocationOverRemaining_ShowsRemainingError', async () => {
-    // Chỉ tỷ lệ của người đã xác nhận (Active) mới chiếm phần trăm nên seed rồi mô phỏng xác nhận trước
-    await axiosClient.post('/owner/assets/6/beneficiaries', { email: 'long.tran@example.com', allocation: 70 })
-    await axiosClient.post('/owner/assets/6/beneficiaries/2/simulate-accept')
     renderPage()
     await waitForPage()
-    const dialog = await openModal()
+    let dialog = await openModal()
+    await userEvent.selectOptions(within(dialog).getByLabelText(/^Tài sản/), '6')
+    await userEvent.type(within(dialog).getByLabelText(/^Email người thụ hưởng/), 'long.tran@example.com')
+    await userEvent.type(within(dialog).getByLabelText(/^Tỷ lệ phân bổ/), '70')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Chỉ định' }))
+    // Đợi modal đóng và danh sách tải lại xong rồi mới mở modal lần hai
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitForPage()
+
+    dialog = await openModal()
     await userEvent.selectOptions(within(dialog).getByLabelText(/^Tài sản/), '6')
     await userEvent.type(within(dialog).getByLabelText(/^Email người thụ hưởng/), 'mai.nguyen@example.com')
     await userEvent.type(within(dialog).getByLabelText(/^Tỷ lệ phân bổ/), '40')

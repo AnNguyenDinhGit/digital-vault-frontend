@@ -223,9 +223,3 @@ export async function getOwnerHandovers() {
 export async function cancelHandover(requestId) {
   await axiosClient.post(`/owner/handovers/${requestId}/cancel`)
 }
-
-// Chỉ có ở mock: giả lập người thụ hưởng xác nhận lời chỉ định (BE đã có logic nhưng chưa mở API xác nhận)
-export async function simulateBeneficiaryAccept(assetId, beneficiaryId) {
-  const { data } = await axiosClient.post(`/owner/assets/${assetId}/beneficiaries/${beneficiaryId}/simulate-accept`)
-  return data
-}

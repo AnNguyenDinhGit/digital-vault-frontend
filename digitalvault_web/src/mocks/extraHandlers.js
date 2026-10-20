@@ -205,24 +205,6 @@ const legalApprovalSimulation = [
   ),
 ]
 
-// Mô phỏng người thụ hưởng xác nhận lời chỉ định (BE đã có logic AcceptBeneficiary nhưng chưa mở endpoint)
-const beneficiaryAcceptSimulation = [
-  http.post(
-    '*/api/owner/assets/:assetId/beneficiaries/:beneficiaryId/simulate-accept',
-    ownerRoute(({ userId, params }) => {
-      const db = getDb()
-      const vaultIds = db.vaults.filter((vault) => vault.ownerId === userId).map((vault) => vault.vaultId)
-      const asset = db.assets.find((item) => item.assetId === Number(params.assetId) && vaultIds.includes(item.vaultId))
-      const assignment = asset && db.assignments.find((item) => item.assetId === asset.assetId && item.beneficiaryId === Number(params.beneficiaryId) && item.status === 'Pending')
-      if (!assignment) return problem(404, 'Pending beneficiary assignment not found.')
-      assignment.status = 'Active'
-      saveDb()
-      const user = db.users.find((item) => item.userId === assignment.beneficiaryId)
-      return HttpResponse.json({ assetId: asset.assetId, beneficiaryId: assignment.beneficiaryId, fullName: user?.fullName ?? '', allocation: assignment.allocation, status: assignment.status })
-    }),
-  ),
-]
-
 // Quên mật khẩu: OTP chỉ tồn tại trong mock và được trả về trong mockOtp để demo (BE thật sẽ gửi qua email).
 // Email không tồn tại vẫn nhận phản hồi giống hệt nhưng không có OTP để không lộ tài khoản nào đã đăng ký.
 const OTP_TTL_MS = 5 * 60 * 1000
@@ -384,4 +366,4 @@ const securityHandlers = [
   ),
 ]
 
-export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...legalApprovalSimulation, ...beneficiaryAcceptSimulation, ...securityHandlers, ...passwordResetHandlers]
+export const extraHandlers = [...proofOfLifeHandlers, ...activityLogHandlers, ...executorHandlers, ...legalApprovalSimulation, ...securityHandlers, ...passwordResetHandlers]

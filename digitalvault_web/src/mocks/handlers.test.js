@@ -221,8 +221,6 @@ describe('mock owner beneficiaries', () => {
       axiosClient.post(`/owner/assets/${asset.assetId}/beneficiaries`, { email: 'long.tran@example.com', allocation: 70 }),
     )
     expect(first.status).toBe(201)
-    // BE chỉ tính tỷ lệ của người đã xác nhận nên cần mô phỏng xác nhận trước khi kiểm tra tổng
-    await axiosClient.post(`/owner/assets/${asset.assetId}/beneficiaries/${first.data.beneficiaryId}/simulate-accept`)
     const second = await call(
       axiosClient.post(`/owner/assets/${asset.assetId}/beneficiaries`, { email: 'mai.nguyen@example.com', allocation: 40 }),
     )

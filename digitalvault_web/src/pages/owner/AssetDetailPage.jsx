@@ -9,7 +9,7 @@ import AssetTypeIcon from '../../components/owner/AssetTypeIcon'
 import AssignBeneficiaryForm from '../../components/owner/AssignBeneficiaryForm'
 import EditAssetModal from '../../components/owner/EditAssetModal'
 import UploadDocumentModal from '../../components/owner/UploadDocumentModal'
-import { downloadDocument, simulateBeneficiaryAccept } from '../../callapi/ownerApi'
+import { downloadDocument } from '../../callapi/ownerApi'
 import { useAssetDetail } from '../../hooks/useAssetDetail'
 import { MOCK_MODE } from '../../mocks/mode'
 import { assetCode, assetTypeLabel, fileTypeLabel, formatAllocation, getInitials } from '../../utils/catalog'
@@ -59,24 +59,12 @@ export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
   const [toast, setToast] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
   const [downloadError, setDownloadError] = useState('')
-  const [accepting, setAccepting] = useState(false)
   const navigate = useNavigate()
   const closeToast = useCallback(() => setToast(null), [])
 
   const handleUploaded = () => {
     setIsUploadOpen(false)
     refresh()
-  }
-
-  // Chỉ có ở mock đầy đủ: giả lập người thụ hưởng bấm xác nhận trong email
-  const handleSimulateAccept = async (beneficiary) => {
-    setAccepting(true)
-    try {
-      await simulateBeneficiaryAccept(asset.assetId, beneficiary.beneficiaryId)
-      refresh()
-    } finally {
-      setAccepting(false)
-    }
   }
 
   const handleDownload = async (document) => {
@@ -195,16 +183,7 @@ export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
                         </div>
                       </td>
                       <td>{formatAllocation(b.allocation)}</td>
-                      <td>
-                        <div className="d-flex flex-wrap align-items-center gap-2">
-                          <span>{BENEFICIARY_STATUS_LABELS[b.status] ?? b.status}</span>
-                          {b.status === 'Pending' && mockMode === 'full' && (
-                            <button type="button" className="av-ghost-btn" disabled={accepting} onClick={() => handleSimulateAccept(b)}>
-                              Mô phỏng xác nhận
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                      <td>{BENEFICIARY_STATUS_LABELS[b.status] ?? b.status}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -213,7 +192,7 @@ export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
 
             {hasPending && (
               <p className="mb-0 fs-12 text-slate-500">
-                Người thụ hưởng ở trạng thái "Chờ xác nhận" chưa được tính vào tỷ lệ phân bổ và chưa thể sửa hay gỡ cho tới khi họ xác nhận lời chỉ định (BE đã gửi email cho họ).
+                Người thụ hưởng ở trạng thái "Chờ xác nhận" chưa được tính vào tỷ lệ phân bổ và chưa thể sửa hay gỡ cho tới khi họ xác nhận lời chỉ định.
               </p>
             )}
 

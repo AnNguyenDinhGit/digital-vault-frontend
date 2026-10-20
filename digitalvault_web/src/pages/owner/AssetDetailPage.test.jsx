@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
 import axiosClient from '../../callapi/axiosClient'
-import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
+import { DEMO_ACCOUNT, getDb, nextId, resetMockDb, saveDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import AssetDetailPage from './AssetDetailPage'
@@ -85,6 +85,14 @@ describe('AssetDetailPage content', () => {
   })
 })
 
+// Seed một phân bổ đang chờ xác nhận (BE hiện chỉ định xong là Active, nhưng FE vẫn xử lý Pending nếu BE trả về)
+function seedPendingAssignment(assetId, email, allocation) {
+  const db = getDb()
+  const user = db.users.find((item) => item.email === email)
+  db.assignments.push({ assignmentId: nextId('assignment'), assetId, beneficiaryId: user.userId, allocation, status: 'Pending' })
+  saveDb()
+}
+
 describe('AssetDetailPage assign beneficiary', () => {
   const fill = async (email, allocation) => {
     const form = screen.getByRole('form', { name: 'Chỉ định người thụ hưởng' })
@@ -115,7 +123,7 @@ describe('AssetDetailPage assign beneficiary', () => {
     await fill('long.tran@example.com', '50')
     const table = await screen.findByRole('table', { name: 'Danh sách người thụ hưởng' })
     expect(within(table).getByRole('row', { name: /Trần Bảo Long/ })).toHaveTextContent('50%')
-    expect(within(table).getByRole('row', { name: /Trần Bảo Long/ })).toHaveTextContent('Chờ xác nhận')
+    expect(screen.getByText('Đã phân bổ 50%')).toBeInTheDocument()
   })
 
   it('assign_UnregisteredEmail_ShowsNotFoundError', async () => {
@@ -135,11 +143,10 @@ describe('AssetDetailPage assign beneficiary', () => {
   })
 
   it('assign_AllocationOverRemaining_ShowsRemainingError', async () => {
-    // Chỉ tỷ lệ của người đã xác nhận (Active) mới chiếm phần trăm nên seed rồi mô phỏng xác nhận trước
-    await axiosClient.post('/owner/assets/4/beneficiaries', { email: 'long.tran@example.com', allocation: 70 })
-    await axiosClient.post('/owner/assets/4/beneficiaries/2/simulate-accept')
     renderDetail(4)
     await waitForDetail()
+    await fill('long.tran@example.com', '70')
+    await screen.findByRole('table', { name: 'Danh sách người thụ hưởng' })
     const form = await fill('mai.nguyen@example.com', '40')
     expect(within(form).getByText('Chỉ còn 30% có thể phân bổ.')).toBeInTheDocument()
   })
@@ -204,21 +211,19 @@ describe('AssetDetailPage group A details', () => {
     expect(screen.getByText('Còn chưa phân bổ 100%')).toBeInTheDocument()
   })
 
-  it('allocation_AfterAssign_ShowsPendingRowAndKeepsAllocationUntilConfirmed', async () => {
+  it('allocation_AfterAssign_UpdatesBarAndRemaining', async () => {
     renderDetail(4)
     await waitForDetail()
     const form = screen.getByRole('form', { name: 'Chỉ định người thụ hưởng' })
     await userEvent.type(within(form).getByLabelText(/^Email người thụ hưởng/), 'long.tran@example.com')
     await userEvent.type(within(form).getByLabelText(/^Tỷ lệ phân bổ/), '50')
     await userEvent.click(within(form).getByRole('button', { name: 'Chỉ định' }))
-    const table = await screen.findByRole('table', { name: 'Danh sách người thụ hưởng' })
-    expect(within(table).getByText('Chờ xác nhận')).toBeInTheDocument()
-    expect(screen.getByText('Còn chưa phân bổ 100%')).toBeInTheDocument()
-    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ đã phân bổ' })).toHaveAttribute('aria-valuenow', '0')
+    expect(await screen.findByText('Còn chưa phân bổ 50%')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ đã phân bổ' })).toHaveAttribute('aria-valuenow', '50')
   })
 
   describe('pending beneficiary', () => {
-    const seedPending = () => axiosClient.post('/owner/assets/4/beneficiaries', { email: 'long.tran@example.com', allocation: 50 })
+    const seedPending = () => seedPendingAssignment(4, 'long.tran@example.com', 50)
 
     it('pending_Row_ShowsWaitingBadgeAndExplanation', async () => {
       await seedPending()
@@ -237,21 +242,6 @@ describe('AssetDetailPage group A details', () => {
       expect(screen.getByText('Đã phân bổ 0%')).toBeInTheDocument()
     })
 
-    it('pending_FullMock_OffersSimulatedAcceptanceThatMakesItActive', async () => {
-      await seedPending()
-      renderWithProviders(<AssetDetailPage mockMode="full" />, { route: '/owner/assets/4', path: '/owner/assets/:assetId' })
-      await waitForDetail()
-      await userEvent.click(screen.getByRole('button', { name: 'Mô phỏng xác nhận' }))
-      expect(await screen.findByText('Đã phân bổ 50%')).toBeInTheDocument()
-      expect(screen.queryByText('Chờ xác nhận')).not.toBeInTheDocument()
-    })
-
-    it('pending_Hybrid_HasNoSimulatedAcceptanceBecauseBackendOwnsIt', async () => {
-      await seedPending()
-      renderWithProviders(<AssetDetailPage mockMode="hybrid" />, { route: '/owner/assets/4', path: '/owner/assets/:assetId' })
-      await waitForDetail()
-      expect(screen.queryByRole('button', { name: 'Mô phỏng xác nhận' })).not.toBeInTheDocument()
-    })
   })
 
   it('beneficiaries_Row_ShowsInitialsAvatar', async () => {

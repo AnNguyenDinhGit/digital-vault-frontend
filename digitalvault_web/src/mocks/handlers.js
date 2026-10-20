@@ -457,7 +457,7 @@ const coreHandlers = [
       if (!target) return problem(404, 'No active account with this email.')
       if (target.userId === userId) return problem(400, 'You cannot assign yourself as beneficiary.')
 
-      // Như BE: người đã được chỉ định (Pending hoặc Active) không chỉ định lại; chỉ tỷ lệ Active được cộng vào tổng
+      // Như BE: người đã được chỉ định (Active hoặc Pending) không chỉ định lại; chỉ tỷ lệ Active được cộng vào tổng
       const onAsset = db.assignments.filter((a) => a.assetId === asset.assetId)
       if (onAsset.some((a) => a.beneficiaryId === target.userId && ['Active', 'Pending'].includes(a.status))) {
         return problem(409, 'This user is already a pending or active beneficiary of the asset.')
@@ -465,7 +465,7 @@ const coreHandlers = [
       const total = onAsset.filter((a) => a.status === 'Active').reduce((sum, a) => sum + a.allocation, 0)
       if (Math.round((total + allocation) * 100) / 100 > 100) return problem(409, 'Total active beneficiary allocation cannot exceed 100 percent.')
 
-      const assignment = { assignmentId: nextId('assignment'), assetId: asset.assetId, beneficiaryId: target.userId, allocation, status: 'Pending' }
+      const assignment = { assignmentId: nextId('assignment'), assetId: asset.assetId, beneficiaryId: target.userId, allocation, status: 'Active' }
       db.assignments.push(assignment)
       if (!target.roles.includes('Beneficiary')) target.roles.push('Beneficiary')
       saveDb()
