@@ -1,4 +1,5 @@
 import axiosClient from './axiosClient'
+import { getAllPages } from './pagedList'
 
 // Mô tả để trống thì gửi null, vì BE coi description là tuỳ chọn
 const optionalText = (value) => {
@@ -7,8 +8,7 @@ const optionalText = (value) => {
 }
 
 export async function getVaults() {
-  const { data } = await axiosClient.get('/owner/vaults')
-  return data
+  return getAllPages('/owner/vaults')
 }
 
 export async function getVault(vaultId) {
@@ -27,7 +27,7 @@ export async function createVault({ name, description }) {
 
 // BE không xoá tài sản mà chỉ đánh dấu Revoked và vẫn trả trong danh sách, nên ẩn các tài sản đã thu hồi
 export async function getAssets() {
-  const { data } = await axiosClient.get('/owner/assets')
+  const data = await getAllPages('/owner/assets')
   return data.filter((asset) => asset.status !== 'Revoked')
 }
 
@@ -90,9 +90,7 @@ export async function simulateTimePassing(days) {
 
 // Bỏ assetId để lấy người thụ hưởng trên mọi tài sản của user
 export async function getBeneficiaries(assetId) {
-  const { data } = await axiosClient.get('/owner/beneficiaries', {
-    params: assetId === undefined ? undefined : { assetId },
-  })
+  const data = await getAllPages('/owner/beneficiaries', assetId === undefined ? {} : { assetId })
   // BE giữ cả phân bổ đã thu hồi/từ chối để lưu lịch sử; giao diện chỉ hiển thị phân bổ hiệu lực (Active) và đang chờ người thụ hưởng xác nhận (Pending)
   return data.filter((row) => row.status === 'Active' || row.status === 'Pending')
 }
@@ -184,8 +182,7 @@ export async function revokeAsset(assetId) {
 
 // Danh sách phân bổ của một tài sản kèm assignmentId (BeneficiaryDto của /owner/beneficiaries không có id này)
 export async function getAllocations(assetId) {
-  const { data } = await axiosClient.get(`/owner/assets/${assetId}/allocations`)
-  return data
+  return getAllPages(`/owner/assets/${assetId}/allocations`)
 }
 
 // BE sửa/thu hồi phân bổ theo assignmentId nên tra id của phân bổ đang hiệu lực theo người thụ hưởng
@@ -215,8 +212,7 @@ export async function downloadDocument(assetId, documentId) {
 
 // Hồ sơ bàn giao của các kho của Owner (PageDto của BE); lấy trang đầu tối đa 100 hồ sơ
 export async function getOwnerHandovers() {
-  const { data } = await axiosClient.get('/owner/handovers', { params: { page: 1, pageSize: 100 } })
-  return data.items
+  return getAllPages('/owner/handovers')
 }
 
 // Sửa tên và mô tả kho; BE từ chối (409) khi kho đã đóng hoặc đang có hồ sơ bàn giao chưa hủy

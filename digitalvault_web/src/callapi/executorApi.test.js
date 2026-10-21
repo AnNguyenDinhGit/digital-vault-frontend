@@ -27,7 +27,7 @@ describe('executorApi', () => {
   it('getAssignments_Called_GetsAssignmentsOfTheExecutor', async () => {
     axiosClient.get.mockResolvedValue({ data: [{ vaultId: 1 }] })
     await expect(getAssignments()).resolves.toEqual([{ vaultId: 1 }])
-    expect(axiosClient.get).toHaveBeenCalledWith('/executor/assignments')
+    expect(axiosClient.get).toHaveBeenCalledWith('/executor/assignments', { params: { page: 1, pageSize: 100 } })
   })
 
   it('createHandover_VaultId_PostsToAssignmentHandovers', async () => {
@@ -39,7 +39,7 @@ describe('executorApi', () => {
   it('getHandovers_Called_GetsList', async () => {
     axiosClient.get.mockResolvedValue({ data: [{ requestId: 1 }] })
     await expect(getHandovers()).resolves.toEqual([{ requestId: 1 }])
-    expect(axiosClient.get).toHaveBeenCalledWith('/executor/handovers')
+    expect(axiosClient.get).toHaveBeenCalledWith('/executor/handovers', { params: { page: 1, pageSize: 100 } })
   })
 
   it('getHandover_RequestId_GetsDetail', async () => {
@@ -113,5 +113,17 @@ describe('executorApi', () => {
     axiosClient.post.mockResolvedValue({ data: { status: 'Approved' } })
     await expect(simulateLegalApproval(7)).resolves.toEqual({ status: 'Approved' })
     expect(axiosClient.post).toHaveBeenCalledWith('/executor/handovers/7/simulate-approval')
+  })
+})
+
+describe('executor list endpoints returning PageDto like the deployed backend', () => {
+  it('getAssignments_PageDto_ReturnsItems', async () => {
+    axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [{ vaultId: 1 }] } })
+    await expect(getAssignments()).resolves.toEqual([{ vaultId: 1 }])
+  })
+
+  it('getHandovers_PageDto_ReturnsItems', async () => {
+    axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [{ requestId: 3 }] } })
+    await expect(getHandovers()).resolves.toEqual([{ requestId: 3 }])
   })
 })

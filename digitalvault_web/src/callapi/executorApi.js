@@ -1,10 +1,10 @@
 import axiosClient from './axiosClient'
+import { getAllPages } from './pagedList'
 
 // API cổng Executor của BE (role Executor): phân công, hồ sơ bàn giao, nộp bằng chứng, xác minh pháp lý, hoàn tất.
 
 export async function getAssignments() {
-  const { data } = await axiosClient.get('/executor/assignments')
-  return data
+  return getAllPages('/executor/assignments')
 }
 
 // Tạo hồ sơ bàn giao ở trạng thái Draft cho kho đã được phân công
@@ -14,8 +14,7 @@ export async function createHandover(vaultId) {
 }
 
 export async function getHandovers() {
-  const { data } = await axiosClient.get('/executor/handovers')
-  return data
+  return getAllPages('/executor/handovers')
 }
 
 export async function getHandover(requestId) {

@@ -49,7 +49,7 @@ describe('ownerApi', () => {
   it('getVaults_Called_GetsVaultsAndReturnsData', async () => {
     axiosClient.get.mockResolvedValue({ data: [{ vaultId: 1 }] })
     await expect(getVaults()).resolves.toEqual([{ vaultId: 1 }])
-    expect(axiosClient.get).toHaveBeenCalledWith('/owner/vaults')
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/vaults', { params: { page: 1, pageSize: 100 } })
   })
 
   it('getVault_WithId_GetsVaultById', async () => {
@@ -73,7 +73,7 @@ describe('ownerApi', () => {
   it('getAssets_Called_GetsAssets', async () => {
     axiosClient.get.mockResolvedValue({ data: [{ assetId: 1 }] })
     await expect(getAssets()).resolves.toEqual([{ assetId: 1 }])
-    expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets')
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets', { params: { page: 1, pageSize: 100 } })
   })
 
   it('getAssets_RevokedAssets_AreHiddenBecauseBackendOnlyMarksThemRevoked', async () => {
@@ -118,13 +118,13 @@ describe('ownerApi', () => {
   it('getBeneficiaries_WithoutAssetId_GetsAllWithoutParams', async () => {
     axiosClient.get.mockResolvedValue({ data: [] })
     await getBeneficiaries()
-    expect(axiosClient.get).toHaveBeenCalledWith('/owner/beneficiaries', { params: undefined })
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/beneficiaries', { params: { page: 1, pageSize: 100 } })
   })
 
   it('getBeneficiaries_WithAssetId_SendsAssetIdParam', async () => {
     axiosClient.get.mockResolvedValue({ data: [] })
     await getBeneficiaries(10)
-    expect(axiosClient.get).toHaveBeenCalledWith('/owner/beneficiaries', { params: { assetId: 10 } })
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/beneficiaries', { params: { assetId: 10, page: 1, pageSize: 100 } })
   })
 
   describe('uploadDocument', () => {
@@ -266,7 +266,7 @@ describe('ownerApi', () => {
     it('getAllocations_AssetId_GetsAllocationsOfThatAsset', async () => {
       axiosClient.get.mockResolvedValue({ data: rows })
       await expect(getAllocations(4)).resolves.toEqual(rows)
-      expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets/4/allocations')
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets/4/allocations', { params: { page: 1, pageSize: 100 } })
     })
 
     it('updateBeneficiaryAllocation_Values_PutsToTheActiveAssignmentId', async () => {
@@ -385,5 +385,29 @@ describe('revokeDocument', () => {
     axiosClient.post.mockResolvedValue({ status: 204 })
     await revokeDocument(3, 12)
     expect(axiosClient.post).toHaveBeenCalledWith('/owner/assets/3/documents/12/revoke')
+  })
+})
+
+describe('list endpoints returning PageDto like the deployed backend', () => {
+  const page = (items) => ({ data: { page: 1, pageSize: 100, items } })
+
+  it('getVaults_PageDto_ReturnsItems', async () => {
+    axiosClient.get.mockResolvedValue(page([{ vaultId: 1 }]))
+    await expect(getVaults()).resolves.toEqual([{ vaultId: 1 }])
+  })
+
+  it('getAssets_PageDto_ReturnsItemsWithoutRevoked', async () => {
+    axiosClient.get.mockResolvedValue(page([{ assetId: 1, status: 'Active' }, { assetId: 2, status: 'Revoked' }]))
+    await expect(getAssets()).resolves.toEqual([{ assetId: 1, status: 'Active' }])
+  })
+
+  it('getBeneficiaries_PageDto_ReturnsActiveAndPendingOnly', async () => {
+    axiosClient.get.mockResolvedValue(page([{ beneficiaryId: 1, status: 'Active' }, { beneficiaryId: 2, status: 'Revoked' }]))
+    await expect(getBeneficiaries()).resolves.toEqual([{ beneficiaryId: 1, status: 'Active' }])
+  })
+
+  it('getAllocations_PageDto_ReturnsItems', async () => {
+    axiosClient.get.mockResolvedValue(page([{ assignmentId: 5 }]))
+    await expect(getAllocations(4)).resolves.toEqual([{ assignmentId: 5 }])
   })
 })
