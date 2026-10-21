@@ -30,6 +30,7 @@ import {
   updateBeneficiaryAllocation,
   updateProfile,
   uploadDocument,
+  createOwnerHandover,
 } from './ownerApi'
 
 vi.mock('./axiosClient', () => ({
@@ -340,5 +341,13 @@ describe('ownerApi', () => {
       email: 'long@example.com',
       allocation: 40,
     })
+  })
+})
+
+describe('createOwnerHandover', () => {
+  it('createOwnerHandover_Vault_PostsToVaultHandoversAndReturnsRequest', async () => {
+    axiosClient.post.mockResolvedValue({ data: { requestId: 5, status: 'Draft' } })
+    await expect(createOwnerHandover(3)).resolves.toEqual({ requestId: 5, status: 'Draft' })
+    expect(axiosClient.post).toHaveBeenCalledWith('/owner/vaults/3/handovers')
   })
 })

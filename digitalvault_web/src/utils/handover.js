@@ -38,6 +38,23 @@ export function createHandoverErrorMessage(error) {
   return error?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
 }
 
+// Thông báo lỗi tiếng Việt khi Owner tạo hồ sơ bàn giao, tách theo lý do của BE
+export function ownerCreateHandoverErrorMessage(error) {
+  const detail = error?.message ?? ''
+  if (error?.status === 404) return 'Không tìm thấy kho. Vui lòng tải lại trang.'
+  if (error?.status === 403) return 'Bạn không có quyền tạo hồ sơ bàn giao.'
+  if (error?.status === 503) return 'Hiện chưa có Người thi hành độc lập nào sẵn sàng. Hãy gán Người thi hành cho kho rồi thử lại.'
+  if (error?.status === 409) {
+    if (/exactly 100 percent/i.test(detail)) return 'Mỗi tài sản đang hoạt động cần có giấy tờ và được phân bổ đủ 100% cho người thụ hưởng đang hiệu lực trước khi tạo hồ sơ bàn giao.'
+    if (/protected handover|inactive/i.test(detail)) return 'Kho đang không hoạt động hoặc đã có hồ sơ bàn giao chưa hủy. Hãy hủy hồ sơ nháp hoặc bị từ chối trước khi tạo hồ sơ mới.'
+    if (/independent/i.test(detail)) return 'Người thi hành của kho phải độc lập với chủ kho và những người thụ hưởng.'
+    if (/Beneficiary unavailable/i.test(detail)) return 'Có người thụ hưởng không còn hoạt động nên chưa thể tạo hồ sơ bàn giao.'
+    if (/Multiple active executors/i.test(detail)) return 'Kho có nhiều Người thi hành đang hiệu lực, cần quản trị viên chỉnh lại.'
+    return 'Chưa thể tạo hồ sơ bàn giao vì trạng thái kho hiện tại.'
+  }
+  return detail || 'Đã có lỗi xảy ra, vui lòng thử lại.'
+}
+
 const SERVER_DETAIL = (error) => (error?.message ? ` Chi tiết từ máy chủ: ${error.message}` : '')
 
 // Thông báo lỗi tiếng Việt cho từng thao tác của Người thi hành trên hồ sơ (kèm nguyên văn lý do của máy chủ khi hữu ích)

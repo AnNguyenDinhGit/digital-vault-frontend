@@ -1,4 +1,4 @@
-import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, isEditableStatus } from './handover'
+import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, isEditableStatus, ownerCreateHandoverErrorMessage } from './handover'
 
 describe('handoverStatusInfo', () => {
   it.each([
@@ -77,5 +77,35 @@ describe('createHandoverErrorMessage', () => {
   it('createHandoverErrorMessage_Other_UsesServerMessageOrGeneric', () => {
     expect(createHandoverErrorMessage({ status: 503, message: 'Không có Executor phù hợp.' })).toBe('Không có Executor phù hợp.')
     expect(createHandoverErrorMessage({})).toBe('Đã có lỗi xảy ra, vui lòng thử lại.')
+  })
+})
+
+describe('ownerCreateHandoverErrorMessage', () => {
+  it.each([
+    ['Every active asset needs documents and exactly 100 percent active allocation.', 'giấy tờ'],
+    ['Vault is inactive or has a protected handover record.', 'hồ sơ bàn giao chưa hủy'],
+    ['Assigned Executor must be independent of the owner and beneficiaries.', 'độc lập'],
+    ['Beneficiary unavailable.', 'không còn hoạt động'],
+    ['Multiple active executors require administrative correction.', 'quản trị viên'],
+  ])('ownerCreateHandoverErrorMessage_Conflict%#_MentionsReason', (detail, expected) => {
+    expect(ownerCreateHandoverErrorMessage({ status: 409, message: detail })).toContain(expected)
+  })
+
+  it('ownerCreateHandoverErrorMessage_UnknownConflict_UsesGenericConflictText', () => {
+    expect(ownerCreateHandoverErrorMessage({ status: 409, message: 'Lạ.' })).toBe('Chưa thể tạo hồ sơ bàn giao vì trạng thái kho hiện tại.')
+  })
+
+  it('ownerCreateHandoverErrorMessage_NoExecutor503_AsksToAssignExecutor', () => {
+    expect(ownerCreateHandoverErrorMessage({ status: 503 })).toContain('gán Người thi hành')
+  })
+
+  it('ownerCreateHandoverErrorMessage_NotFoundAndForbidden_AreExplained', () => {
+    expect(ownerCreateHandoverErrorMessage({ status: 404 })).toContain('Không tìm thấy kho')
+    expect(ownerCreateHandoverErrorMessage({ status: 403 })).toContain('không có quyền')
+  })
+
+  it('ownerCreateHandoverErrorMessage_Other_UsesServerMessageOrGeneric', () => {
+    expect(ownerCreateHandoverErrorMessage({ status: 500, message: 'Lỗi.' })).toBe('Lỗi.')
+    expect(ownerCreateHandoverErrorMessage({})).toBe('Đã có lỗi xảy ra, vui lòng thử lại.')
   })
 })

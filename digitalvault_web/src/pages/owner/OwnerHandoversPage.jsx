@@ -1,10 +1,11 @@
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, Plus } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
 import AppToast from '../../components/common/AppToast'
 import MockNotice from '../../components/common/MockNotice'
 import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import CancelHandoverModal from '../../components/owner/CancelHandoverModal'
+import CreateOwnerHandoverModal from '../../components/owner/CreateOwnerHandoverModal'
 import { useOwnerHandovers } from '../../hooks/useOwnerHandovers'
 import { MOCK_MODE } from '../../mocks/mode'
 import { filterHandovers } from '../../utils/handover'
@@ -12,10 +13,11 @@ import { formatDateTime } from '../../utils/proofOfLife'
 
 const CANCELLABLE = ['Draft', 'Rejected']
 
-// Trang "Hồ sơ bàn giao" của Owner: xem hồ sơ do Người thi hành tạo cho kho của bạn và hủy khi còn là nháp/bị từ chối
+// Trang "Hồ sơ bàn giao" của Owner: tạo hồ sơ bàn giao cho kho, xem hồ sơ của kho và hủy khi còn là nháp/bị từ chối
 export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
   const { status, error, handovers, reload } = useOwnerHandovers()
   const [cancelling, setCancelling] = useState(null)
+  const [creating, setCreating] = useState(false)
   const [toast, setToast] = useState(null)
   const closeToast = useCallback(() => setToast(null), [])
 
@@ -39,6 +41,12 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
     )
   }
 
+  const handleCreated = (request) => {
+    setToast({ title: `Đã tạo hồ sơ #${request.requestId}`, detail: 'Hồ sơ ở trạng thái nháp, Người thi hành sẽ nộp giấy chứng tử để tiếp tục.' })
+    setCreating(false)
+    reload()
+  }
+
   const handleCancelled = () => {
     setToast({ title: `Đã hủy hồ sơ #${cancelling.requestId}` })
     setCancelling(null)
@@ -56,9 +64,13 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
             <h1 className="mb-1 fw-bold text-ink" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>
               Hồ sơ bàn giao
             </h1>
-            <p className="mb-0 fs-12 text-slate-500">Hồ sơ do Người thi hành tạo để bàn giao di sản của bạn.</p>
+            <p className="mb-0 fs-12 text-slate-500">Hồ sơ bàn giao di sản của bạn, do bạn hoặc Người thi hành tạo.</p>
           </div>
         </div>
+        <Button type="button" variant="primary" className="av-btn av-btn-sm" onClick={() => setCreating(true)}>
+          <Plus size={16} aria-hidden="true" />
+          Tạo hồ sơ bàn giao
+        </Button>
       </section>
 
       <MockNotice mode={mockMode === 'full' ? mockMode : 'off'} />
@@ -110,6 +122,7 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
         )}
       </section>
 
+      {creating && <CreateOwnerHandoverModal onClose={() => setCreating(false)} onCreated={handleCreated} />}
       {cancelling && <CancelHandoverModal handover={cancelling} onClose={() => setCancelling(null)} onCancelled={handleCancelled} />}
       <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />
     </div>

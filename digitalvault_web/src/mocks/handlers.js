@@ -75,6 +75,26 @@ async function uploadHandoverDocument({ userId, params, request }, purpose) {
 }
 
 // BE chặn mọi thao tác sửa của Owner trên kho còn hồ sơ bàn giao chưa hủy
+// Mỗi phân bổ Active của tài sản Active trong kho là một case của hồ sơ bàn giao
+function draftCases(db, vaultId) {
+  const assetIds = db.assets.filter((asset) => asset.vaultId === vaultId && asset.status === 'Active').map((asset) => asset.assetId)
+  return db.assignments
+    .filter((assignment) => assignment.status === 'Active' && assetIds.includes(assignment.assetId))
+    .map((assignment) => ({ handoverId: nextId('handoverCase'), assetId: assignment.assetId, beneficiaryId: assignment.beneficiaryId, status: 'Pending' }))
+}
+
+// Như Ready(v) của BE: kho phải có tài sản Active, mỗi tài sản đủ giấy tờ và đúng 100% phân bổ Active
+function vaultNotReady(db, vaultId) {
+  const assets = db.assets.filter((asset) => asset.vaultId === vaultId && asset.status === 'Active')
+  return (
+    assets.length === 0 ||
+    assets.some((asset) => {
+      const total = db.assignments.filter((item) => item.assetId === asset.assetId && item.status === 'Active').reduce((sum, item) => sum + item.allocation, 0)
+      return Math.round(total * 100) / 100 !== 100 || asset.documents.length === 0
+    })
+  )
+}
+
 const HANDOVER_LOCK = 'Handover records protect this vault from mutation.'
 const vaultLocked = (db, vaultId) => db.handovers.some((item) => item.vaultId === vaultId && item.status !== 'Cancelled')
 
@@ -598,6 +618,35 @@ const coreHandlers = [
     }),
   ),
 
+  // Owner tạo hồ sơ bàn giao (BE: ManagementService.CreateRequest); chưa có Executor thì BE tự gán một người độc lập
+  http.post(
+    '*/api/owner/vaults/:vaultId/handovers',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const vaultId = Number(params.vaultId)
+      const vault = ownedVaults(db, userId).find((item) => item.vaultId === vaultId)
+      if (!vault) return problem(404, 'Vault not found.')
+      if (vault.status !== 'Active' || vaultLocked(db, vaultId)) return problem(409, 'Vault is inactive or has a protected handover record.')
+      if (vaultNotReady(db, vaultId)) return problem(409, 'Every active asset needs documents and exactly 100 percent active allocation.')
+
+      let executorId = db.executorAssignments[vaultId]?.executorId
+      if (!executorId) {
+        const candidate = db.users.find((user) => user.roles.includes('Executor') && (user.status ?? 'Active') === 'Active')
+        if (!candidate) return problem(503, 'No independent active Executor is available. Provision an eligible Executor before retrying.')
+        executorId = candidate.userId
+        db.executorAssignments[vaultId] = { executorId, status: 'AutoAssigned', assignedAt: new Date().toISOString(), contractNumber: null }
+      }
+      const assetIds = db.assets.filter((asset) => asset.vaultId === vaultId).map((asset) => asset.assetId)
+      const isBeneficiary = db.assignments.some((item) => item.status === 'Active' && assetIds.includes(item.assetId) && item.beneficiaryId === executorId)
+      if (executorId === userId || isBeneficiary) return problem(409, 'Assigned Executor must be independent of the owner and beneficiaries.')
+
+      const request = { requestId: nextId('handover'), vaultId, executorId, status: 'Draft', initiatedAt: new Date().toISOString(), documents: [], cases: draftCases(db, vaultId) }
+      db.handovers.push(request)
+      saveDb()
+      return HttpResponse.json(handoverDto(request), { status: 201, headers: { Location: `/api/owner/handovers/${request.requestId}` } })
+    }),
+  ),
+
   // ---- Cổng Executor (BE có thật, role Executor) ----
   http.get(
     '*/api/executor/assignments',
@@ -619,10 +668,7 @@ const coreHandlers = [
       if (db.handovers.some((item) => item.vaultId === vaultId && item.status !== 'Cancelled')) {
         return problem(409, 'A handover request already exists for this vault.')
       }
-      const assetIds = db.assets.filter((asset) => asset.vaultId === vaultId && asset.status === 'Active').map((asset) => asset.assetId)
-      const cases = db.assignments
-        .filter((assignment) => assignment.status === 'Active' && assetIds.includes(assignment.assetId))
-        .map((assignment) => ({ handoverId: nextId('handoverCase'), assetId: assignment.assetId, beneficiaryId: assignment.beneficiaryId, status: 'Pending' }))
+      const cases = draftCases(db, vaultId)
       if (cases.length === 0) return problem(409, 'The vault has no allocated assets to hand over.')
       const request = { requestId: nextId('handover'), vaultId, executorId: userId, status: 'Draft', initiatedAt: new Date().toISOString(), documents: [], cases }
       db.handovers.push(request)

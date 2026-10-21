@@ -4,7 +4,8 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
 import { createHandover } from '../../callapi/executorApi'
-import { DEMO_ACCOUNT, ROLE_ACCOUNTS, getDb, resetMockDb } from '../../mocks/db'
+import axiosClient from '../../callapi/axiosClient'
+import { DEMO_ACCOUNT, ROLE_ACCOUNTS, getDb, resetMockDb, saveDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import OwnerHandoversPage from './OwnerHandoversPage'
@@ -137,5 +138,70 @@ describe('OwnerHandoversPage cancel flow', () => {
     const { dialog } = await openConfirm()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận hủy' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không hủy được.')
+  })
+})
+
+// Dựng kho sẵn sàng bàn giao: có giấy tờ và đủ 100% phân bổ Active
+async function seedReadyVault() {
+  const { data: vault } = await axiosClient.post('/owner/vaults', { name: 'Kho sẵn sàng', description: null })
+  const { data: asset } = await axiosClient.post('/owner/assets', { vaultId: vault.vaultId, name: 'Tài sản A', type: 'Other' })
+  getDb().assets.find((item) => item.assetId === asset.assetId).documents.push({ documentId: 901, fileName: 'a.pdf', fileType: 'application/pdf', isEncrypted: true, signatureValid: null })
+  saveDb()
+  await axiosClient.post(`/owner/assets/${asset.assetId}/beneficiaries`, { email: 'long.tran@example.com', allocation: 100 })
+  return vault
+}
+
+describe('OwnerHandoversPage create flow', () => {
+  const openModal = async () => {
+    await userEvent.click(screen.getByRole('button', { name: 'Tạo hồ sơ bàn giao' }))
+    return screen.getByRole('dialog', { name: 'Tạo Hồ Sơ Bàn Giao' })
+  }
+
+  it('create_ReadyVault_CreatesDraftAndShowsItInList', async () => {
+    const vault = await seedReadyVault()
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    await userEvent.selectOptions(await within(dialog).findByLabelText('Kho cần bàn giao'), String(vault.vaultId))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }))
+    expect(await screen.findByText(/Đã tạo hồ sơ #/)).toBeInTheDocument()
+    const table = await screen.findByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
+    expect(within(table).getByText('Bản nháp')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('create_VaultNotReady_ShowsReasonAndKeepsDialogOpen', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    await within(dialog).findByLabelText('Kho cần bàn giao')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('giấy tờ')
+    expect(screen.getByRole('dialog', { name: 'Tạo Hồ Sơ Bàn Giao' })).toBeInTheDocument()
+  })
+
+  it('create_NoActiveVault_DisablesSubmitAndShowsEmptyMessage', async () => {
+    getDb().vaults.forEach((vault) => (vault.status = 'Closed'))
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    expect(await within(dialog).findByText('Bạn chưa có kho nào đang hoạt động.')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' })).toBeDisabled()
+  })
+
+  it('create_VaultListFails_ShowsErrorInDialog', async () => {
+    server.use(http.get('*/api/owner/vaults', () => HttpResponse.json({ status: 500, detail: 'x' }, { status: 500 })))
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không tải được danh sách kho')
+  })
+
+  it('create_Cancel_ClosesDialog', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
