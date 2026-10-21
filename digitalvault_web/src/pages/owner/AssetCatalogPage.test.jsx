@@ -5,7 +5,7 @@ import { setupServer } from 'msw/node'
 import { login, register } from '../../callapi/authApi'
 import { createVault } from '../../callapi/ownerApi'
 import { handlers } from '../../mocks/handlers'
-import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
+import { DEMO_ACCOUNT, getDb, resetMockDb, saveDb } from '../../mocks/db'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import AssetCatalogPage from './AssetCatalogPage'
 
@@ -279,5 +279,56 @@ describe('AssetCatalogPage without vault', () => {
     const dialog = screen.getByRole('dialog', { name: 'Tạo Kho Lưu Trữ Mới' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Tạo kho' }))
     expect(within(dialog).getByText('Vui lòng nhập tên kho.')).toBeInTheDocument()
+  })
+})
+
+describe('AssetCatalogPage edit vault', () => {
+  const openEdit = async () => {
+    await waitForCatalog()
+    await userEvent.click(screen.getByRole('button', { name: 'Sửa kho' }))
+    return screen.getByRole('dialog', { name: 'Sửa Thông Tin Kho' })
+  }
+
+  it('editVault_Dialog_PrefilledWithCurrentValues', async () => {
+    renderPage()
+    const dialog = await openEdit()
+    expect(within(dialog).getByLabelText(/^Tên kho/)).toHaveValue('Kho Tài Sản Số & Phân Quyền Thừa Kế Cá Nhân')
+  })
+
+  it('editVault_ValidName_UpdatesBannerAndShowsToast', async () => {
+    renderPage()
+    const dialog = await openEdit()
+    const name = within(dialog).getByLabelText(/^Tên kho/)
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Kho đã đổi tên')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thay đổi' }))
+    expect(await screen.findByText('Đã cập nhật thông tin kho')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Kho đã đổi tên')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('editVault_EmptyName_ShowsValidationError', async () => {
+    renderPage()
+    const dialog = await openEdit()
+    await userEvent.clear(within(dialog).getByLabelText(/^Tên kho/))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thay đổi' }))
+    expect(within(dialog).getByText('Vui lòng nhập tên kho.')).toBeInTheDocument()
+  })
+
+  it('editVault_VaultLockedByHandover_ShowsHandoverReason', async () => {
+    getDb().handovers.push({ requestId: 50, vaultId: 1, executorId: 5, status: 'Draft', initiatedAt: new Date().toISOString(), documents: [], cases: [] })
+    saveDb()
+    renderPage()
+    const dialog = await openEdit()
+    await userEvent.type(within(dialog).getByLabelText(/^Tên kho/), ' mới')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thay đổi' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('hồ sơ bàn giao')
+  })
+
+  it('editVault_Cancel_ClosesDialog', async () => {
+    renderPage()
+    const dialog = await openEdit()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

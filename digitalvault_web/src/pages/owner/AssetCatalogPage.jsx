@@ -7,6 +7,7 @@ import AddAssetModal from '../../components/owner/AddAssetModal'
 import AssetCard from '../../components/owner/AssetCard'
 import AssetFilters from '../../components/owner/AssetFilters'
 import CreateVaultModal from '../../components/owner/CreateVaultModal'
+import EditVaultModal from '../../components/owner/EditVaultModal'
 import EditAssetModal from '../../components/owner/EditAssetModal'
 import Pagination from '../../components/owner/Pagination'
 import StatCards from '../../components/owner/StatCards'
@@ -66,6 +67,12 @@ export default function AssetCatalogPage() {
     reload()
   }
 
+  const handleVaultUpdated = () => {
+    closeModal()
+    setToast({ title: 'Đã cập nhật thông tin kho' })
+    reload()
+  }
+
   const finishEdit = (title) => {
     setEditingAsset(null)
     setToast({ title })
@@ -116,6 +123,7 @@ export default function AssetCatalogPage() {
         onSelectVault={selectVault}
         onAddAsset={() => setModal('asset')}
         onCreateVault={() => setModal('vault')}
+        onEditVault={() => setModal('editVault')}
         onCheckIn={() => navigate('/owner/proof-of-life?ping=1')}
       />
       <StatCards stats={stats} executor={executor} />
@@ -166,6 +174,7 @@ export default function AssetCatalogPage() {
         )}
       </section>
 
+      {modal === 'editVault' && <EditVaultModal vault={selectedVault} onClose={closeModal} onSaved={handleVaultUpdated} />}
       <AddAssetModal open={modal === 'asset'} vault={selectedVault} onClose={closeModal} onCreated={handleAssetCreated} />
       {editingAsset && (
         <EditAssetModal

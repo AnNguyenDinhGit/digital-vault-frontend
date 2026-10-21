@@ -32,6 +32,7 @@ import {
   uploadDocument,
   createOwnerHandover,
   getOwnerHandover,
+  updateVault,
 } from './ownerApi'
 
 vi.mock('./axiosClient', () => ({
@@ -358,5 +359,13 @@ describe('getOwnerHandover', () => {
     axiosClient.get.mockResolvedValue({ data: { requestId: 7, status: 'Draft' } })
     await expect(getOwnerHandover(7)).resolves.toEqual({ requestId: 7, status: 'Draft' })
     expect(axiosClient.get).toHaveBeenCalledWith('/owner/handovers/7')
+  })
+})
+
+describe('updateVault', () => {
+  it('updateVault_NameAndDescription_PutsTrimmedValuesAndReturnsVault', async () => {
+    axiosClient.put.mockResolvedValue({ data: { vaultId: 2, name: 'Kho', description: null, status: 'Active' } })
+    await expect(updateVault(2, { name: '  Kho  ', description: '   ' })).resolves.toEqual({ vaultId: 2, name: 'Kho', description: null, status: 'Active' })
+    expect(axiosClient.put).toHaveBeenCalledWith('/owner/vaults/2', { name: 'Kho', description: null })
   })
 })

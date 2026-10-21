@@ -219,6 +219,15 @@ export async function getOwnerHandovers() {
   return data.items
 }
 
+// Sửa tên và mô tả kho; BE từ chối (409) khi kho đã đóng hoặc đang có hồ sơ bàn giao chưa hủy
+export async function updateVault(vaultId, { name, description }) {
+  const { data } = await axiosClient.put(`/owner/vaults/${vaultId}`, {
+    name: name.trim(),
+    description: optionalText(description),
+  })
+  return data
+}
+
 // Chi tiết một hồ sơ bàn giao của kho thuộc Owner (404 nếu không phải của mình)
 export async function getOwnerHandover(requestId) {
   const { data } = await axiosClient.get(`/owner/handovers/${requestId}`)

@@ -343,6 +343,24 @@ const coreHandlers = [
     }),
   ),
 
+  // Sửa kho: như BE (UpdateVault) thì kho phải đang hoạt động và không có hồ sơ bàn giao chưa hủy
+  http.put(
+    '*/api/owner/vaults/:vaultId',
+    ownerRoute(({ userId, params, body }) => {
+      if (hasUnknownFields(body, ['name', 'description'])) return problem(400, 'Request contains fields outside the contract.')
+      if (isBlank(body?.name) || body.name.trim().length > 100) return problem(400, 'Name is required (max 100).')
+      if (typeof body.description === 'string' && body.description.length > 4000) return problem(400, 'Description is too long (max 4000).')
+      const db = getDb()
+      const vault = ownedVaults(db, userId).find((item) => item.vaultId === Number(params.vaultId))
+      if (!vault) return problem(404, 'Vault not found.')
+      if (vault.status !== 'Active' || vaultLocked(db, vault.vaultId)) return problem(409, 'Vault is inactive or has a protected handover record.')
+      vault.name = body.name.trim()
+      vault.description = body.description?.trim() || null
+      saveDb()
+      return HttpResponse.json(vaultDto(vault))
+    }),
+  ),
+
   http.get(
     '*/api/owner/assets',
     ownerRoute(({ userId }) => HttpResponse.json(ownedAssets(getDb(), userId).map(assetDto))),
