@@ -31,6 +31,7 @@ import {
   updateProfile,
   uploadDocument,
   createOwnerHandover,
+  closeVault,
   getOwnerHandover,
   updateVault,
 } from './ownerApi'
@@ -367,5 +368,13 @@ describe('updateVault', () => {
     axiosClient.put.mockResolvedValue({ data: { vaultId: 2, name: 'Kho', description: null, status: 'Active' } })
     await expect(updateVault(2, { name: '  Kho  ', description: '   ' })).resolves.toEqual({ vaultId: 2, name: 'Kho', description: null, status: 'Active' })
     expect(axiosClient.put).toHaveBeenCalledWith('/owner/vaults/2', { name: 'Kho', description: null })
+  })
+})
+
+describe('closeVault', () => {
+  it('closeVault_Id_PostsCloseEndpoint', async () => {
+    axiosClient.post.mockResolvedValue({ status: 204 })
+    await closeVault(4)
+    expect(axiosClient.post).toHaveBeenCalledWith('/owner/vaults/4/close')
   })
 })

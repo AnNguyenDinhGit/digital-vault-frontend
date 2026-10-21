@@ -361,6 +361,19 @@ const coreHandlers = [
     }),
   ),
 
+  http.post(
+    '*/api/owner/vaults/:vaultId/close',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const vault = ownedVaults(db, userId).find((item) => item.vaultId === Number(params.vaultId))
+      if (!vault) return problem(404, 'Vault not found.')
+      if (vault.status !== 'Active' || vaultLocked(db, vault.vaultId)) return problem(409, 'Vault is inactive or has a protected handover record.')
+      vault.status = 'Closed'
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+
   http.get(
     '*/api/owner/assets',
     ownerRoute(({ userId }) => HttpResponse.json(ownedAssets(getDb(), userId).map(assetDto))),

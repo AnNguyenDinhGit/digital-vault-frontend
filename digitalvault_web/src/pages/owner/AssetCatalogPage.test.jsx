@@ -332,3 +332,46 @@ describe('AssetCatalogPage edit vault', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
+
+describe('AssetCatalogPage close vault', () => {
+  const openClose = async () => {
+    await waitForCatalog()
+    await userEvent.click(screen.getByRole('button', { name: 'Đóng kho' }))
+    return screen.getByRole('dialog', { name: 'Đóng Kho' })
+  }
+
+  it('closeVault_Dialog_WarnsItCannotBeReopened', async () => {
+    renderPage()
+    const dialog = await openClose()
+    expect(within(dialog).getByText(/không thể mở lại/)).toBeInTheDocument()
+  })
+
+  it('closeVault_Confirm_MarksVaultClosedAndDisablesActions', async () => {
+    renderPage()
+    const dialog = await openClose()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận đóng kho' }))
+    expect(await screen.findByText('Đã đóng kho')).toBeInTheDocument()
+    expect(await screen.findByText('Đã đóng', { selector: 'strong' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Thêm tài sản mới/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Sửa kho' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Đóng kho' })).toBeDisabled()
+  })
+
+  it('closeVault_VaultLockedByHandover_ShowsHandoverReasonAndKeepsOpen', async () => {
+    getDb().handovers.push({ requestId: 50, vaultId: 1, executorId: 5, status: 'Draft', initiatedAt: new Date().toISOString(), documents: [], cases: [] })
+    saveDb()
+    renderPage()
+    const dialog = await openClose()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận đóng kho' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('hồ sơ bàn giao')
+    expect(screen.getByRole('button', { name: /Thêm tài sản mới/ })).toBeEnabled()
+  })
+
+  it('closeVault_Cancel_ClosesDialogWithoutClosingVault', async () => {
+    renderPage()
+    const dialog = await openClose()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Quay lại' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Thêm tài sản mới/ })).toBeEnabled()
+  })
+})

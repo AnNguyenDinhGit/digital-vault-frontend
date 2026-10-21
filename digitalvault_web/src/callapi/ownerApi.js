@@ -228,6 +228,11 @@ export async function updateVault(vaultId, { name, description }) {
   return data
 }
 
+// Đóng kho (không có API mở lại); BE từ chối (409) khi kho đã đóng hoặc đang có hồ sơ bàn giao chưa hủy
+export async function closeVault(vaultId) {
+  await axiosClient.post(`/owner/vaults/${vaultId}/close`)
+}
+
 // Chi tiết một hồ sơ bàn giao của kho thuộc Owner (404 nếu không phải của mình)
 export async function getOwnerHandover(requestId) {
   const { data } = await axiosClient.get(`/owner/handovers/${requestId}`)
