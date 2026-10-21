@@ -344,3 +344,44 @@ describe('AssetDetailPage group A details', () => {
     expect(within(section).getByRole('link', { name: /Quản lý người thi hành/ })).toHaveAttribute('href', '/owner/executor')
   })
 })
+
+describe('AssetDetailPage revoke document', () => {
+  const openRevoke = async (fileName) => {
+    renderDetail(3)
+    await waitForDetail()
+    await userEvent.click(screen.getByRole('button', { name: `Thu hồi ${fileName}` }))
+    return screen.getByRole('dialog', { name: 'Thu Hồi Giấy Tờ' })
+  }
+
+  it('revokeDocument_Dialog_NamesTheFileAndWarns', async () => {
+    const dialog = await openRevoke('ThuDiNguyen.pdf')
+    expect(within(dialog).getByText(/ThuDiNguyen\.pdf/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/không thể khôi phục/)).toBeInTheDocument()
+  })
+
+  it('revokeDocument_Confirm_RemovesDocumentFromListAndShowsToast', async () => {
+    const dialog = await openRevoke('ThuDiNguyen.pdf')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận thu hồi' }))
+    expect(await screen.findByText('Đã thu hồi giấy tờ')).toBeInTheDocument()
+    // Danh sách tải lại sau khi thu hồi nên phải đợi giấy tờ biến mất
+    await waitFor(() => expect(screen.queryByText('ThuDiNguyen.pdf')).not.toBeInTheDocument())
+    expect(screen.getByText('AnhGiaDinh.png')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('revokeDocument_VaultLockedByHandover_ShowsHandoverReasonAndKeepsDocument', async () => {
+    getDb().handovers.push({ requestId: 50, vaultId: 1, executorId: 5, status: 'Draft', initiatedAt: new Date().toISOString(), documents: [], cases: [] })
+    saveDb()
+    const dialog = await openRevoke('ThuDiNguyen.pdf')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận thu hồi' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('hồ sơ bàn giao')
+    expect(screen.getByText('ThuDiNguyen.pdf')).toBeInTheDocument()
+  })
+
+  it('revokeDocument_Cancel_ClosesDialogAndKeepsDocument', async () => {
+    const dialog = await openRevoke('ThuDiNguyen.pdf')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Quay lại' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('ThuDiNguyen.pdf')).toBeInTheDocument()
+  })
+})

@@ -32,6 +32,7 @@ import {
   uploadDocument,
   createOwnerHandover,
   closeVault,
+  revokeDocument,
   getOwnerHandover,
   updateVault,
 } from './ownerApi'
@@ -376,5 +377,13 @@ describe('closeVault', () => {
     axiosClient.post.mockResolvedValue({ status: 204 })
     await closeVault(4)
     expect(axiosClient.post).toHaveBeenCalledWith('/owner/vaults/4/close')
+  })
+})
+
+describe('revokeDocument', () => {
+  it('revokeDocument_AssetAndDocument_PostsRevokeEndpoint', async () => {
+    axiosClient.post.mockResolvedValue({ status: 204 })
+    await revokeDocument(3, 12)
+    expect(axiosClient.post).toHaveBeenCalledWith('/owner/assets/3/documents/12/revoke')
   })
 })

@@ -7,13 +7,16 @@ import { executorRoute, hasUnknownFields, isBlank, ownerRoute, problem, route } 
 import { parseAllocation, parseAssetUpdate } from './assetInput'
 
 const vaultDto = ({ vaultId, name, description, status }) => ({ vaultId, name, description, status })
+// BE chỉ trả giấy tờ còn hiệu lực (Status Active), giấy tờ đã thu hồi bị ẩn
+const activeDocuments = (documents) => documents.filter((item) => !item.revoked)
+
 const assetDto = ({ assetId, name, type, description, status, documents }) => ({
   assetId,
   name,
   type,
   description,
   status,
-  documents,
+  documents: activeDocuments(documents),
 })
 
 function ownedVaults(db, userId) {
@@ -90,7 +93,7 @@ function vaultNotReady(db, vaultId) {
     assets.length === 0 ||
     assets.some((asset) => {
       const total = db.assignments.filter((item) => item.assetId === asset.assetId && item.status === 'Active').reduce((sum, item) => sum + item.allocation, 0)
-      return Math.round(total * 100) / 100 !== 100 || asset.documents.length === 0
+      return Math.round(total * 100) / 100 !== 100 || activeDocuments(asset.documents).length === 0
     })
   )
 }
@@ -603,12 +606,30 @@ const coreHandlers = [
     }),
   ),
 
+  // Thu hồi giấy tờ: như BE (RevokeDocument) kho không được có hồ sơ bàn giao, tài sản phải còn hoạt động
+  http.post(
+    '*/api/owner/assets/:assetId/documents/:documentId/revoke',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const asset = ownedAssets(db, userId).find((item) => item.assetId === Number(params.assetId))
+      if (!asset) return problem(404, 'Asset not found.')
+      if (vaultLocked(db, asset.vaultId)) return problem(409, HANDOVER_LOCK)
+      if (asset.status !== 'Active') return problem(409, 'Asset is inactive.')
+      const found = asset.documents.find((item) => item.documentId === Number(params.documentId))
+      if (!found) return problem(404, 'Document not found.')
+      if (found.revoked) return problem(409, 'Document already revoked.')
+      found.revoked = true
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+
   // Nội dung giấy tờ: mock trả một tệp văn bản mô phỏng (không phải nội dung thật), kèm header chữ ký như BE
   http.get(
     '*/api/owner/assets/:assetId/documents/:documentId/content',
     ownerRoute(({ userId, params }) => {
       const asset = ownedAssets(getDb(), userId).find((a) => a.assetId === Number(params.assetId))
-      const found = asset?.documents.find((item) => item.documentId === Number(params.documentId))
+      const found = asset && activeDocuments(asset.documents).find((item) => item.documentId === Number(params.documentId))
       if (!found) return problem(404, 'Document not found.')
       const content = `Tệp mô phỏng cho giấy tờ "${found.fileName}".\nĐây là nội dung mô phỏng, không phải bản gốc đã mã hóa lưu trên máy chủ.\n`
       return new HttpResponse(content, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Signature-Valid': 'true' } })

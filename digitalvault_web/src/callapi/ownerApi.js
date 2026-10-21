@@ -233,6 +233,11 @@ export async function closeVault(vaultId) {
   await axiosClient.post(`/owner/vaults/${vaultId}/close`)
 }
 
+// Thu hồi giấy tờ của tài sản: BE đánh dấu Revoked và không trả giấy tờ này trong tài sản nữa
+export async function revokeDocument(assetId, documentId) {
+  await axiosClient.post(`/owner/assets/${assetId}/documents/${documentId}/revoke`)
+}
+
 // Chi tiết một hồ sơ bàn giao của kho thuộc Owner (404 nếu không phải của mình)
 export async function getOwnerHandover(requestId) {
   const { data } = await axiosClient.get(`/owner/handovers/${requestId}`)

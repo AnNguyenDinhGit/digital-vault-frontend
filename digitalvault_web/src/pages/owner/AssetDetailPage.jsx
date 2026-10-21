@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import AppToast from '../../components/common/AppToast'
+import RevokeDocumentModal from '../../components/owner/RevokeDocumentModal'
 import MockNotice from '../../components/common/MockNotice'
 import AssetExecutorSection from '../../components/owner/AssetExecutorSection'
 import AssetTypeIcon from '../../components/owner/AssetTypeIcon'
@@ -56,6 +57,7 @@ export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
   const { status, error, asset, beneficiaries, refresh } = useAssetDetail(assetId)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [revokingDocument, setRevokingDocument] = useState(null)
   const [toast, setToast] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
   const [downloadError, setDownloadError] = useState('')
@@ -250,6 +252,14 @@ export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
                       <Download size={14} aria-hidden="true" />
                       {downloadingId === document.documentId ? 'Đang tải...' : 'Tải về'}
                     </button>
+                    <button
+                      type="button"
+                      className="av-ghost-btn"
+                      aria-label={`Thu hồi ${document.fileName}`}
+                      onClick={() => setRevokingDocument(document)}
+                    >
+                      Thu hồi
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -270,6 +280,18 @@ export default function AssetDetailPage({ mockMode = MOCK_MODE }) {
             refresh()
           }}
           onRevoked={() => navigate('/owner/assets')}
+        />
+      )}
+      {revokingDocument && (
+        <RevokeDocumentModal
+          assetId={asset.assetId}
+          document={revokingDocument}
+          onClose={() => setRevokingDocument(null)}
+          onRevoked={() => {
+            setRevokingDocument(null)
+            setToast({ title: 'Đã thu hồi giấy tờ' })
+            refresh()
+          }}
         />
       )}
       <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />
