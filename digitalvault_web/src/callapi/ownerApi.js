@@ -219,6 +219,12 @@ export async function getOwnerHandovers() {
   return data.items
 }
 
+// Chi tiết một hồ sơ bàn giao của kho thuộc Owner (404 nếu không phải của mình)
+export async function getOwnerHandover(requestId) {
+  const { data } = await axiosClient.get(`/owner/handovers/${requestId}`)
+  return data
+}
+
 // Owner tạo hồ sơ bàn giao Draft cho kho; BE yêu cầu mọi tài sản có giấy tờ và đủ 100% phân bổ, chưa có Executor thì tự gán một người độc lập
 export async function createOwnerHandover(vaultId) {
   const { data } = await axiosClient.post(`/owner/vaults/${vaultId}/handovers`)

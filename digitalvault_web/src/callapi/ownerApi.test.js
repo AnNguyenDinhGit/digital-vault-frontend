@@ -31,6 +31,7 @@ import {
   updateProfile,
   uploadDocument,
   createOwnerHandover,
+  getOwnerHandover,
 } from './ownerApi'
 
 vi.mock('./axiosClient', () => ({
@@ -349,5 +350,13 @@ describe('createOwnerHandover', () => {
     axiosClient.post.mockResolvedValue({ data: { requestId: 5, status: 'Draft' } })
     await expect(createOwnerHandover(3)).resolves.toEqual({ requestId: 5, status: 'Draft' })
     expect(axiosClient.post).toHaveBeenCalledWith('/owner/vaults/3/handovers')
+  })
+})
+
+describe('getOwnerHandover', () => {
+  it('getOwnerHandover_Id_GetsDetailAndReturnsData', async () => {
+    axiosClient.get.mockResolvedValue({ data: { requestId: 7, status: 'Draft' } })
+    await expect(getOwnerHandover(7)).resolves.toEqual({ requestId: 7, status: 'Draft' })
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/handovers/7')
   })
 })

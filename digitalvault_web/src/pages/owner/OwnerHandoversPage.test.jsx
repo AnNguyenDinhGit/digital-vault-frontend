@@ -205,3 +205,12 @@ describe('OwnerHandoversPage create flow', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
+
+describe('OwnerHandoversPage detail link', () => {
+  it('row_RequestId_LinksToDetailPage', async () => {
+    const id = await seedHandover()
+    renderPage()
+    await waitForPage()
+    expect(screen.getByRole('link', { name: `Hồ sơ #${id}` })).toHaveAttribute('href', `/owner/handovers/${id}`)
+  })
+})

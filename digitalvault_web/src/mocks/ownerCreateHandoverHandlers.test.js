@@ -129,3 +129,31 @@ describe('mock owner create handover', () => {
     expect((await create(1)).status).toBe(403)
   })
 })
+
+describe('mock owner handover detail', () => {
+  it('getDetail_OwnRequest_ReturnsHandoverDto', async () => {
+    const { vault } = await readyVault()
+    const { data: created } = await create(vault.vaultId)
+    const { status, data } = await call(axiosClient.get(`/owner/handovers/${created.requestId}`))
+    expect(status).toBe(200)
+    expect(data).toMatchObject({ requestId: created.requestId, vaultId: vault.vaultId, status: 'Draft' })
+    expect(data.cases).toHaveLength(2)
+  })
+
+  it('getDetail_UnknownRequest_Returns404', async () => {
+    expect((await call(axiosClient.get('/owner/handovers/999'))).status).toBe(404)
+  })
+
+  it('getDetail_RequestOfAnotherOwner_Returns404', async () => {
+    const { vault } = await readyVault()
+    const { data: created } = await create(vault.vaultId)
+    await axiosClient.post('/auth/login', { email: 'long.tran@example.com', password: 'Owner@123456' })
+    expect((await call(axiosClient.get(`/owner/handovers/${created.requestId}`))).status).toBe(404)
+  })
+
+  it('getDetail_ExecutorRole_Returns403', async () => {
+    const executor = ROLE_ACCOUNTS.find((account) => account.role === 'Executor')
+    await axiosClient.post('/auth/login', { email: executor.email, password: executor.password })
+    expect((await call(axiosClient.get('/owner/handovers/1'))).status).toBe(403)
+  })
+})

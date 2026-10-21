@@ -1,6 +1,7 @@
 import { ClipboardList, Plus } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
+import { Link } from 'react-router-dom'
 import AppToast from '../../components/common/AppToast'
 import MockNotice from '../../components/common/MockNotice'
 import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
@@ -101,7 +102,9 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
               <tbody>
                 {filterHandovers(handovers).map((item) => (
                   <tr key={item.requestId}>
-                    <td className="fw-semibold text-ink">{`Hồ sơ #${item.requestId}`}</td>
+                    <td className="fw-semibold text-ink">
+                      <Link to={`/owner/handovers/${item.requestId}`} className="text-ink">{`Hồ sơ #${item.requestId}`}</Link>
+                    </td>
                     <td>{`Kho #${item.vaultId}`}</td>
                     <td className="text-nowrap">{formatDateTime(item.initiatedAt)}</td>
                     <td>{`${new Set(item.cases.map((entry) => entry.assetId)).size} tài sản`}</td>

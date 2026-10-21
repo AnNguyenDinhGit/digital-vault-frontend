@@ -603,6 +603,16 @@ const coreHandlers = [
     }),
   ),
 
+  http.get(
+    '*/api/owner/handovers/:requestId',
+    ownerRoute(({ userId, params }) => {
+      const db = getDb()
+      const vaultIds = ownedVaults(db, userId).map((vault) => vault.vaultId)
+      const handover = db.handovers.find((item) => item.requestId === Number(params.requestId) && vaultIds.includes(item.vaultId))
+      return handover ? HttpResponse.json(handoverDto(handover)) : problem(404, 'Request not found.')
+    }),
+  ),
+
   // Owner chỉ hủy được hồ sơ Draft hoặc Rejected
   http.post(
     '*/api/owner/handovers/:requestId/cancel',
