@@ -427,7 +427,7 @@ describe('validateLegalRequest', () => {
 
   it('validateLegalRequest_Empty_ReturnsRequiredErrors', () => {
     expect(validateLegalRequest({ verifierId: '', comment: '', evidence: null })).toEqual({
-      verifierId: 'Vui lòng nhập ID người xác minh pháp lý.',
+      verifierId: 'Vui lòng chọn người xác minh pháp lý.',
       evidence: 'Vui lòng chọn file giấy tờ.',
     })
   })

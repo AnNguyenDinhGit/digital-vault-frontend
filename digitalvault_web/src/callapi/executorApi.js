@@ -40,6 +40,12 @@ export async function uploadEvidence(requestId, input) {
   return data
 }
 
+// Người xác minh pháp lý đủ điều kiện cho hồ sơ: BE đã loại chính Executor, chủ kho và người thụ hưởng
+export async function getLegalVerifiers(requestId) {
+  const { data } = await axiosClient.get(`/executor/handovers/${requestId}/legal-verifiers`)
+  return Array.isArray(data) ? data : (data?.items ?? [])
+}
+
 // Gửi hồ sơ cho người xác minh pháp lý: VerifierId, Comment (tuỳ chọn), Evidence
 export async function requestLegalVerification(requestId, { verifierId, comment, evidence }) {
   const form = new FormData()

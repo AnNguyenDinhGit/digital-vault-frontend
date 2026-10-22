@@ -763,6 +763,23 @@ const coreHandlers = [
   http.post('*/api/executor/handovers/:requestId/documents', executorRoute((info) => uploadHandoverDocument(info, 'Evidence'))),
 
   // Gửi thẩm định pháp lý: cần giấy chứng tử, người xác minh độc lập; hồ sơ chuyển sang Pending_Legal
+  // Người xác minh đủ điều kiện cho hồ sơ (BE: ManagementService.LegalVerifiers): loại Executor, chủ kho và người thụ hưởng
+  http.get(
+    '*/api/executor/handovers/:requestId/legal-verifiers',
+    executorRoute(({ userId, params }) => {
+      const handover = ownHandover(userId, params.requestId)
+      if (!handover) return problem(404, 'Assigned request not found.')
+      const db = getDb()
+      const ownerId = db.vaults.find((item) => item.vaultId === handover.vaultId)?.ownerId
+      const beneficiaryIds = handover.cases.map((item) => item.beneficiaryId)
+      const list = db.users
+        .filter((user) => user.roles.includes('LegalVerifier') && (user.status ?? 'Active') === 'Active')
+        .filter((user) => user.userId !== userId && user.userId !== ownerId && !beneficiaryIds.includes(user.userId))
+        .map((user) => ({ userId: user.userId, fullName: user.fullName }))
+      return HttpResponse.json(list)
+    }),
+  ),
+
   http.post(
     '*/api/executor/handovers/:requestId/legal-verifications',
     executorRoute(async ({ userId, params, request }) => {

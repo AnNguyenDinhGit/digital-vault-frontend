@@ -158,7 +158,7 @@ export function validateHandoverDocument({ file, signature }, { signatureRequire
 export function validateLegalRequest({ verifierId, comment, evidence }) {
   const errors = {}
   const id = String(verifierId ?? '').trim()
-  if (!id) errors.verifierId = 'Vui lòng nhập ID người xác minh pháp lý.'
+  if (!id) errors.verifierId = 'Vui lòng chọn người xác minh pháp lý.'
   else if (!Number.isInteger(Number(id)) || Number(id) < 1) errors.verifierId = 'ID người xác minh phải là số nguyên dương.'
 
   if ((comment ?? '').length > 2000) errors.comment = 'Ghi chú tối đa 2000 ký tự.'

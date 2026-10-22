@@ -218,6 +218,7 @@ export default function ExecutorHandoverDetailPage({ mockMode = MOCK_MODE }) {
             onSubmit={submitFile(uploadEvidence, 'Đã nộp bằng chứng')}
           />
           <LegalVerificationForm
+            requestId={handover.requestId}
             onSubmit={async (input) => {
               await requestLegalVerification(handover.requestId, input).catch(toActionError('legal'))
               notify('Đã gửi hồ sơ thẩm định')

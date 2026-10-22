@@ -6,6 +6,7 @@ import {
   getAssignments,
   getHandover,
   getHandovers,
+  getLegalVerifiers,
   requestLegalVerification,
   simulateLegalApproval,
   startHandover,
@@ -125,5 +126,18 @@ describe('executor list endpoints returning PageDto like the deployed backend', 
   it('getHandovers_PageDto_ReturnsItems', async () => {
     axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [{ requestId: 3 }] } })
     await expect(getHandovers()).resolves.toEqual([{ requestId: 3 }])
+  })
+})
+
+describe('getLegalVerifiers', () => {
+  it('getLegalVerifiers_RequestId_GetsEligibleVerifiersOfThatRequest', async () => {
+    axiosClient.get.mockResolvedValue({ data: [{ userId: 6, fullName: 'CCV' }] })
+    await expect(getLegalVerifiers(9)).resolves.toEqual([{ userId: 6, fullName: 'CCV' }])
+    expect(axiosClient.get).toHaveBeenCalledWith('/executor/handovers/9/legal-verifiers')
+  })
+
+  it('getLegalVerifiers_PageDtoShape_ReturnsItems', async () => {
+    axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 20, items: [{ userId: 6 }] } })
+    await expect(getLegalVerifiers(9)).resolves.toEqual([{ userId: 6 }])
   })
 })

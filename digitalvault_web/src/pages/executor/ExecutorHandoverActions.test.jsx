@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
 import { ApiError } from '../../callapi/axiosClient'
@@ -164,34 +165,54 @@ describe('evidence form', () => {
 describe('legal verification form', () => {
   const fill = async (user, { verifier = '6', comment = '', evidence = pdf('BangChung.pdf') } = {}) => {
     const form = region('Gửi thẩm định pháp lý')
-    if (verifier) await user.type(within(form).getByLabelText(/^ID người xác minh pháp lý/), verifier)
+    if (verifier) await user.selectOptions(await within(form).findByLabelText(/^Người xác minh pháp lý/), verifier)
     if (comment) await user.type(within(form).getByLabelText(/^Ghi chú/), comment)
     if (evidence) await user.upload(within(form).getByLabelText(/^Bằng chứng gửi kèm/), evidence)
     await user.click(within(form).getByRole('button', { name: 'Gửi thẩm định' }))
     return form
   }
 
+  it('verifierList_Loaded_ShowsOnlyEligibleVerifiersFromApi', async () => {
+    await openDetail()
+    const form = region('Gửi thẩm định pháp lý')
+    const select = await within(form).findByLabelText(/^Người xác minh pháp lý/)
+    await waitFor(() => expect(within(select).getAllByRole('option')).toHaveLength(2))
+    expect(within(select).getByRole('option', { name: 'CCV. Nguyễn Văn Cường' })).toHaveValue('6')
+  })
+
+  it('verifierList_ApiFails_ShowsErrorAndRetryReloadsList', async () => {
+    server.use(http.get('*/api/executor/handovers/:requestId/legal-verifiers', () => HttpResponse.json({ status: 500, detail: 'x' }, { status: 500 })))
+    const user = setupUser()
+    await openDetail()
+    const form = region('Gửi thẩm định pháp lý')
+    expect(await within(form).findByRole('alert')).toHaveTextContent('Không tải được danh sách người xác minh')
+    server.resetHandlers()
+    await user.click(within(form).getByRole('button', { name: 'Thử lại' }))
+    await waitFor(() => expect(within(within(form).getByLabelText(/^Người xác minh pháp lý/)).getAllByRole('option')).toHaveLength(2))
+  })
+
+  it('verifierList_Empty_ShowsMessageAndDisablesSubmit', async () => {
+    server.use(http.get('*/api/executor/handovers/:requestId/legal-verifiers', () => HttpResponse.json([])))
+    await openDetail()
+    const form = region('Gửi thẩm định pháp lý')
+    expect(await within(form).findByText(/chưa có người xác minh pháp lý phù hợp/)).toBeInTheDocument()
+    expect(within(form).getByRole('button', { name: 'Gửi thẩm định' })).toBeDisabled()
+  })
+
   it('submit_Empty_ShowsRequiredErrorsAndDoesNotCallApi', async () => {
     const user = setupUser()
     await openDetail()
     const form = await fill(user, { verifier: '', evidence: null })
-    expect(within(form).getByText('Vui lòng nhập ID người xác minh pháp lý.')).toBeInTheDocument()
+    expect(within(form).getByText('Vui lòng chọn người xác minh pháp lý.')).toBeInTheDocument()
     expect(within(form).getByText('Vui lòng chọn file giấy tờ.')).toBeInTheDocument()
     expect(requestLegalVerification).not.toHaveBeenCalled()
-  })
-
-  it('submit_NonPositiveVerifierId_ShowsError', async () => {
-    const user = setupUser()
-    await openDetail()
-    const form = await fill(user, { verifier: '0' })
-    expect(within(form).getByText('ID người xác minh phải là số nguyên dương.')).toBeInTheDocument()
   })
 
   it('submit_CommentOver2000_ShowsError', async () => {
     const user = setupUser()
     await openDetail()
     const form = region('Gửi thẩm định pháp lý')
-    await user.type(within(form).getByLabelText(/^ID người xác minh pháp lý/), '6')
+    await user.selectOptions(await within(form).findByLabelText(/^Người xác minh pháp lý/), '6')
     await user.upload(within(form).getByLabelText(/^Bằng chứng gửi kèm/), pdf())
     fireTypeLong(within(form).getByLabelText(/^Ghi chú/), 'x'.repeat(2001))
     await user.click(within(form).getByRole('button', { name: 'Gửi thẩm định' }))
