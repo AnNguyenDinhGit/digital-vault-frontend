@@ -3,6 +3,8 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import BrandLogo from '../common/BrandLogo'
 import PortalSwitcher from './PortalSwitcher'
+import NotificationBell from '../common/NotificationBell'
+import BeneficiaryOtpGate from '../beneficiary/BeneficiaryOtpGate'
 
 const BENEFICIARY_ITEMS = [
   { label: 'Tài sản thụ hưởng', icon: FolderLock, to: '/beneficiary/assets' },
@@ -96,7 +98,18 @@ export default function BeneficiaryLayout() {
       </aside>
 
       <main className="flex-grow-1 p-4" style={{ minWidth: 0 }}>
+        {/* Thanh trên cùng: icon Hộp thư đẩy thông báo (GET /api/notifications) */}
+        <div className="av-ben-topbar">
+          <div style={{ minWidth: 0 }}>
+            <p className="mb-0 av-mono-tag fs-10">BENEFICIARY PORTAL</p>
+            <p className="mb-0 fs-13 text-slate-600 text-truncate">{`Xin chào, ${user?.email ?? 'Người thụ hưởng'}`}</p>
+          </div>
+          <NotificationBell inboxPath="/beneficiary/notifications" />
+        </div>
+        {/* Cổng xác thực OTP: chưa xác thực thì không hiển thị dữ liệu thụ hưởng */}
+        <BeneficiaryOtpGate>
         <Outlet />
+        </BeneficiaryOtpGate>
       </main>
     </div>
   )

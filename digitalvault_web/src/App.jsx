@@ -23,6 +23,12 @@ import OwnerHandoverDetailPage from './pages/owner/OwnerHandoverDetailPage'
 import OwnerHandoversPage from './pages/owner/OwnerHandoversPage'
 import ProofOfLifePage from './pages/owner/ProofOfLifePage'
 import SecuritySettingsPage from './pages/owner/SecuritySettingsPage'
+import BeneficiaryAssetsPage from './pages/beneficiary/BeneficiaryAssetsPage'
+import BeneficiaryAssetDetailPage from './pages/beneficiary/BeneficiaryAssetDetailPage'
+import BeneficiaryHandoversPage from './pages/beneficiary/BeneficiaryHandoversPage'
+import BeneficiaryHandoverDetailPage from './pages/beneficiary/BeneficiaryHandoverDetailPage'
+import BeneficiaryReceiptsPage from './pages/beneficiary/BeneficiaryReceiptsPage'
+import BeneficiaryNotificationsPage from './pages/beneficiary/BeneficiaryNotificationsPage'
 
 // Component gốc: khai báo provider và các route theo từng vai trò của hệ thống
 function App() {
@@ -122,11 +128,17 @@ function App() {
           <Route element={<ProtectedRoute role="Beneficiary" />}>
             <Route path="/beneficiary" element={<BeneficiaryLayout />}>
               <Route index element={<Navigate to="assets" replace />} />
-              <Route path="assets" element={<RolePlaceholderPage title="Tài sản thụ hưởng" />} />
-              <Route path="status" element={<RolePlaceholderPage title="Tiến trình quy trình bàn giao" />} />
-              <Route path="receipts" element={<RolePlaceholderPage title="Xác nhận & Biên nhận số" />} />
+              {/* <Route path="assets" element={<RolePlaceholderPage title="Tài sản thụ hưởng" />} /> */}
+              {/* <Route path="status" element={<RolePlaceholderPage title="Tiến trình quy trình bàn giao" />} /> */}
+              {/* <Route path="receipts" element={<RolePlaceholderPage title="Xác nhận & Biên nhận số" />} /> */}
+              <Route path="assets" element={<BeneficiaryAssetsPage />} />
+              <Route path="assets/:assetId" element={<BeneficiaryAssetDetailPage />} />
+              <Route path="status" element={<BeneficiaryHandoversPage />} />
+              <Route path="status/:handoverId" element={<BeneficiaryHandoverDetailPage />} />
+              <Route path="receipts" element={<BeneficiaryReceiptsPage />} />
               <Route path="keys" element={<RolePlaceholderPage title="Khóa giải mã cá nhân E2EE" />} />
-              <Route path="notifications" element={<RolePlaceholderPage title="Thông báo di sản & Tin nhắn" />} />
+              {/* <Route path="notifications" element={<RolePlaceholderPage title="Thông báo di sản & Tin nhắn" />} /> */}
+              <Route path="notifications" element={<BeneficiaryNotificationsPage />} />
             </Route>
           </Route>
 
