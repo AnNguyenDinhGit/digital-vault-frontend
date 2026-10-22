@@ -23,6 +23,8 @@ import OwnerHandoverDetailPage from './pages/owner/OwnerHandoverDetailPage'
 import OwnerHandoversPage from './pages/owner/OwnerHandoversPage'
 import ProofOfLifePage from './pages/owner/ProofOfLifePage'
 import SecuritySettingsPage from './pages/owner/SecuritySettingsPage'
+import LegalHandoverListPage from './pages/legal/LegalHandoverListPage'
+import LegalHandoverDetailPage from './pages/legal/LegalHandoverDetailPage'
 
 // Component gốc: khai báo provider và các route theo từng vai trò của hệ thống
 function App() {
@@ -108,9 +110,40 @@ function App() {
           <Route element={<ProtectedRoute role="LegalVerifier" />}>
             <Route path="/verifier" element={<LegalVerifierLayout />}>
               <Route index element={<Navigate to="pending" replace />} />
-              <Route path="pending" element={<RolePlaceholderPage title="Hồ sơ pháp lý chờ thẩm định" />} />
-              <Route path="approved" element={<RolePlaceholderPage title="Hồ sơ đã duyệt & Ký số" />} />
-              <Route path="additional-requests" element={<RolePlaceholderPage title="Yêu cầu bổ sung tài liệu" />} />
+              <Route
+                path="pending"
+                element={
+                  <LegalHandoverListPage
+                    title="Hồ sơ chờ thẩm định"
+                    description="Xem và thẩm định tính pháp lý của các hồ sơ bàn giao do Người thi hành nộp."
+                    status="Pending_Legal"
+                    emptyMessage="Hiện không có hồ sơ nào đang chờ thẩm định."
+                  />
+                }
+              />
+              <Route
+                path="approved"
+                element={
+                  <LegalHandoverListPage
+                    title="Hồ sơ đã duyệt & Ký số"
+                    description="Danh sách các hồ sơ bàn giao đã được pháp lý phê duyệt và sẵn sàng bàn giao."
+                    status="Approved"
+                    emptyMessage="Chưa có hồ sơ nào đã được phê duyệt."
+                  />
+                }
+              />
+              <Route
+                path="additional-requests"
+                element={
+                  <LegalHandoverListPage
+                    title="Hồ sơ yêu cầu bổ sung"
+                    description="Danh sách các hồ sơ đang chờ Người thi hành bổ sung giấy tờ hoặc làm rõ thông tin."
+                    status="Additional_Info"
+                    emptyMessage="Hiện không có hồ sơ nào đang yêu cầu bổ sung."
+                  />
+                }
+              />
+              <Route path="handovers/:requestId" element={<LegalHandoverDetailPage />} />
               <Route path="ledger" element={<RolePlaceholderPage title="Sổ cái chứng thực RFC 3161" />} />
               <Route path="vneid" element={<RolePlaceholderPage title="Tra cứu VNeID & CSDL Hộ tịch" />} />
               <Route path="smartca" element={<RolePlaceholderPage title="Chứng thư số SmartCA HSM L4" />} />
