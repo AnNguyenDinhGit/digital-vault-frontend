@@ -21,7 +21,28 @@ export async function getLegalHandovers({ page = 1, pageSize = 20, status = '' }
  */
 export async function getLegalHandover(requestId) {
   const { data } = await axiosClient.get(`/legal/handovers/${requestId}`)
+  // BE bọc chi tiết dạng { request: HandoverDto, verification: {...} }; gộp phẳng để trang đọc requestId, status, documents... trực tiếp.
+  // Dữ liệu phẳng (mock, BE cũ) giữ nguyên.
+  if (data?.request && typeof data.request === 'object') {
+    const { request, ...rest } = data
+    const handover = { ...request, ...rest }
+    if (!handover.assetDocuments) handover.assetDocuments = await getLegalAssetDocuments(requestId, handover.documents)
+    return handover
+  }
   return data
+}
+
+// Chi tiết hồ sơ của BE không liệt kê tài liệu tài sản; GET /documents trả thêm các tài liệu đó, nên lấy phần không nằm trong
+// request.documents (giấy tờ Executor nộp). Lỗi hoặc dữ liệu lạ thì coi như không có để không làm hỏng cả trang.
+async function getLegalAssetDocuments(requestId, handoverDocuments) {
+  try {
+    const { data } = await axiosClient.get(`/legal/handovers/${requestId}/documents`)
+    if (!Array.isArray(data)) return []
+    const handoverIds = new Set((handoverDocuments ?? []).map((doc) => doc.documentId))
+    return data.filter((doc) => !handoverIds.has(doc.documentId))
+  } catch {
+    return []
+  }
 }
 
 /**
