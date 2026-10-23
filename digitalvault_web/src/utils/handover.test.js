@@ -1,4 +1,4 @@
-import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, handoverActionErrorMessage, isCancellableStatus, isEditableStatus, ownerCreateHandoverErrorMessage } from './handover'
+import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, declineReasonFromNotifications, handoverActionErrorMessage, isCancellableStatus, isEditableStatus, ownerCreateHandoverErrorMessage } from './handover'
 
 describe('handoverStatusInfo', () => {
   it.each([
@@ -147,5 +147,30 @@ describe('handoverActionErrorMessage for the intake decision', () => {
 
   it('handoverActionErrorMessage_Decline400_ExplainsReasonRules', () => {
     expect(handoverActionErrorMessage({ status: 400 }, 'decline')).toContain('Lý do từ chối không hợp lệ')
+  })
+})
+
+describe('declineReasonFromNotifications', () => {
+  const notice = (message) => ({ notificationId: 1, type: 'Handover', title: 'Executor declined handover', message, isRead: false, createdAt: '2026-10-23T01:00:00Z' })
+
+  it('declineReasonFromNotifications_MatchingRequest_ReturnsTrimmedReason', () => {
+    expect(declineReasonFromNotifications([notice('Handover #7:  Tôi đang bận công tác ')], 7)).toBe('Tôi đang bận công tác')
+  })
+
+  it('declineReasonFromNotifications_OtherRequestsOnly_ReturnsNull', () => {
+    expect(declineReasonFromNotifications([notice('Handover #70: Bận'), notice('Handover #8: Bận')], 7)).toBeNull()
+  })
+
+  it('declineReasonFromNotifications_NewestFirstDuplicates_ReturnsFirstMatch', () => {
+    expect(declineReasonFromNotifications([notice('Handover #7: Lần sau'), notice('Handover #7: Lần trước')], 7)).toBe('Lần sau')
+  })
+
+  it('declineReasonFromNotifications_EmptyOrMissing_ReturnsNull', () => {
+    expect(declineReasonFromNotifications([], 7)).toBeNull()
+    expect(declineReasonFromNotifications(undefined, 7)).toBeNull()
+  })
+
+  it('declineReasonFromNotifications_NoReasonText_ReturnsNull', () => {
+    expect(declineReasonFromNotifications([notice('Handover #7:   ')], 7)).toBeNull()
   })
 })

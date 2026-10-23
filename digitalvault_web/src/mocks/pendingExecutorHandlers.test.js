@@ -95,3 +95,21 @@ describe('mock executor can create a new handover after a declined one', () => {
     expect((await call(axiosClient.post('/executor/assignments/1/handovers'))).status).toBe(409)
   })
 })
+
+describe('mock owner views Executor of a handover', () => {
+  it('handoverDto_ExposesExecutorIdLikeBackend', async () => {
+    addHandover({ status: 'Pending_Executor', executorId: 21 })
+    const { data } = await axiosClient.get('/owner/handovers/50')
+    expect(data.executorId).toBe(21)
+  })
+
+  it('executorDetail_KnownExecutor_ReturnsNameRoleAndStatus', async () => {
+    const result = await call(axiosClient.get('/owner/executors/21'))
+    expect(result.status).toBe(200)
+    expect(result.data).toMatchObject({ userId: 21, fullName: 'LS. Trần Đăng Khoa', role: 'Executor', status: 'Active' })
+  })
+
+  it('executorDetail_UnknownExecutor_Returns404', async () => {
+    expect((await call(axiosClient.get('/owner/executors/999'))).status).toBe(404)
+  })
+})

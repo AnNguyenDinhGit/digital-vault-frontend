@@ -225,6 +225,11 @@ export async function revokeDocument(assetId, documentId) {
   await axiosClient.post(`/owner/assets/${assetId}/documents/${documentId}/revoke`)
 }
 
+// Thông báo của chính người dùng, mới nhất trước (BE: GET /notifications, PageDto). Dùng để tìm lý do Executor từ chối hồ sơ
+export async function getNotifications() {
+  return getAllPages('/notifications')
+}
+
 // Chi tiết một hồ sơ bàn giao của kho thuộc Owner (404 nếu không phải của mình)
 export async function getOwnerHandover(requestId) {
   const { data } = await axiosClient.get(`/owner/handovers/${requestId}`)

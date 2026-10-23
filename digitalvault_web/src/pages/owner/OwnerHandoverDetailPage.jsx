@@ -25,7 +25,7 @@ function BackLink() {
 // Trang chi tiết một hồ sơ bàn giao của Owner: trạng thái, tài sản và người thụ hưởng, giấy tờ Người thi hành đã nộp
 export default function OwnerHandoverDetailPage({ mockMode = MOCK_MODE }) {
   const { requestId } = useParams()
-  const { status, error, handover, assetNames, beneficiaryNames, reload } = useOwnerHandoverDetail(requestId)
+  const { status, error, handover, assetNames, beneficiaryNames, executorName, declineReason, reload } = useOwnerHandoverDetail(requestId)
   const [cancelling, setCancelling] = useState(false)
   const [toast, setToast] = useState(null)
   const closeToast = useCallback(() => setToast(null), [])
@@ -75,6 +75,9 @@ export default function OwnerHandoverDetailPage({ mockMode = MOCK_MODE }) {
               {`Hồ sơ #${handover.requestId}`}
             </h1>
             <p className="mb-0 fs-12 text-slate-500">{`Kho #${handover.vaultId} · Tạo lúc ${formatDateTime(handover.initiatedAt)}`}</p>
+            {handover.executorId && (
+              <p className="mb-0 fs-12 text-slate-500">{`Người thi hành: ${executorName ?? `Executor #${handover.executorId}`}`}</p>
+            )}
           </div>
         </div>
         <div className="d-flex align-items-center gap-3">
@@ -92,6 +95,20 @@ export default function OwnerHandoverDetailPage({ mockMode = MOCK_MODE }) {
       </section>
 
       <MockNotice mode={mockMode === 'full' ? mockMode : 'off'} />
+
+      {handover.status === 'Declined' && (
+        <section className="av-panel d-flex flex-column gap-2" aria-label="Executor đã từ chối">
+          <h2 className="mb-0 fw-bold text-ink" style={{ fontSize: 16 }}>
+            Executor đã từ chối tiếp nhận hồ sơ này
+          </h2>
+          <p className="mb-0 fs-13 text-slate-600">
+            {declineReason ? `Lý do: ${declineReason}` : 'Không tìm thấy lý do của hồ sơ này trong thông báo của bạn.'}
+          </p>
+          <p className="mb-0 fs-13 text-slate-600">
+            Phân công của Executor với kho đã được thu hồi và kho không còn bị khóa. Bạn có thể chọn người thi hành khác rồi tạo hồ sơ bàn giao mới ở mục Hồ sơ bàn giao.
+          </p>
+        </section>
+      )}
 
       <section className="av-panel d-flex flex-column gap-3" aria-label="Tài sản trong hồ sơ">
         <h2 className="mb-0 fw-bold text-ink" style={{ fontSize: 16 }}>

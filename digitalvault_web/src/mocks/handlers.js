@@ -46,6 +46,7 @@ const handoverDto = (request) => ({
   initiatedAt: request.initiatedAt,
   documents: request.documents.map(handoverDocumentDto),
   cases: request.cases,
+  executorId: request.executorId,
 })
 
 // Hồ sơ của chính Executor đang đăng nhập (hồ sơ của người khác coi như không tồn tại)

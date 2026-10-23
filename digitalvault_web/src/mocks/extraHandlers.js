@@ -58,6 +58,16 @@ const canUseVault = (db, userId, vaultId) =>
   isMockHybrid() ? Number.isInteger(vaultId) : db.vaults.some((vault) => vault.vaultId === vaultId && vault.ownerId === userId)
 
 const executorHandlers = [
+  // Chi tiết Executor như BE (userId, fullName, role, status, joinedAt); chỉ có tên và trạng thái, không có hồ sơ nghề nghiệp
+  http.get(
+    '*/api/owner/executors/:executorId',
+    ownerRoute(({ params }) => {
+      const profile = getDb().executors.find((executor) => executor.executorId === Number(params.executorId))
+      if (!profile) return problem(404, 'Eligible Executor not found.')
+      return HttpResponse.json({ userId: profile.executorId, fullName: profile.fullName, role: 'Executor', status: 'Active', joinedAt: '2026-01-01T00:00:00.000Z' })
+    }),
+  ),
+
   http.get(
     '*/api/owner/executors',
     ownerRoute(() => HttpResponse.json(getDb().executors.map(executorProfile))),

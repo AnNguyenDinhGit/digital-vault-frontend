@@ -136,7 +136,7 @@ describe('mock owner handover detail', () => {
     const { data: created } = await create(vault.vaultId)
     const { status, data } = await call(axiosClient.get(`/owner/handovers/${created.requestId}`))
     expect(status).toBe(200)
-    expect(data).toMatchObject({ requestId: created.requestId, vaultId: vault.vaultId, status: 'Pending_Executor' })
+    expect(data).toMatchObject({ requestId: created.requestId, vaultId: vault.vaultId, status: 'Pending_Executor', executorId: 5 })
     expect(data.cases).toHaveLength(2)
   })
 

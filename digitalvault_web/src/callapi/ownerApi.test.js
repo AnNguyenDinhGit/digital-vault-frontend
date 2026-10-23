@@ -14,6 +14,7 @@ import {
   getBeneficiaries,
   getExecutors,
   getExecutorDetail,
+  getNotifications,
   getOwnerHandovers,
   getProfile,
   getLifeConfirmation,
@@ -424,5 +425,13 @@ describe('executors as returned by the real backend', () => {
       return { data: { userId: 15, fullName: 'Nguyen Van A' } }
     })
     await expect(assignExecutor(3, 15)).resolves.toMatchObject({ vaultId: 3, executorId: 15, fullName: 'Nguyen Van A', status: 'Active' })
+  })
+})
+
+describe('getNotifications', () => {
+  it('getNotifications_PageDto_ReturnsAllItemsFromPagedList', async () => {
+    axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [{ notificationId: 2 }, { notificationId: 1 }] } })
+    await expect(getNotifications()).resolves.toEqual([{ notificationId: 2 }, { notificationId: 1 }])
+    expect(axiosClient.get).toHaveBeenCalledWith('/notifications', { params: { page: 1, pageSize: 100 } })
   })
 })

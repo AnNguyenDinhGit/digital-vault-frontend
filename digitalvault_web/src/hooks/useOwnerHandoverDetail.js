@@ -1,23 +1,48 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getAssets, getBeneficiaries, getOwnerHandover } from '../callapi/ownerApi'
+import { getAssets, getBeneficiaries, getExecutorDetail, getNotifications, getOwnerHandover } from '../callapi/ownerApi'
+import { declineReasonFromNotifications } from '../utils/handover'
 
-const INITIAL_STATE = { key: null, status: 'loading', error: null, handover: null, assetNames: {}, beneficiaryNames: {} }
+const INITIAL_STATE = { key: null, status: 'loading', error: null, handover: null, assetNames: {}, beneficiaryNames: {}, executorName: null, declineReason: null }
 
 const toNameMap = (rows, idKey, nameKey) => Object.fromEntries(rows.map((row) => [row[idKey], row[nameKey]]))
 
-// Một hồ sơ bàn giao nhìn từ Owner kèm tên tài sản và người thụ hưởng; tên là phần phụ, tải lỗi thì hiển thị theo mã
+// Tên Executor: ưu tiên tên BE đã trả trong hồ sơ, không thì tra chi tiết Executor (404 nếu không còn đủ điều kiện); null khi không biết
+const lookupExecutorName = async (handover) => {
+  if (handover.executorName) return handover.executorName
+  if (!handover.executorId) return null
+  try {
+    return (await getExecutorDetail(handover.executorId, handover.vaultId)).fullName ?? null
+  } catch {
+    return null
+  }
+}
+
+// Lý do Executor từ chối: ưu tiên trường BE trả trong hồ sơ, không thì tìm trong thông báo của Owner
+const lookupDeclineReason = async (handover) => {
+  if (handover.status !== 'Declined') return null
+  if (handover.declineReason) return handover.declineReason
+  try {
+    return declineReasonFromNotifications(await getNotifications(), handover.requestId)
+  } catch {
+    return null
+  }
+}
+
+// Một hồ sơ bàn giao nhìn từ Owner kèm tên tài sản, người thụ hưởng và Executor; các tên là phần phụ, tải lỗi thì hiển thị theo mã
 export function useOwnerHandoverDetail(requestId) {
   const [state, setState] = useState(INITIAL_STATE)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([
-      getOwnerHandover(requestId),
-      getAssets().catch(() => []),
-      getBeneficiaries().catch(() => []),
-    ])
-      .then(([handover, assets, beneficiaries]) => {
+    getOwnerHandover(requestId)
+      .then(async (handover) => {
+        const [assets, beneficiaries, executorName, declineReason] = await Promise.all([
+          getAssets().catch(() => []),
+          getBeneficiaries().catch(() => []),
+          lookupExecutorName(handover),
+          lookupDeclineReason(handover),
+        ])
         if (cancelled) return
         setState({
           key: requestId,
@@ -26,6 +51,8 @@ export function useOwnerHandoverDetail(requestId) {
           handover,
           assetNames: toNameMap(assets, 'assetId', 'name'),
           beneficiaryNames: toNameMap(beneficiaries, 'beneficiaryId', 'fullName'),
+          executorName,
+          declineReason,
         })
       })
       .catch((error) => {

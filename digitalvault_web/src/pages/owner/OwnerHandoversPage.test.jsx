@@ -348,3 +348,14 @@ describe('OwnerHandoversPage choose Executor when creating', () => {
     expect(within(dialog).queryByLabelText('Người thi hành')).not.toBeInTheDocument()
   })
 })
+
+describe('OwnerHandoversPage Executor column', () => {
+  it('row_ShowsExecutorIdFromBackend', async () => {
+    await seedHandover('Pending_Executor')
+    renderPage()
+    await waitForPage()
+    const table = screen.getByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
+    expect(within(table).getByRole('columnheader', { name: 'Người thi hành' })).toBeInTheDocument()
+    expect(within(table).getByText('Executor #5')).toBeInTheDocument()
+  })
+})

@@ -60,6 +60,14 @@ export function ownerCreateHandoverErrorMessage(error) {
   return detail || 'Đã có lỗi xảy ra, vui lòng thử lại.'
 }
 
+// BE chỉ báo lý do Executor từ chối qua thông báo có nội dung "Handover #<mã>: <lý do>"; tìm lý do của đúng hồ sơ (danh sách mới nhất trước)
+export function declineReasonFromNotifications(notifications, requestId) {
+  const prefix = `Handover #${requestId}:`
+  const found = (notifications ?? []).find((item) => typeof item.message === 'string' && item.message.startsWith(prefix))
+  const reason = found?.message.slice(prefix.length).trim()
+  return reason || null
+}
+
 const SERVER_DETAIL = (error) => (error?.message ? ` Chi tiết từ máy chủ: ${error.message}` : '')
 
 // Thông báo lỗi tiếng Việt cho từng thao tác của Người thi hành trên hồ sơ (kèm nguyên văn lý do của máy chủ khi hữu ích)

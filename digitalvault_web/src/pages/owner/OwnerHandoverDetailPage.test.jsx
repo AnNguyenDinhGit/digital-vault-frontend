@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
 import { createHandover } from '../../callapi/executorApi'
-import { DEMO_ACCOUNT, ROLE_ACCOUNTS, getDb, resetMockDb } from '../../mocks/db'
+import { DEMO_ACCOUNT, ROLE_ACCOUNTS, getDb, resetMockDb, saveDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import OwnerHandoverDetailPage from './OwnerHandoverDetailPage'
@@ -141,5 +141,85 @@ describe('OwnerHandoverDetailPage new statuses', () => {
     await waitForPage()
     expect(screen.getByText('Executor từ chối')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Hủy hồ sơ' })).toBeDisabled()
+  })
+})
+
+describe('OwnerHandoverDetailPage Executor information', () => {
+  it('executor_Known_ShowsNameInHeader', async () => {
+    const id = await seedHandover()
+    renderPage(id)
+    await waitForPage()
+    expect(await screen.findByText('Người thi hành: LS. Lê Hoàng Nam')).toBeInTheDocument()
+  })
+
+  it('executor_DetailLookupFails_FallsBackToIdLabel', async () => {
+    const id = await seedHandover()
+    server.use(http.get('*/api/owner/executors/:executorId', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+    renderPage(id)
+    await waitForPage()
+    expect(await screen.findByText('Người thi hành: Executor #5')).toBeInTheDocument()
+  })
+
+  it('executor_BackendAlreadySendsName_UsesItWithoutLookup', async () => {
+    const id = await seedHandover()
+    let lookups = 0
+    server.use(
+      http.get('*/api/owner/handovers/:requestId', ({ params }) => {
+        const found = getDb().handovers.find((item) => item.requestId === Number(params.requestId))
+        return HttpResponse.json({ ...found, requestType: 'Inheritance', executorName: 'Tên từ BE' })
+      }),
+      http.get('*/api/owner/executors/:executorId', () => {
+        lookups += 1
+        return HttpResponse.json({ userId: 5, fullName: 'Không dùng' })
+      }),
+    )
+    renderPage(id)
+    await waitForPage()
+    expect(await screen.findByText('Người thi hành: Tên từ BE')).toBeInTheDocument()
+    expect(lookups).toBe(0)
+  })
+})
+
+describe('OwnerHandoverDetailPage declined handover', () => {
+  async function declined(reasonText) {
+    const id = await seedHandover({ status: 'Declined' })
+    if (reasonText) {
+      const db = getDb()
+      db.notifications = [{ notificationId: 1, userId: DEMO_ACCOUNT.userId, type: 'Handover', title: 'Executor declined handover', message: `Handover #${id}: ${reasonText}`, isRead: false, createdAt: new Date().toISOString() }]
+      saveDb()
+    }
+    return id
+  }
+
+  it('declined_WithNotification_ShowsReasonAndNextStep', async () => {
+    const id = await declined('Tôi đang bận công tác')
+    renderPage(id)
+    await waitForPage()
+    const note = await screen.findByRole('region', { name: 'Executor đã từ chối' })
+    expect(note).toHaveTextContent('Tôi đang bận công tác')
+    expect(note).toHaveTextContent('chọn người thi hành khác')
+  })
+
+  it('declined_NoMatchingNotification_PointsToNotifications', async () => {
+    const id = await declined('')
+    renderPage(id)
+    await waitForPage()
+    const note = await screen.findByRole('region', { name: 'Executor đã từ chối' })
+    expect(note).toHaveTextContent('Không tìm thấy lý do')
+  })
+
+  it('declined_NotificationsFail_StillShowsDeclinedNote', async () => {
+    const id = await declined('Bận')
+    server.use(http.get('*/api/notifications', () => HttpResponse.json({ status: 500, detail: 'x' }, { status: 500 })))
+    renderPage(id)
+    await waitForPage()
+    expect(await screen.findByRole('region', { name: 'Executor đã từ chối' })).toHaveTextContent('Không tìm thấy lý do')
+  })
+
+  it('declined_OtherStatuses_HaveNoDeclinedNote', async () => {
+    const id = await seedHandover({ status: 'Pending_Executor' })
+    renderPage(id)
+    await waitForPage()
+    expect(screen.queryByRole('region', { name: 'Executor đã từ chối' })).not.toBeInTheDocument()
   })
 })

@@ -90,6 +90,7 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
                   <th scope="col">Mã hồ sơ</th>
                   <th scope="col">Kho</th>
                   <th scope="col">Ngày tạo</th>
+                  <th scope="col">Người thi hành</th>
                   <th scope="col">Phạm vi</th>
                   <th scope="col">Giấy tờ</th>
                   <th scope="col">Trạng thái</th>
@@ -106,6 +107,7 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
                     </td>
                     <td>{`Kho #${item.vaultId}`}</td>
                     <td className="text-nowrap">{formatDateTime(item.initiatedAt)}</td>
+                    <td>{item.executorName ?? (item.executorId ? `Executor #${item.executorId}` : '—')}</td>
                     <td>{`${new Set(item.cases.map((entry) => entry.assetId)).size} tài sản`}</td>
                     <td>{`${item.documents.length} giấy tờ`}</td>
                     <td>
