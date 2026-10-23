@@ -93,25 +93,46 @@ export function validateReceipt({ note, accepted }) {
     return errors
 }
 
-// ---- Phiên xác thực OTP (lưu trong sessionStorage, đóng tab là mất) ----
+// ---- Phiên xác thực OTP ----
+// Nguồn sự thật là BE (chặn 403/428 khi chưa xác thực). sessionStorage chỉ lưu "gợi ý" gồm hạn phiên để
+// khỏi bắt nhập lại OTP khi tải lại trang; cổng OTP luôn hỏi lại BE trước khi tin gợi ý này.
 export const OTP_STORAGE_KEY = 'aeterna.beneficiary.otp'
+// Hạn dự phòng khi phản hồi verify của BE không kèm hạn phiên (khớp thời hạn phiên mặc định của BE)
 export const OTP_SESSION_TTL_MS = 30 * 60 * 1000
 
-export function isOtpVerified(userKey, now = Date.now()) {
+// Lấy mốc hết hạn phiên (ms) từ phản hồi verify của BE: expiresAt/verifiedUntil (ISO) hoặc expiresInSeconds; null nếu không có
+export function otpSessionExpiry(data, now = Date.now()) {
+    if (!data || typeof data !== 'object') return null
+    const iso = data.expiresAt ?? data.verifiedUntil ?? data.sessionExpiresAt
+    if (iso) {
+        const time = parseServerDate(iso).getTime()
+        if (!Number.isNaN(time)) return time
+    }
+    const seconds = Number(data.expiresInSeconds ?? data.expiresIn)
+    return Number.isFinite(seconds) && seconds > 0 ? now + seconds * 1000 : null
+}
+
+// Mốc hết hạn (ms) đã lưu cho người dùng này, hoặc null nếu không có/đã hết hạn/thuộc người khác
+export function readOtpSessionHint(userKey, now = Date.now()) {
     try {
         const stored = JSON.parse(sessionStorage.getItem(OTP_STORAGE_KEY))
-        return Boolean(stored) && stored.userKey === String(userKey) && now - stored.verifiedAt < OTP_SESSION_TTL_MS
+        const expiresAt = Number(stored?.expiresAt)
+        if (!stored || stored.userKey !== String(userKey) || !Number.isFinite(expiresAt) || expiresAt <= now) return null
+        return expiresAt
     } catch {
-        return false
+        return null
     }
 }
 
-export function markOtpVerified(userKey, now = Date.now()) {
+// Lưu gợi ý phiên và trả về mốc hết hạn (ms) đã dùng
+export function markOtpVerified(userKey, expiresAt = null, now = Date.now()) {
+    const until = Number.isFinite(expiresAt) && expiresAt > now ? expiresAt : now + OTP_SESSION_TTL_MS
     try {
-        sessionStorage.setItem(OTP_STORAGE_KEY, JSON.stringify({ userKey: String(userKey), verifiedAt: now }))
+        sessionStorage.setItem(OTP_STORAGE_KEY, JSON.stringify({ userKey: String(userKey), expiresAt: until }))
     } catch {
         // Bỏ qua khi trình duyệt chặn storage
     }
+    return until
 }
 
 export function clearOtpVerified() {

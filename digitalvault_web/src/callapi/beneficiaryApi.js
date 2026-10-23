@@ -8,8 +8,15 @@ export async function requestBeneficiaryOtp() {
 	return data
 }
 // Xác minh mã OTP theo challengeId (OtpInput { challengeId, code })
+// Trả về phản hồi của BE (nếu có kèm hạn phiên như expiresAt/expiresInSeconds thì cổng OTP dùng làm hạn phiên)
 export async function verifyBeneficiaryOtp(challengeId, code) {
-	await axiosClient.post('/beneficiary/otp/verify', { challengeId, code: String(code).trim() })
+	const { data } = await axiosClient.post('/beneficiary/otp/verify', { challengeId, code: String(code).trim() })
+	return data
+}
+
+// Hỏi BE xem phiên OTP còn hiệu lực không (một request nhẹ vào dữ liệu thụ hưởng); 403/428 nghĩa là cần xác thực lại
+export async function checkBeneficiaryOtpSession() {
+	await axiosClient.get('/beneficiary/assets', { params: { page: 1, pageSize: 1 } })
 }
 // ---- Tài sản thụ hưởng ----
 // Danh sách InheritanceDto { handoverId, allocation, asset: AssetDto }

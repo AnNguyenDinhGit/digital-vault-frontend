@@ -67,6 +67,14 @@ export default function BeneficiaryOtpModal({ email, mockMode = MOCK_MODE, onVer
 
   const focusBox = (index) => inputsRef.current[Math.max(0, Math.min(OTP_LENGTH - 1, index))]?.focus()
 
+  // Bấm vào ô nào cũng nhập từ ô trống đầu tiên (đủ 6 số thì giữ ô được bấm để sửa)
+  const handleMouseDown = (index, event) => {
+    const firstEmpty = digits.findIndex((digit) => !digit)
+    if (firstEmpty === -1 || firstEmpty === index) return
+    event.preventDefault()
+    focusBox(firstEmpty)
+  }
+
   const fillFrom = (index, text) => {
     const chars = text.replace(/\D/g, '').slice(0, OTP_LENGTH - index).split('')
     if (chars.length === 0) return
@@ -119,13 +127,17 @@ export default function BeneficiaryOtpModal({ email, mockMode = MOCK_MODE, onVer
     }
     setVerifying(true)
     try {
-      await verifyBeneficiaryOtp(challenge.challengeId, code)
-      onVerified()
+      const result = await verifyBeneficiaryOtp(challenge.challengeId, code)
+      onVerified(result)
     } catch (error) {
       const { field, alert: message } = otpVerifyError(error)
       setFieldError(field ?? '')
       setAlert(message ?? '')
+      // Nhập sai: xóa các ô để nhập lại từ đầu
+      setDigits(EMPTY_DIGITS)
       setVerifying(false)
+      // Chờ fieldset hết bị vô hiệu hóa rồi mới focus được
+      setTimeout(() => inputsRef.current[0]?.focus(), 0)
     }
   }
 
@@ -189,6 +201,7 @@ export default function BeneficiaryOtpModal({ email, mockMode = MOCK_MODE, onVer
                   onChange={(event) => handleChange(index, event.target.value)}
                   onKeyDown={(event) => handleKeyDown(index, event)}
                   onPaste={(event) => handlePaste(index, event)}
+                  onMouseDown={(event) => handleMouseDown(index, event)}
                   onFocus={(event) => event.target.select()}
                 />
               ))}

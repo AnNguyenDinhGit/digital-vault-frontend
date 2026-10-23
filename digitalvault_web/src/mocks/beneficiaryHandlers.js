@@ -150,9 +150,10 @@ export const beneficiaryHandlers = [
         return problem(400, 'Invalid OTP.')
       }
       challenges.delete(body.challengeId)
-      portalOf(userId).otpVerifiedUntil = Date.now() + OTP_SESSION_MS
+      const verifiedUntil = Date.now() + OTP_SESSION_MS
+      portalOf(userId).otpVerifiedUntil = verifiedUntil
       saveDb()
-      return new HttpResponse(null, { status: 200 })
+      return HttpResponse.json({ expiresAt: new Date(verifiedUntil).toISOString() })
     }),
   ),
 
