@@ -69,7 +69,7 @@ const executorHandlers = [
       const db = getDb()
       const vaultId = Number(params.vaultId)
       const assignment = canUseVault(db, userId, vaultId) ? db.executorAssignments[vaultId] : null
-      return assignment ? HttpResponse.json(executorDto(db, vaultId, assignment)) : problem(404, 'Executor is not assigned.')
+      return assignment && assignment.status !== 'Revoked' ? HttpResponse.json(executorDto(db, vaultId, assignment)) : problem(404, 'Executor is not assigned.')
     }),
   ),
 

@@ -90,9 +90,19 @@ export async function assignBeneficiary(assetId, { email, allocation }) {
   return data
 }
 
-// Người thi hành (BE chưa có API, đang dùng mock): 404 ở getVaultExecutor nghĩa là kho chưa gán
-export async function getExecutors() {
-  const { data } = await axiosClient.get('/owner/executors')
+// Danh sách Executor để Owner chọn. BE trả PageDto { userId, fullName } và hỗ trợ tìm theo tên (search) và loại người xung đột
+// với một kho (vaultId); mock trả hồ sơ có executorId. Chuẩn hóa để luôn có executorId.
+export async function getExecutors({ search, vaultId } = {}) {
+  const params = {}
+  if (search?.trim()) params.search = search.trim()
+  if (vaultId) params.vaultId = vaultId
+  const items = await getAllPages('/owner/executors', params)
+  return items.map((item) => ({ ...item, executorId: item.executorId ?? item.userId }))
+}
+
+// Chi tiết một Executor đủ điều kiện (BE trả { userId, fullName, role, status, joinedAt }); 404 nếu không đủ điều kiện
+export async function getExecutorDetail(executorId, vaultId) {
+  const { data } = await axiosClient.get(`/owner/executors/${executorId}`, { params: vaultId ? { vaultId } : undefined })
   return data
 }
 
@@ -101,27 +111,21 @@ export async function getVaultExecutor(vaultId) {
   return data
 }
 
-// Gán hoặc đổi Executor: PUT thật lên BE (204, không trả dữ liệu), sau đó đọc lại bản xem mô phỏng để hiển thị
+// Gán hoặc đổi Executor: PUT thật lên BE (204, không trả dữ liệu), sau đó đọc lại để hiển thị.
+// BE chưa có GET xem Executor của kho nên lấy tên từ chi tiết Executor, nếu cũng không được thì chỉ biết ID vừa gán.
 export async function assignExecutor(vaultId, executorId) {
   const id = Number(executorId)
   await axiosClient.put(`/owner/vaults/${vaultId}/executor`, { executorId: id })
   try {
     return await getVaultExecutor(vaultId)
   } catch {
-    // Không có bản xem (không chạy mock): chỉ biết ID vừa gán
-    return {
-      vaultId,
-      executorId: id,
-      fullName: `Executor #${id}`,
-      organization: 'Chưa có thông tin hồ sơ',
-      licenseNumber: '—',
-      email: '—',
-      hotline: '—',
-      address: '—',
-      status: 'Active',
-      assignedAt: new Date().toISOString(),
-      contractNumber: '—',
+    let fullName = `Executor #${id}`
+    try {
+      fullName = (await getExecutorDetail(id, vaultId)).fullName
+    } catch {
+      // Giữ tên theo ID khi không tra được chi tiết
     }
+    return { vaultId, executorId: id, fullName, status: 'Active', assignedAt: new Date().toISOString() }
   }
 }
 

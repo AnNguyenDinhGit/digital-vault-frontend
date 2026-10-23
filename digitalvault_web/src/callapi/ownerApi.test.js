@@ -13,6 +13,7 @@ import {
   getActivityLogs,
   getBeneficiaries,
   getExecutors,
+  getExecutorDetail,
   getOwnerHandovers,
   getProfile,
   getLifeConfirmation,
@@ -165,10 +166,10 @@ describe('ownerApi', () => {
   })
 
   describe('executor', () => {
-    it('getExecutors_Called_GetsCandidates', async () => {
+    it('getExecutors_PlainArray_ReturnsItsItemsWithPagingParams', async () => {
       axiosClient.get.mockResolvedValue({ data: [{ executorId: 5 }] })
       await expect(getExecutors()).resolves.toEqual([{ executorId: 5 }])
-      expect(axiosClient.get).toHaveBeenCalledWith('/owner/executors')
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/executors', { params: { page: 1, pageSize: 100 } })
     })
 
     it('getVaultExecutor_VaultId_GetsAssignmentOfThatVault', async () => {
@@ -395,5 +396,33 @@ describe('list endpoints returning PageDto like the deployed backend', () => {
   it('getAllocations_PageDto_ReturnsItems', async () => {
     axiosClient.get.mockResolvedValue(page([{ assignmentId: 5 }]))
     await expect(getAllocations(4)).resolves.toEqual([{ assignmentId: 5 }])
+  })
+})
+
+describe('executors as returned by the real backend', () => {
+  it('getExecutors_PageDto_AddsExecutorIdFromUserId', async () => {
+    axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [{ userId: 15, fullName: 'Nguyen Van A' }] } })
+    await expect(getExecutors()).resolves.toEqual([{ userId: 15, fullName: 'Nguyen Van A', executorId: 15 }])
+  })
+
+  it('getExecutors_SearchAndVault_SendsTrimmedSearchAndVaultId', async () => {
+    axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [] } })
+    await getExecutors({ search: '  Tran ', vaultId: 4 })
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/executors', { params: { search: 'Tran', vaultId: 4, page: 1, pageSize: 100 } })
+  })
+
+  it('getExecutorDetail_WithVault_GetsDetailWithVaultIdParam', async () => {
+    axiosClient.get.mockResolvedValue({ data: { userId: 15, fullName: 'Nguyen Van A' } })
+    await expect(getExecutorDetail(15, 4)).resolves.toEqual({ userId: 15, fullName: 'Nguyen Van A' })
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/executors/15', { params: { vaultId: 4 } })
+  })
+
+  it('assignExecutor_ReadBackFailsButDetailWorks_UsesNameFromDetail', async () => {
+    axiosClient.put.mockResolvedValue({ status: 204 })
+    axiosClient.get.mockImplementation(async (url) => {
+      if (url === '/owner/vaults/3/executor') throw { status: 405 }
+      return { data: { userId: 15, fullName: 'Nguyen Van A' } }
+    })
+    await expect(assignExecutor(3, 15)).resolves.toMatchObject({ vaultId: 3, executorId: 15, fullName: 'Nguyen Van A', status: 'Active' })
   })
 })

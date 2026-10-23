@@ -13,7 +13,9 @@ import { MOCK_MODE } from '../../mocks/mode'
 import { countVaultAssets, executorBadgeClass, executorStatusLabel } from '../../utils/executor'
 import { formatDate } from '../../utils/proofOfLife'
 
-function ExecutorCard({ executor, assetCount, onChange, onRevoke, onLegal }) {
+function ExecutorCard({ executor, assetCount, onChange, onRevoke, onLegal, canRevoke }) {
+  // BE thật chỉ trả tên Executor; hồ sơ nghề nghiệp, liên hệ và hợp đồng chỉ có ở dữ liệu mô phỏng nên chỉ hiện phần đang có
+  const hasProfile = Boolean(executor.licenseNumber)
   return (
     <section className="av-panel d-flex flex-column gap-3" aria-label="Người thi hành hiện tại">
       <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
@@ -26,41 +28,47 @@ function ExecutorCard({ executor, assetCount, onChange, onRevoke, onLegal }) {
               </h2>
               <span className={`av-badge ${executorBadgeClass(executor.status)}`}>{executorStatusLabel(executor.status)}</span>
             </div>
-            <p className="mb-0 fs-13 text-slate-500">{executor.organization}</p>
-            <p className="mb-0 font-mono fs-11 text-slate-400">{`Thẻ LS: ${executor.licenseNumber}`}</p>
+            {executor.organization && <p className="mb-0 fs-13 text-slate-500">{executor.organization}</p>}
+            {hasProfile && <p className="mb-0 font-mono fs-11 text-slate-400">{`Thẻ LS: ${executor.licenseNumber}`}</p>}
           </div>
         </div>
         <div className="d-flex flex-wrap gap-2">
-          <Button type="button" variant="light" className="av-btn av-btn-sm border" onClick={onLegal}>
-            <Scale size={14} aria-hidden="true" />
-            Xem hồ sơ pháp lý
-          </Button>
+          {hasProfile && (
+            <Button type="button" variant="light" className="av-btn av-btn-sm border" onClick={onLegal}>
+              <Scale size={14} aria-hidden="true" />
+              Xem hồ sơ pháp lý
+            </Button>
+          )}
           <Button type="button" variant="light" className="av-btn av-btn-sm border" onClick={onChange}>
             Đổi người thi hành
           </Button>
-          <Button type="button" variant="light" className="av-btn av-btn-sm border text-danger" onClick={onRevoke}>
-            Thu hồi ủy quyền
-          </Button>
+          {canRevoke && (
+            <Button type="button" variant="light" className="av-btn av-btn-sm border text-danger" onClick={onRevoke}>
+              Thu hồi ủy quyền
+            </Button>
+          )}
         </div>
       </div>
 
-      <dl className="row g-2 mb-0 fs-13">
-        <div className="col-12 col-md-6 d-flex align-items-center gap-2">
-          <Mail size={14} aria-hidden="true" className="text-slate-400" />
-          <dd className="mb-0">{executor.email}</dd>
-        </div>
-        <div className="col-12 col-md-6 d-flex align-items-center gap-2">
-          <Phone size={14} aria-hidden="true" className="text-slate-400" />
-          <dd className="mb-0">{executor.hotline}</dd>
-        </div>
-        <div className="col-12 d-flex align-items-center gap-2">
-          <MapPin size={14} aria-hidden="true" className="text-slate-400" />
-          <dd className="mb-0">{executor.address}</dd>
-        </div>
-      </dl>
+      {hasProfile && (
+        <dl className="row g-2 mb-0 fs-13">
+          <div className="col-12 col-md-6 d-flex align-items-center gap-2">
+            <Mail size={14} aria-hidden="true" className="text-slate-400" />
+            <dd className="mb-0">{executor.email}</dd>
+          </div>
+          <div className="col-12 col-md-6 d-flex align-items-center gap-2">
+            <Phone size={14} aria-hidden="true" className="text-slate-400" />
+            <dd className="mb-0">{executor.hotline}</dd>
+          </div>
+          <div className="col-12 d-flex align-items-center gap-2">
+            <MapPin size={14} aria-hidden="true" className="text-slate-400" />
+            <dd className="mb-0">{executor.address}</dd>
+          </div>
+        </dl>
+      )}
 
       <div className="av-info-box d-flex flex-wrap gap-4 fs-12 text-slate-600">
-        <span>{`Hợp đồng: ${executor.contractNumber}`}</span>
+        {executor.contractNumber && <span>{`Hợp đồng: ${executor.contractNumber}`}</span>}
         <span>{`Ủy quyền ngày: ${formatDate(executor.assignedAt)}`}</span>
         {assetCount !== null && <span>{`Phạm vi: ${assetCount} tài sản`}</span>}
       </div>
@@ -70,7 +78,7 @@ function ExecutorCard({ executor, assetCount, onChange, onRevoke, onLegal }) {
 }
 
 function VaultExecutor({ vault, assetCount, mockMode, notify }) {
-  const { status, data: executor, error, reload, apply } = useVaultExecutor(vault.vaultId)
+  const { status, data: executor, error, unsupported, reload, apply } = useVaultExecutor(vault.vaultId)
   const [dialog, setDialog] = useState(null)
   const closeDialog = () => setDialog(null)
 
@@ -117,7 +125,16 @@ function VaultExecutor({ vault, assetCount, mockMode, notify }) {
           onChange={() => setDialog('pick')}
           onRevoke={() => setDialog('revoke')}
           onLegal={() => setDialog('legal')}
+          canRevoke={mockMode !== 'off'}
         />
+      ) : unsupported ? (
+        <section className="av-panel av-empty" aria-label="Chưa biết người thi hành">
+          <p className="mb-2">Hệ thống chưa cung cấp thông tin người thi hành hiện tại của kho này.</p>
+          <p className="mb-3 fs-12 text-slate-500">Bạn vẫn chọn hoặc đổi được người thi hành. Executor phụ trách từng hồ sơ bàn giao hiển thị ở mục Hồ sơ bàn giao.</p>
+          <Button type="button" variant="primary" className="av-btn av-btn-sm" onClick={() => setDialog('pick')}>
+            Chọn người thi hành
+          </Button>
+        </section>
       ) : (
         <section className="av-panel av-empty" aria-label="Chưa có người thi hành">
           <p className="mb-3">Kho này chưa có người thi hành.</p>
@@ -128,7 +145,7 @@ function VaultExecutor({ vault, assetCount, mockMode, notify }) {
       )}
 
       {dialog === 'pick' && (
-        <ExecutorPickerModal currentExecutorId={executor?.executorId} mockMode={mockMode} onConfirm={handleAssign} onClose={closeDialog} />
+        <ExecutorPickerModal vaultId={vault.vaultId} currentExecutorId={executor?.executorId} mockMode={mockMode} onConfirm={handleAssign} onClose={closeDialog} />
       )}
       {dialog === 'revoke' && executor && <RevokeExecutorModal executor={executor} onConfirm={handleRevoke} onClose={closeDialog} />}
       {dialog === 'legal' && executor && (
@@ -223,8 +240,8 @@ export default function ExecutorManagementPage({ mockMode = MOCK_MODE }) {
           Quy trình thi hành bàn giao
         </h2>
         <ol className="mb-0 fs-13 text-slate-600" style={{ lineHeight: 1.7 }}>
-          <li>Bạn chọn một Executor đang hoạt động để ủy quyền cho kho; việc gán có hiệu lực ngay.</li>
-          <li>Khi điểm danh sự sống quá hạn và hết ân hạn, Executor được thông báo để bắt đầu bàn giao.</li>
+          <li>Bạn chọn một Executor đang hoạt động để ủy quyền cho kho; việc gán có hiệu lực ngay và Executor được thông báo.</li>
+          <li>Khi cần bàn giao, hồ sơ được tạo và Executor tiếp nhận hoặc từ chối; nếu bị từ chối, bạn chọn người khác rồi tạo hồ sơ mới.</li>
           <li>Executor nộp giấy chứng tử, người xác minh pháp lý kiểm tra trước khi tài sản được mở cho người thụ hưởng.</li>
         </ol>
         <p className="mt-3 mb-0 fs-12 text-slate-500">
