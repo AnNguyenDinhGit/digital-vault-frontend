@@ -78,7 +78,7 @@ function ExecutorCard({ executor, assetCount, onChange, onRevoke, onLegal, canRe
 }
 
 function VaultExecutor({ vault, assetCount, mockMode, notify }) {
-  const { status, data: executor, error, unsupported, reload, apply } = useVaultExecutor(vault.vaultId)
+  const { status, data: executor, previous, error, unsupported, reload, apply } = useVaultExecutor(vault.vaultId)
   const [dialog, setDialog] = useState(null)
   const closeDialog = () => setDialog(null)
 
@@ -125,7 +125,7 @@ function VaultExecutor({ vault, assetCount, mockMode, notify }) {
           onChange={() => setDialog('pick')}
           onRevoke={() => setDialog('revoke')}
           onLegal={() => setDialog('legal')}
-          canRevoke={mockMode !== 'off'}
+          canRevoke={!unsupported}
         />
       ) : unsupported ? (
         <section className="av-panel av-empty" aria-label="Chưa biết người thi hành">
@@ -138,6 +138,7 @@ function VaultExecutor({ vault, assetCount, mockMode, notify }) {
       ) : (
         <section className="av-panel av-empty" aria-label="Chưa có người thi hành">
           <p className="mb-3">Kho này chưa có người thi hành.</p>
+          {previous && <p className="mb-3 fs-12 text-slate-500">{`Người thi hành gần nhất: ${previous.fullName} (đã thu hồi)`}</p>}
           <Button type="button" variant="primary" className="av-btn av-btn-sm" onClick={() => setDialog('pick')}>
             Chọn người thi hành
           </Button>

@@ -350,12 +350,24 @@ describe('OwnerHandoversPage choose Executor when creating', () => {
 })
 
 describe('OwnerHandoversPage Executor column', () => {
-  it('row_ShowsExecutorIdFromBackend', async () => {
+  it('row_BackendSendsExecutorName_ShowsName', async () => {
     await seedHandover('Pending_Executor')
     renderPage()
     await waitForPage()
     const table = screen.getByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
     expect(within(table).getByRole('columnheader', { name: 'Người thi hành' })).toBeInTheDocument()
-    expect(within(table).getByText('Executor #5')).toBeInTheDocument()
+    expect(within(table).getByText('LS. Lê Hoàng Nam')).toBeInTheDocument()
+  })
+
+  it('row_OldBackendWithoutExecutorName_FallsBackToExecutorId', async () => {
+    await seedHandover('Pending_Executor')
+    server.use(
+      http.get('*/api/owner/handovers', () =>
+        HttpResponse.json({ page: 1, pageSize: 100, items: getDb().handovers.map((item) => ({ ...item, requestType: 'Inheritance' })) }),
+      ),
+    )
+    renderPage()
+    await waitForPage()
+    expect(within(screen.getByRole('table', { name: 'Danh sách hồ sơ bàn giao' })).getByText('Executor #5')).toBeInTheDocument()
   })
 })

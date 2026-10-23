@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { LIMITS, isStrongPassword, isValidPhone, validateEmailOnly } from '../utils/validators'
 import { getDb, getFrontendEmail, isMockHybrid, nextId, saveDb } from './db'
 import { forwardToBackend } from './forward'
+import { notify } from './notifications'
 import { executorRoute, hasUnknownFields, ownerRoute, problem, route } from './helpers'
 
 // Các API mà BE chưa có (nhật ký, executor, bảo mật...). Dùng được ở cả chế độ mock đầy đủ lẫn hỗn hợp.
@@ -79,7 +80,8 @@ const executorHandlers = [
       const db = getDb()
       const vaultId = Number(params.vaultId)
       const assignment = canUseVault(db, userId, vaultId) ? db.executorAssignments[vaultId] : null
-      return assignment && assignment.status !== 'Revoked' ? HttpResponse.json(executorDto(db, vaultId, assignment)) : problem(404, 'Executor is not assigned.')
+      // Như BE: trả cả phân công đã thu hồi (status Revoked), chỉ 404 khi kho chưa từng gán Executor
+      return assignment ? HttpResponse.json(executorDto(db, vaultId, assignment)) : problem(404, 'Executor assignment not found.')
     }),
   ),
 
@@ -107,18 +109,36 @@ const executorHandlers = [
     }),
   ),
 
-  http.delete(
-    '*/api/owner/vaults/:vaultId/executor',
-    ownerRoute(({ userId, params }) => {
+  // Thu hồi Executor (BE: ManagementService.RevokeExecutor): chặn sau khi Executor đã tiếp nhận hoặc đang xử lý hồ sơ;
+  // hồ sơ còn chờ tiếp nhận bị hủy theo. Chế độ hỗn hợp gửi thao tác thật lên BE trước rồi mới ghi nhận vào dữ liệu mô phỏng.
+  http.post(
+    '*/api/owner/vaults/:vaultId/executor/revoke',
+    ownerRoute(async ({ userId, params, request }) => {
       const db = getDb()
       const vaultId = Number(params.vaultId)
-      if (!canUseVault(db, userId, vaultId) || !db.executorAssignments[vaultId]) return problem(404, 'Executor is not assigned.')
-      delete db.executorAssignments[vaultId]
+      if (isMockHybrid()) {
+        const upstream = await forwardToBackend(request, null)
+        if (!upstream.ok) return upstream
+      } else {
+        if (!canUseVault(db, userId, vaultId)) return problem(404, 'Vault not found.')
+        const vault = db.vaults.find((item) => item.vaultId === vaultId)
+        const processing = db.handovers.some((item) => item.vaultId === vaultId && !['Pending_Executor', 'Cancelled', 'Declined'].includes(item.status))
+        if (vault.status !== 'Active' || processing) return problem(409, 'Executor cannot be revoked after handover acceptance or processing.')
+      }
+      const assignment = db.executorAssignments[vaultId]
+      if (!assignment || !['Active', 'AutoAssigned'].includes(assignment.status)) return problem(404, 'Active Executor assignment not found.')
+      db.handovers
+        .filter((item) => item.vaultId === vaultId && item.status === 'Pending_Executor')
+        .forEach((item) => {
+          item.status = 'Cancelled'
+          item.cases.forEach((entry) => (entry.status = 'Cancelled'))
+        })
+      assignment.status = 'Revoked'
+      notify(db, assignment.executorId, 'Assignment', 'Vault assignment revoked', 'The Owner revoked your vault assignment.')
       saveDb()
       return new HttpResponse(null, { status: 204 })
     }),
   ),
-
 ]
 
 // Mô phỏng người xác minh pháp lý duyệt hồ sơ để Executor đi tiếp được (BE chưa có giao diện cho LegalVerifier)

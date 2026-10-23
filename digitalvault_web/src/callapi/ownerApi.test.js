@@ -199,10 +199,10 @@ describe('ownerApi', () => {
       expect(axiosClient.get).not.toHaveBeenCalled()
     })
 
-    it('revokeExecutor_VaultId_SendsDelete', async () => {
-      axiosClient.delete.mockResolvedValue({ status: 204 })
+    it('revokeExecutor_VaultId_PostsRevokeEndpoint', async () => {
+      axiosClient.post.mockResolvedValue({ status: 204 })
       await revokeExecutor(3)
-      expect(axiosClient.delete).toHaveBeenCalledWith('/owner/vaults/3/executor')
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/vaults/3/executor/revoke')
     })
 
 

@@ -130,7 +130,7 @@ export async function assignExecutor(vaultId, executorId) {
 }
 
 export async function revokeExecutor(vaultId) {
-  await axiosClient.delete(`/owner/vaults/${vaultId}/executor`)
+  await axiosClient.post(`/owner/vaults/${vaultId}/executor/revoke`)
 }
 
 

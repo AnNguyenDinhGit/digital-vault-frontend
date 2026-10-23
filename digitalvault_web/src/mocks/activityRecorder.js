@@ -25,6 +25,7 @@ const ASSET_REVOKE = /^\/owner\/assets\/(\d+)\/revoke$/
 const DOCUMENT_DOWNLOAD = /^\/owner\/assets\/(\d+)\/documents\/\d+\/content$/
 const ASSET_ITEM = /^\/owner\/assets\/(\d+)$/
 const VAULT_EXECUTOR = /^\/owner\/vaults\/(\d+)\/executor$/
+const VAULT_EXECUTOR_REVOKE = /^\/owner\/vaults\/(\d+)\/executor\/revoke$/
 
 // Từ một request thành công, suy ra dòng nhật ký tương ứng; trả null nếu không phải thao tác cần ghi
 export function describeRequest({ method, url }, status, data) {
@@ -66,7 +67,8 @@ export function describeRequest({ method, url }, status, data) {
   if (asset && verb === 'put') return { action: 'UpdateAsset', entityType: 'DigitalAsset', entityId: Number(asset[1]), result: 'Success' }
   const executor = VAULT_EXECUTOR.exec(path)
   if (executor && verb === 'put') return { action: 'AssignExecutor', entityType: 'DigitalVault', entityId: Number(executor[1]), result: 'Success' }
-  if (executor && verb === 'delete') return { action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: Number(executor[1]), result: 'Success' }
+  const executorRevoke = verb === 'post' ? VAULT_EXECUTOR_REVOKE.exec(path) : null
+  if (executorRevoke) return { action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: Number(executorRevoke[1]), result: 'Success' }
   if (verb === 'put' && path === '/owner/profile') return { action: 'UpdateProfile', result: 'Success' }
   if (verb === 'post' && path === '/owner/change-password') return { action: 'ChangePassword', result: 'Success' }
   if (verb === 'put' && path === '/owner/security/two-factor') return { action: 'ToggleTwoFactor', result: 'Success' }

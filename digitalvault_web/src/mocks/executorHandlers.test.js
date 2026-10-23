@@ -84,13 +84,13 @@ describe('mock vault executor', () => {
     expect((await call(axiosClient.put('/owner/vaults/999/executor', { executorId: 5 }))).status).toBe(404)
   })
 
-  it('delete_ExistingAssignment_Returns204AndRemovesIt', async () => {
-    expect((await call(axiosClient.delete('/owner/vaults/1/executor'))).status).toBe(204)
-    expect((await call(axiosClient.get('/owner/vaults/1/executor'))).status).toBe(404)
+  it('revoke_ExistingAssignment_Returns204AndGetShowsRevokedStatus', async () => {
+    expect((await call(axiosClient.post('/owner/vaults/1/executor/revoke'))).status).toBe(204)
+    expect((await call(axiosClient.get('/owner/vaults/1/executor'))).data.status).toBe('Revoked')
   })
 
-  it('delete_NoAssignment_Returns404', async () => {
+  it('revoke_NoAssignment_Returns404', async () => {
     const vaultId = await createSecondVault()
-    expect((await call(axiosClient.delete(`/owner/vaults/${vaultId}/executor`))).status).toBe(404)
+    expect((await call(axiosClient.post(`/owner/vaults/${vaultId}/executor/revoke`))).status).toBe(404)
   })
 })

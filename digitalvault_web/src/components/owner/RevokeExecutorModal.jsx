@@ -1,7 +1,7 @@
 import { ShieldAlert, X } from 'lucide-react'
 import { useState } from 'react'
 import { Alert, Button, Modal } from 'react-bootstrap'
-import { executorErrorMessage } from '../../utils/executor'
+import { revokeExecutorErrorMessage } from '../../utils/executor'
 
 // Hộp thoại xác nhận thu hồi ủy quyền; chỉ mount khi mở
 export default function RevokeExecutorModal({ executor, onConfirm, onClose }) {
@@ -12,7 +12,7 @@ export default function RevokeExecutorModal({ executor, onConfirm, onClose }) {
     try {
       await onConfirm()
     } catch (error) {
-      setSubmit({ busy: false, error: executorErrorMessage(error) })
+      setSubmit({ busy: false, error: revokeExecutorErrorMessage(error) })
     }
   }
 
@@ -38,7 +38,7 @@ export default function RevokeExecutorModal({ executor, onConfirm, onClose }) {
 
       <div className="av-modal-body d-flex flex-column gap-3">
         <p className="mb-0 fs-13 text-slate-600">
-          {`Bạn sắp thu hồi ủy quyền của ${executor.fullName} (${executor.organization}). Hợp đồng ${executor.contractNumber} sẽ chấm dứt và kho này tạm thời không có người thi hành.`}
+          {`Bạn sắp thu hồi ủy quyền của ${executor.fullName}${executor.organization ? ` (${executor.organization})` : ''}.${executor.contractNumber ? ` Hợp đồng ${executor.contractNumber} sẽ chấm dứt.` : ''} Kho này tạm thời không có người thi hành; hồ sơ bàn giao đang chờ Executor tiếp nhận (nếu có) sẽ bị hủy. Sau khi Executor đã tiếp nhận hồ sơ thì không thu hồi được.`}
         </p>
         {submit.error && <Alert variant="danger" className="av-alert mb-0">{submit.error}</Alert>}
       </div>

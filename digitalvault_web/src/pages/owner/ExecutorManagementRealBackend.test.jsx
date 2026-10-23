@@ -140,3 +140,90 @@ describe('ExecutorManagementPage against the real backend', () => {
     expect(await screen.findByRole('heading', { name: 'Executor #99' })).toBeInTheDocument()
   })
 })
+
+// BE đã có GET xem Executor của kho (trả cả phân công đã thu hồi) và POST thu hồi
+describe('ExecutorManagementPage against the updated backend', () => {
+  const record = (overrides = {}) => ({ vaultId: 1, executorId: 15, fullName: 'Nguyen Van A', status: 'Active', assignedAt: '2026-10-22T03:00:00Z', ...overrides })
+
+  function useUpdatedBackend({ executor = record(), revokeStatus = 204, onRevoke = () => {} } = {}) {
+    server.use(
+      http.get('*/api/owner/vaults/:vaultId/executor', () => (executor ? HttpResponse.json(executor) : HttpResponse.json({ status: 404, detail: 'Executor assignment not found.' }, { status: 404 }))),
+      http.get('*/api/owner/executors', () => HttpResponse.json({ page: 1, pageSize: 100, items: CANDIDATES })),
+      http.post('*/api/owner/vaults/:vaultId/executor/revoke', () => {
+        onRevoke()
+        return revokeStatus === 204 ? new HttpResponse(null, { status: 204 }) : HttpResponse.json({ status: revokeStatus, detail: 'Executor cannot be revoked after handover acceptance or processing.' }, { status: revokeStatus })
+      }),
+    )
+  }
+
+  it('render_ActiveAssignment_ShowsCardWithNameAndRevokeButton', async () => {
+    useUpdatedBackend()
+    renderPage()
+    await waitForPage()
+    const card = await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
+    expect(within(card).getByRole('heading', { name: 'Nguyen Van A' })).toBeInTheDocument()
+    expect(card).toHaveTextContent('Đang hiệu lực')
+    expect(within(card).getByRole('button', { name: 'Thu hồi ủy quyền' })).toBeInTheDocument()
+    expect(card).not.toHaveTextContent('undefined')
+  })
+
+  it('render_AutoAssigned_ShowsSystemChosenLabel', async () => {
+    useUpdatedBackend({ executor: record({ status: 'AutoAssigned' }) })
+    renderPage()
+    await waitForPage()
+    expect(await screen.findByRole('region', { name: 'Người thi hành hiện tại' })).toHaveTextContent('Hệ thống tự chọn')
+  })
+
+  it('render_RevokedAssignment_ShowsNoCurrentExecutorAndMentionsPreviousOne', async () => {
+    useUpdatedBackend({ executor: record({ status: 'Revoked' }) })
+    renderPage()
+    await waitForPage()
+    expect(await screen.findByText('Kho này chưa có người thi hành.')).toBeInTheDocument()
+    expect(screen.getByText('Người thi hành gần nhất: Nguyen Van A (đã thu hồi)')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Người thi hành hiện tại' })).not.toBeInTheDocument()
+  })
+
+  it('render_NeverAssigned404_ShowsEmptyStateWithoutPreviousNote', async () => {
+    useUpdatedBackend({ executor: null })
+    renderPage()
+    await waitForPage()
+    expect(await screen.findByText('Kho này chưa có người thi hành.')).toBeInTheDocument()
+    expect(screen.queryByText(/gần nhất/)).not.toBeInTheDocument()
+  })
+
+  it('revoke_Confirm_CallsApiAndShowsEmptyState', async () => {
+    let calls = 0
+    useUpdatedBackend({ onRevoke: () => (calls += 1) })
+    renderPage()
+    await waitForPage()
+    const card = await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
+    await userEvent.click(within(card).getByRole('button', { name: 'Thu hồi ủy quyền' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Thu hồi' }))
+    expect(await screen.findByText('Kho này chưa có người thi hành.')).toBeInTheDocument()
+    expect(calls).toBe(1)
+  })
+
+  it('revoke_AfterAcceptance409_ExplainsWhyItCannotBeRevoked', async () => {
+    useUpdatedBackend({ revokeStatus: 409 })
+    renderPage()
+    await waitForPage()
+    const card = await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
+    await userEvent.click(within(card).getByRole('button', { name: 'Thu hồi ủy quyền' }))
+    const dialog = screen.getByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Thu hồi' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('đã tiếp nhận hoặc đang xử lý hồ sơ bàn giao')
+    expect(screen.getByRole('region', { name: 'Người thi hành hiện tại' })).toBeInTheDocument()
+  })
+
+  it('assign_AfterRead_ShowsNameReturnedByBackendRead', async () => {
+    useUpdatedBackend({ executor: null })
+    server.use(http.put('*/api/owner/vaults/:vaultId/executor', () => new HttpResponse(null, { status: 204 })))
+    renderPage()
+    await waitForPage()
+    const dialog = await openPicker()
+    await userEvent.click(await within(dialog).findByRole('radio', { name: /Nguyen Van A/ }))
+    server.use(http.get('*/api/owner/vaults/:vaultId/executor', () => HttpResponse.json(record())))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận ủy quyền' }))
+    expect(await screen.findByRole('heading', { name: 'Nguyen Van A' })).toBeInTheDocument()
+  })
+})

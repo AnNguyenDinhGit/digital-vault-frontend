@@ -43,7 +43,7 @@ describe('describeRequest', () => {
 
   it('describeRequest_ExecutorAssignAndRevoke_UseVaultIdFromUrl', () => {
     expect(run('put', '/owner/vaults/3/executor', 200)).toMatchObject({ action: 'AssignExecutor', entityType: 'DigitalVault', entityId: 3 })
-    expect(run('delete', '/owner/vaults/3/executor', 204)).toMatchObject({ action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: 3 })
+    expect(run('post', '/owner/vaults/3/executor/revoke', 204)).toMatchObject({ action: 'RevokeExecutor', entityType: 'DigitalVault', entityId: 3 })
   })
 
   it('describeRequest_UpdateAndRevokeAsset_UseAssetIdFromUrl', () => {

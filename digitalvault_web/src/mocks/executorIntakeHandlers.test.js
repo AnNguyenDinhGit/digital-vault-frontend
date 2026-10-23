@@ -158,3 +158,29 @@ describe('mock notifications listing', () => {
     expect((await call(axiosClient.post('/notifications/999/read'))).status).toBe(404)
   })
 })
+
+describe('mock owner sees decline details like the backend', () => {
+  it('ownerHandover_AfterDecline_ExposesExecutorNameReasonAndTime', async () => {
+    const id = await pendingRequest()
+    await decline(id, { reason: ' Bận công tác ' })
+    await axiosClient.post('/auth/login', { email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password })
+    const { data } = await axiosClient.get(`/owner/handovers/${id}`)
+    expect(data).toMatchObject({ status: 'Declined', executorId: 5, executorName: 'LS. Lê Hoàng Nam', declineReason: 'Bận công tác' })
+    expect(new Date(data.declinedAt).getTime()).toBeLessThanOrEqual(Date.now())
+  })
+
+  it('ownerHandover_NotDeclined_HasNoDeclineFields', async () => {
+    const id = await pendingRequest()
+    await axiosClient.post('/auth/login', { email: DEMO_ACCOUNT.email, password: DEMO_ACCOUNT.password })
+    const { data } = await axiosClient.get(`/owner/handovers/${id}`)
+    expect(data.executorName).toBe('LS. Lê Hoàng Nam')
+    expect(data.declineReason).toBeUndefined()
+  })
+
+  it('executorHandover_ExecutorView_DoesNotExposeOwnerOnlyDeclineFields', async () => {
+    const id = await pendingRequest()
+    await decline(id, { reason: 'Bận' })
+    const { data } = await axiosClient.get(`/executor/handovers/${id}`)
+    expect(data.declineReason).toBeUndefined()
+  })
+})

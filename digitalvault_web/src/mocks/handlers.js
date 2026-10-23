@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { getDb, nextId, saveDb, setSessionUserId } from './db'
 import { adminHandlers } from './adminHandlers'
 import { extraHandlers } from './extraHandlers'
+import { notify } from './notifications'
 import { fieldOf, hasUnknownFormFields, isValidDocument, isValidSignature } from './formFiles'
 import { executorRoute, hasUnknownFields, isBlank, ownerRoute, problem, route } from './helpers'
 import { parseAllocation, parseAssetUpdate } from './assetInput'
@@ -49,6 +50,14 @@ const handoverDto = (request) => ({
   executorId: request.executorId,
 })
 
+// Hồ sơ nhìn từ Owner: BE thêm tên Executor và, với hồ sơ bị từ chối, lý do và thời điểm từ chối
+const ownerHandoverDto = (request) => {
+  const db = getDb()
+  const executorName = db.users.find((user) => user.userId === request.executorId)?.fullName ?? db.executors.find((item) => item.executorId === request.executorId)?.fullName ?? null
+  const declined = request.status === 'Declined' ? { declineReason: request.declineReason ?? null, declinedAt: request.declinedAt ?? null } : {}
+  return { ...handoverDto(request), executorName, ...declined }
+}
+
 // Hồ sơ của chính Executor đang đăng nhập (hồ sơ của người khác coi như không tồn tại)
 const ownHandover = (userId, requestId) => getDb().handovers.find((item) => item.requestId === Number(requestId) && item.executorId === userId)
 
@@ -79,13 +88,6 @@ async function uploadHandoverDocument({ userId, params, request }, purpose) {
 }
 
 // BE chặn mọi thao tác sửa của Owner trên kho còn hồ sơ bàn giao chưa hủy
-// Thêm thông báo cho một người dùng (BE: ManagementService.Notify)
-function notify(db, userId, type, title, message) {
-  db.notifications ??= []
-  const notificationId = Math.max(0, ...db.notifications.map((item) => item.notificationId)) + 1
-  db.notifications.push({ notificationId, userId, type, title, message, isRead: false, createdAt: new Date().toISOString() })
-}
-
 // Mỗi phân bổ Active của tài sản Active trong kho là một case của hồ sơ bàn giao
 function draftCases(db, vaultId) {
   const assetIds = db.assets.filter((asset) => asset.vaultId === vaultId && asset.status === 'Active').map((asset) => asset.assetId)
@@ -684,7 +686,7 @@ const coreHandlers = [
         .filter((item) => vaultIds.includes(item.vaultId) && (!status || item.status === status))
         .sort((a, b) => b.requestId - a.requestId)
         .slice((page - 1) * pageSize, page * pageSize)
-        .map(handoverDto)
+        .map(ownerHandoverDto)
       return HttpResponse.json({ page, pageSize, items })
     }),
   ),
@@ -695,7 +697,7 @@ const coreHandlers = [
       const db = getDb()
       const vaultIds = ownedVaults(db, userId).map((vault) => vault.vaultId)
       const handover = db.handovers.find((item) => item.requestId === Number(params.requestId) && vaultIds.includes(item.vaultId))
-      return handover ? HttpResponse.json(handoverDto(handover)) : problem(404, 'Request not found.')
+      return handover ? HttpResponse.json(ownerHandoverDto(handover)) : problem(404, 'Request not found.')
     }),
   ),
 
@@ -739,7 +741,7 @@ const coreHandlers = [
       const request = { requestId: nextId('handover'), vaultId, executorId, status: 'Pending_Executor', initiatedAt: new Date().toISOString(), documents: [], cases: draftCases(db, vaultId) }
       db.handovers.push(request)
       saveDb()
-      return HttpResponse.json(handoverDto(request), { status: 201, headers: { Location: `/api/owner/handovers/${request.requestId}` } })
+      return HttpResponse.json(ownerHandoverDto(request), { status: 201, headers: { Location: `/api/owner/handovers/${request.requestId}` } })
     }),
   ),
 
@@ -829,6 +831,7 @@ const coreHandlers = [
       if (handover.status !== 'Pending_Executor') return problem(409, 'Only an awaiting Executor request can be declined.')
       handover.status = 'Declined'
       handover.declineReason = reason
+      handover.declinedAt = new Date().toISOString()
       handover.cases.forEach((item) => (item.status = 'Cancelled'))
       const assignment = db.executorAssignments[handover.vaultId]
       if (assignment?.executorId === userId) assignment.status = 'Revoked'

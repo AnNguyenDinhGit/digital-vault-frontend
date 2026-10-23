@@ -154,7 +154,14 @@ describe('OwnerHandoverDetailPage Executor information', () => {
 
   it('executor_DetailLookupFails_FallsBackToIdLabel', async () => {
     const id = await seedHandover()
-    server.use(http.get('*/api/owner/executors/:executorId', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+    // BE cũ chưa trả executorName và tra chi tiết Executor cũng không được
+    server.use(
+      http.get('*/api/owner/handovers/:requestId', ({ params }) => {
+        const { executorId, ...rest } = getDb().handovers.find((item) => item.requestId === Number(params.requestId))
+        return HttpResponse.json({ ...rest, executorId, requestType: 'Inheritance' })
+      }),
+      http.get('*/api/owner/executors/:executorId', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })),
+    )
     renderPage(id)
     await waitForPage()
     expect(await screen.findByText('Người thi hành: Executor #5')).toBeInTheDocument()
@@ -221,5 +228,28 @@ describe('OwnerHandoverDetailPage declined handover', () => {
     renderPage(id)
     await waitForPage()
     expect(screen.queryByRole('region', { name: 'Executor đã từ chối' })).not.toBeInTheDocument()
+  })
+})
+
+describe('OwnerHandoverDetailPage uses the decline details sent by the backend', () => {
+  it('declined_BackendSendsReasonAndTime_ShowsThemWithoutLookingAtNotifications', async () => {
+    const id = await seedHandover({ status: 'Declined' })
+    let notificationCalls = 0
+    server.use(
+      http.get('*/api/owner/handovers/:requestId', ({ params }) => {
+        const found = getDb().handovers.find((item) => item.requestId === Number(params.requestId))
+        return HttpResponse.json({ ...found, requestType: 'Inheritance', executorName: 'Tên từ BE', declineReason: 'Lý do từ BE', declinedAt: '2026-10-23T03:30:00Z' })
+      }),
+      http.get('*/api/notifications', () => {
+        notificationCalls += 1
+        return HttpResponse.json({ page: 1, pageSize: 100, items: [] })
+      }),
+    )
+    renderPage(id)
+    await waitForPage()
+    const note = await screen.findByRole('region', { name: 'Executor đã từ chối' })
+    expect(note).toHaveTextContent('Lý do: Lý do từ BE')
+    expect(note).toHaveTextContent('Từ chối lúc')
+    expect(notificationCalls).toBe(0)
   })
 })

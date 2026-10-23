@@ -103,6 +103,7 @@ export default function OwnerHandoverDetailPage({ mockMode = MOCK_MODE }) {
           </h2>
           <p className="mb-0 fs-13 text-slate-600">
             {declineReason ? `Lý do: ${declineReason}` : 'Không tìm thấy lý do của hồ sơ này trong thông báo của bạn.'}
+            {handover.declinedAt ? ` Từ chối lúc ${formatDateTime(handover.declinedAt)}.` : ''}
           </p>
           <p className="mb-0 fs-13 text-slate-600">
             Phân công của Executor với kho đã được thu hồi và kho không còn bị khóa. Bạn có thể chọn người thi hành khác rồi tạo hồ sơ bàn giao mới ở mục Hồ sơ bàn giao.
