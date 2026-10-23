@@ -8,9 +8,9 @@ import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import CancelHandoverModal from '../../components/owner/CancelHandoverModal'
 import { useOwnerHandoverDetail } from '../../hooks/useOwnerHandoverDetail'
 import { MOCK_MODE } from '../../mocks/mode'
+import { isCancellableStatus } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
-const CANCELLABLE = ['Draft', 'Rejected']
 const CASE_STATUS_LABELS = { Pending: 'Chờ bàn giao', In_Progress: 'Đang chuyển giao', Completed: 'Đã bàn giao', Received: 'Đã nhận', Cancelled: 'Đã hủy' }
 
 function BackLink() {
@@ -83,7 +83,7 @@ export default function OwnerHandoverDetailPage({ mockMode = MOCK_MODE }) {
             type="button"
             variant="light"
             className="av-btn av-btn-sm border"
-            disabled={!CANCELLABLE.includes(handover.status)}
+            disabled={!isCancellableStatus(handover.status)}
             onClick={() => setCancelling(true)}
           >
             Hủy hồ sơ

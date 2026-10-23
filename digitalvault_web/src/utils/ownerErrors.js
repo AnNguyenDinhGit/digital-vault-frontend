@@ -1,5 +1,5 @@
 const HANDOVER_BLOCK =
-  'Kho này đang có hồ sơ bàn giao nên không thể thay đổi tài sản, phân bổ hay giấy tờ. Hãy vào mục Hồ sơ bàn giao để hủy hồ sơ (đang ở trạng thái nháp hoặc bị từ chối) rồi thử lại.'
+  'Kho này đang có hồ sơ bàn giao nên không thể thay đổi tài sản, phân bổ hay giấy tờ. Hãy vào mục Hồ sơ bàn giao để hủy hồ sơ (đang chờ Executor tiếp nhận, bản nháp hoặc bị từ chối) rồi thử lại. Hồ sơ bị Executor từ chối thì không còn khóa kho.'
 
 // Giải thích lỗi 409 của BE theo nội dung `detail` (BE dùng nhiều lý do khác nhau cho cùng một mã trạng thái)
 export function conflictMessage(detail = '') {

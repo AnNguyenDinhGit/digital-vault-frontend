@@ -1,5 +1,7 @@
 // Trạng thái hồ sơ bàn giao (HANDOVER_REQUESTS của BE) và tông màu hiển thị
 const STATUS_INFO = {
+  Pending_Executor: { text: 'Chờ Executor tiếp nhận', tone: 'info' },
+  Declined: { text: 'Executor từ chối', tone: 'warn' },
   Draft: { text: 'Bản nháp', tone: 'muted' },
   Cancelled: { text: 'Đã hủy', tone: 'muted' },
   Pending_Legal: { text: 'Chờ thẩm định pháp lý', tone: 'info' },
@@ -14,6 +16,9 @@ export function handoverStatusInfo(status) {
   return STATUS_INFO[status] ?? { text: status, tone: 'muted' }
 }
 
+// Owner chỉ hủy được hồ sơ đang chờ Executor tiếp nhận, bản nháp hoặc bị từ chối (BE trả 409 với các trạng thái khác)
+export const isCancellableStatus = (status) => ['Pending_Executor', 'Draft', 'Rejected'].includes(status)
+
 // Chỉ ở các trạng thái này Executor mới được nộp thêm giấy chứng tử/bằng chứng và gửi thẩm định
 export const isEditableStatus = (status) => ['Draft', 'Rejected', 'Additional_Info'].includes(status)
 
@@ -22,7 +27,7 @@ export const HANDOVER_GROUPS = {
   pending: ['Pending_Legal', 'Additional_Info'],
   approved: ['Approved'],
   inProgress: ['In_Progress'],
-  history: ['Completed', 'Cancelled'],
+  history: ['Completed', 'Cancelled', 'Declined'],
 }
 
 // Lọc theo nhóm trạng thái (không truyền thì lấy tất cả), mới nhất trước
@@ -46,7 +51,7 @@ export function ownerCreateHandoverErrorMessage(error) {
   if (error?.status === 503) return 'Hiện chưa có Người thi hành độc lập nào sẵn sàng. Hãy gán Người thi hành cho kho rồi thử lại.'
   if (error?.status === 409) {
     if (/exactly 100 percent/i.test(detail)) return 'Mỗi tài sản đang hoạt động cần có giấy tờ và được phân bổ đủ 100% cho người thụ hưởng đang hiệu lực trước khi tạo hồ sơ bàn giao.'
-    if (/protected handover|inactive/i.test(detail)) return 'Kho đang không hoạt động hoặc đã có hồ sơ bàn giao chưa hủy. Hãy hủy hồ sơ nháp hoặc bị từ chối trước khi tạo hồ sơ mới.'
+    if (/protected handover|inactive/i.test(detail)) return 'Kho đang không hoạt động hoặc đã có hồ sơ bàn giao chưa hủy. Hãy hủy hồ sơ đang chờ tiếp nhận, bản nháp hoặc bị từ chối trước khi tạo hồ sơ mới.'
     if (/independent/i.test(detail)) return 'Người thi hành của kho phải độc lập với chủ kho và những người thụ hưởng.'
     if (/Beneficiary unavailable/i.test(detail)) return 'Có người thụ hưởng không còn hoạt động nên chưa thể tạo hồ sơ bàn giao.'
     if (/Multiple active executors/i.test(detail)) return 'Kho có nhiều Người thi hành đang hiệu lực, cần quản trị viên chỉnh lại.'

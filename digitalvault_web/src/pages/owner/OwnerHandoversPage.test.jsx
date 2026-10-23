@@ -130,7 +130,7 @@ describe('OwnerHandoversPage cancel flow', () => {
     server.use(http.post('*/api/owner/handovers/:requestId/cancel', () => HttpResponse.json({ status: 409, detail: 'x' }, { status: 409 })))
     const { dialog } = await openConfirm()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận hủy' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Chỉ hủy được hồ sơ ở trạng thái nháp hoặc bị từ chối.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Chỉ hủy được hồ sơ đang chờ Executor tiếp nhận, bản nháp hoặc bị từ chối.')
   })
 
   it('confirm_ServerError_ShowsServerMessage', async () => {
@@ -166,7 +166,7 @@ describe('OwnerHandoversPage create flow', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }))
     expect(await screen.findByText(/Đã tạo hồ sơ #/)).toBeInTheDocument()
     const table = await screen.findByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
-    expect(within(table).getByText('Bản nháp')).toBeInTheDocument()
+    expect(within(table).getByText('Chờ Executor tiếp nhận')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
@@ -212,5 +212,25 @@ describe('OwnerHandoversPage detail link', () => {
     renderPage()
     await waitForPage()
     expect(screen.getByRole('link', { name: `Hồ sơ #${id}` })).toHaveAttribute('href', `/owner/handovers/${id}`)
+  })
+})
+
+describe('OwnerHandoversPage new statuses', () => {
+  it('row_PendingExecutor_ShowsLabelAndAllowsCancel', async () => {
+    await seedHandover('Pending_Executor')
+    renderPage()
+    await waitForPage()
+    const table = screen.getByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
+    expect(within(table).getByText('Chờ Executor tiếp nhận')).toBeInTheDocument()
+    expect(within(table).getByRole('button', { name: 'Hủy hồ sơ' })).toBeEnabled()
+  })
+
+  it('row_Declined_ShowsLabelAndCannotBeCancelled', async () => {
+    await seedHandover('Declined')
+    renderPage()
+    await waitForPage()
+    const table = screen.getByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
+    expect(within(table).getByText('Executor từ chối')).toBeInTheDocument()
+    expect(within(table).getByRole('button', { name: 'Hủy hồ sơ' })).toBeDisabled()
   })
 })

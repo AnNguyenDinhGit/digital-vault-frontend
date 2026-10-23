@@ -44,7 +44,7 @@ describe('mock owner create handover', () => {
     const { vault, asset } = await readyVault()
     const { status, data } = await create(vault.vaultId)
     expect(status).toBe(201)
-    expect(data).toMatchObject({ vaultId: vault.vaultId, requestType: 'Inheritance', status: 'Draft' })
+    expect(data).toMatchObject({ vaultId: vault.vaultId, requestType: 'Inheritance', status: 'Pending_Executor' })
     expect(data.cases).toHaveLength(2)
     expect(data.cases.every((item) => item.assetId === asset.assetId)).toBe(true)
     expect(getDb().executorAssignments[vault.vaultId]).toMatchObject({ executorId: 5, status: 'AutoAssigned' })
@@ -136,7 +136,7 @@ describe('mock owner handover detail', () => {
     const { data: created } = await create(vault.vaultId)
     const { status, data } = await call(axiosClient.get(`/owner/handovers/${created.requestId}`))
     expect(status).toBe(200)
-    expect(data).toMatchObject({ requestId: created.requestId, vaultId: vault.vaultId, status: 'Draft' })
+    expect(data).toMatchObject({ requestId: created.requestId, vaultId: vault.vaultId, status: 'Pending_Executor' })
     expect(data.cases).toHaveLength(2)
   })
 

@@ -99,7 +99,8 @@ function vaultNotReady(db, vaultId) {
 }
 
 const HANDOVER_LOCK = 'Handover records protect this vault from mutation.'
-const vaultLocked = (db, vaultId) => db.handovers.some((item) => item.vaultId === vaultId && item.status !== 'Cancelled')
+// Như BE: hồ sơ chưa hủy và chưa bị Executor từ chối thì khóa kho
+const vaultLocked = (db, vaultId) => db.handovers.some((item) => item.vaultId === vaultId && !['Cancelled', 'Declined'].includes(item.status))
 
 function assignmentDto(db, assignment) {
   const user = db.users.find((u) => u.userId === assignment.beneficiaryId)
@@ -651,7 +652,7 @@ const coreHandlers = [
       if (handovers.some((item) => ['Approved', 'In_Progress', 'Completed'].includes(item.status))) {
         return problem(409, 'A legally confirmed handover exists. Resolve the conflicting legal record before confirming alive.')
       }
-      if (handovers.some((item) => !['Cancelled', 'Rejected'].includes(item.status) && item.documents.some((doc) => doc.purpose === 'DeathCertificate'))) {
+      if (handovers.some((item) => !['Cancelled', 'Rejected', 'Declined'].includes(item.status) && item.documents.some((doc) => doc.purpose === 'DeathCertificate'))) {
         return problem(409, 'A death report or legally confirmed handover exists. Resolve the conflicting report before confirming alive.')
       }
       const now = new Date().toISOString()
@@ -698,7 +699,7 @@ const coreHandlers = [
       const vaultIds = ownedVaults(db, userId).map((vault) => vault.vaultId)
       const handover = db.handovers.find((item) => item.requestId === Number(params.requestId) && vaultIds.includes(item.vaultId))
       if (!handover) return problem(404, 'Handover request not found.')
-      if (!['Draft', 'Rejected'].includes(handover.status)) return problem(409, 'Only draft or rejected requests can be cancelled.')
+      if (!['Pending_Executor', 'Draft', 'Rejected'].includes(handover.status)) return problem(409, 'Only awaiting Executor, draft or rejected requests can be cancelled.')
       handover.status = 'Cancelled'
       saveDb()
       return new HttpResponse(null, { status: 204 })
@@ -727,7 +728,7 @@ const coreHandlers = [
       const isBeneficiary = db.assignments.some((item) => item.status === 'Active' && assetIds.includes(item.assetId) && item.beneficiaryId === executorId)
       if (executorId === userId || isBeneficiary) return problem(409, 'Assigned Executor must be independent of the owner and beneficiaries.')
 
-      const request = { requestId: nextId('handover'), vaultId, executorId, status: 'Draft', initiatedAt: new Date().toISOString(), documents: [], cases: draftCases(db, vaultId) }
+      const request = { requestId: nextId('handover'), vaultId, executorId, status: 'Pending_Executor', initiatedAt: new Date().toISOString(), documents: [], cases: draftCases(db, vaultId) }
       db.handovers.push(request)
       saveDb()
       return HttpResponse.json(handoverDto(request), { status: 201, headers: { Location: `/api/owner/handovers/${request.requestId}` } })
@@ -752,7 +753,7 @@ const coreHandlers = [
       const db = getDb()
       const vaultId = Number(params.vaultId)
       if (db.executorAssignments[vaultId]?.executorId !== userId) return problem(403, 'This vault is not assigned to you.')
-      if (db.handovers.some((item) => item.vaultId === vaultId && item.status !== 'Cancelled')) {
+      if (vaultLocked(db, vaultId)) {
         return problem(409, 'A handover request already exists for this vault.')
       }
       const cases = draftCases(db, vaultId)

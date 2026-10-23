@@ -1,4 +1,4 @@
-import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, isEditableStatus, ownerCreateHandoverErrorMessage } from './handover'
+import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, isCancellableStatus, isEditableStatus, ownerCreateHandoverErrorMessage } from './handover'
 
 describe('handoverStatusInfo', () => {
   it.each([
@@ -107,5 +107,31 @@ describe('ownerCreateHandoverErrorMessage', () => {
   it('ownerCreateHandoverErrorMessage_Other_UsesServerMessageOrGeneric', () => {
     expect(ownerCreateHandoverErrorMessage({ status: 500, message: 'Lỗi.' })).toBe('Lỗi.')
     expect(ownerCreateHandoverErrorMessage({})).toBe('Đã có lỗi xảy ra, vui lòng thử lại.')
+  })
+})
+
+describe('statuses added by the backend intake step', () => {
+  it('handoverStatusInfo_PendingExecutor_IsAwaitingLabel', () => {
+    expect(handoverStatusInfo('Pending_Executor')).toEqual({ text: 'Chờ Executor tiếp nhận', tone: 'info' })
+  })
+
+  it('handoverStatusInfo_Declined_IsExecutorDeclinedLabel', () => {
+    expect(handoverStatusInfo('Declined')).toEqual({ text: 'Executor từ chối', tone: 'warn' })
+  })
+
+  it.each([['Pending_Executor', true], ['Draft', true], ['Rejected', true], ['Declined', false], ['Pending_Legal', false], ['Approved', false], ['In_Progress', false], ['Completed', false], ['Cancelled', false]])(
+    'isCancellableStatus_%s_Returns%s',
+    (status, expected) => {
+      expect(isCancellableStatus(status)).toBe(expected)
+    },
+  )
+
+  it('isEditableStatus_PendingExecutorAndDeclined_AreLocked', () => {
+    expect(isEditableStatus('Pending_Executor')).toBe(false)
+    expect(isEditableStatus('Declined')).toBe(false)
+  })
+
+  it('HANDOVER_GROUPS_History_IncludesDeclined', () => {
+    expect(HANDOVER_GROUPS.history).toContain('Declined')
   })
 })

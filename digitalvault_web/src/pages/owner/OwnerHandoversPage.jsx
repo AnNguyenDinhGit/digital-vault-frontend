@@ -9,10 +9,9 @@ import CancelHandoverModal from '../../components/owner/CancelHandoverModal'
 import CreateOwnerHandoverModal from '../../components/owner/CreateOwnerHandoverModal'
 import { useOwnerHandovers } from '../../hooks/useOwnerHandovers'
 import { MOCK_MODE } from '../../mocks/mode'
-import { filterHandovers } from '../../utils/handover'
+import { filterHandovers, isCancellableStatus } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
-const CANCELLABLE = ['Draft', 'Rejected']
 
 // Trang "Hồ sơ bàn giao" của Owner: tạo hồ sơ bàn giao cho kho, xem hồ sơ của kho và hủy khi còn là nháp/bị từ chối
 export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
@@ -113,7 +112,7 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
                       <HandoverStatusBadge status={item.status} />
                     </td>
                     <td className="text-end">
-                      <button type="button" className="av-ghost-btn" disabled={!CANCELLABLE.includes(item.status)} onClick={() => setCancelling(item)}>
+                      <button type="button" className="av-ghost-btn" disabled={!isCancellableStatus(item.status)} onClick={() => setCancelling(item)}>
                         Hủy hồ sơ
                       </button>
                     </td>

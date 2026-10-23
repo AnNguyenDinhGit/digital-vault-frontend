@@ -125,3 +125,21 @@ describe('OwnerHandoverDetailPage cancel', () => {
     expect(screen.getByRole('button', { name: 'Hủy hồ sơ' })).toBeDisabled()
   })
 })
+
+describe('OwnerHandoverDetailPage new statuses', () => {
+  it('cancel_PendingExecutor_IsAllowedAndShowsLabel', async () => {
+    const id = await seedHandover({ status: 'Pending_Executor' })
+    renderPage(id)
+    await waitForPage()
+    expect(screen.getByText('Chờ Executor tiếp nhận')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hủy hồ sơ' })).toBeEnabled()
+  })
+
+  it('cancel_Declined_IsDisabledAndShowsLabel', async () => {
+    const id = await seedHandover({ status: 'Declined' })
+    renderPage(id)
+    await waitForPage()
+    expect(screen.getByText('Executor từ chối')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hủy hồ sơ' })).toBeDisabled()
+  })
+})

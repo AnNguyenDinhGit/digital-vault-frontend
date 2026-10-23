@@ -4,7 +4,7 @@ import { Alert, Button, Modal } from 'react-bootstrap'
 import { cancelHandover } from '../../callapi/ownerApi'
 
 function cancelErrorMessage(error) {
-  if (error?.status === 409) return 'Chỉ hủy được hồ sơ ở trạng thái nháp hoặc bị từ chối.'
+  if (error?.status === 409) return 'Chỉ hủy được hồ sơ đang chờ Executor tiếp nhận, bản nháp hoặc bị từ chối.'
   if (error?.status === 404) return 'Không tìm thấy hồ sơ bàn giao. Vui lòng tải lại trang.'
   if (error?.status === 403) return 'Bạn không có quyền hủy hồ sơ này.'
   return error?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
