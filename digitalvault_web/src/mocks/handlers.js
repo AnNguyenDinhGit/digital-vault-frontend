@@ -636,6 +636,31 @@ const coreHandlers = [
     }),
   ),
 
+  // Xác nhận còn sống của Owner (BE: ManagementService.LifeConfirmation/ConfirmAlive). Thời gian do máy chủ đặt, không nhận từ client
+  http.get(
+    '*/api/owner/life-confirmation',
+    ownerRoute(({ userId }) => HttpResponse.json({ ownerId: userId, lastConfirmedAliveAt: getDb().proofOfLife[userId]?.lastPingAt ?? null })),
+  ),
+
+  http.post(
+    '*/api/owner/life-confirmation',
+    ownerRoute(({ userId }) => {
+      const db = getDb()
+      const vaultIds = ownedVaults(db, userId).map((vault) => vault.vaultId)
+      const handovers = db.handovers.filter((item) => vaultIds.includes(item.vaultId))
+      if (handovers.some((item) => ['Approved', 'In_Progress', 'Completed'].includes(item.status))) {
+        return problem(409, 'A legally confirmed handover exists. Resolve the conflicting legal record before confirming alive.')
+      }
+      if (handovers.some((item) => !['Cancelled', 'Rejected'].includes(item.status) && item.documents.some((doc) => doc.purpose === 'DeathCertificate'))) {
+        return problem(409, 'A death report or legally confirmed handover exists. Resolve the conflicting report before confirming alive.')
+      }
+      const now = new Date().toISOString()
+      db.proofOfLife[userId] = { frequencyDays: 30, gracePeriodDays: 14, missedCount: 0, ...db.proofOfLife[userId], lastPingAt: now }
+      saveDb()
+      return HttpResponse.json({ ownerId: userId, lastConfirmedAliveAt: now })
+    }),
+  ),
+
   // ---- Hồ sơ bàn giao nhìn từ Owner ----
   http.get(
     '*/api/owner/handovers',

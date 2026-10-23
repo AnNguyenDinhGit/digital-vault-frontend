@@ -69,7 +69,7 @@ function ExecutorCard({ executor, assetCount, onChange, onRevoke, onLegal }) {
   )
 }
 
-function VaultExecutor({ vault, assetCount, proofOfLife, mockMode, notify }) {
+function VaultExecutor({ vault, assetCount, mockMode, notify }) {
   const { status, data: executor, error, reload, apply } = useVaultExecutor(vault.vaultId)
   const [dialog, setDialog] = useState(null)
   const closeDialog = () => setDialog(null)
@@ -132,7 +132,7 @@ function VaultExecutor({ vault, assetCount, proofOfLife, mockMode, notify }) {
       )}
       {dialog === 'revoke' && executor && <RevokeExecutorModal executor={executor} onConfirm={handleRevoke} onClose={closeDialog} />}
       {dialog === 'legal' && executor && (
-        <ExecutorLegalModal executor={executor} assetCount={assetCount} proofOfLife={proofOfLife} onClose={closeDialog} />
+        <ExecutorLegalModal executor={executor} assetCount={assetCount} onClose={closeDialog} />
       )}
     </>
   )
@@ -140,7 +140,7 @@ function VaultExecutor({ vault, assetCount, proofOfLife, mockMode, notify }) {
 
 // Trang "Người thi hành (Executor)": gán, đổi, thu hồi Executor cho từng kho và xem hồ sơ pháp lý
 export default function ExecutorManagementPage({ mockMode = MOCK_MODE }) {
-  const { status, error, vaults, assetCount, proofOfLife, reload } = useExecutorOverview()
+  const { status, error, vaults, assetCount, reload } = useExecutorOverview()
   const [selectedVaultId, setSelectedVaultId] = useState(null)
   const [toast, setToast] = useState(null)
   const closeToast = useCallback(() => setToast(null), [])
@@ -211,7 +211,6 @@ export default function ExecutorManagementPage({ mockMode = MOCK_MODE }) {
           key={vault.vaultId}
           vault={vault}
           assetCount={countVaultAssets(assetCount, vaults.length)}
-          proofOfLife={proofOfLife}
           mockMode={mockMode}
           notify={setToast}
         />

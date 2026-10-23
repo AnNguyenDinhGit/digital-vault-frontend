@@ -36,9 +36,9 @@ describe('describeRequest', () => {
     expect(run('post', '/owner/assets/3/documents', 200, {}, form)).toMatchObject({ action: 'UploadAssetDocument', entityType: 'DigitalAsset', entityId: 3, result: 'Alive_Signed' })
   })
 
-  it('describeRequest_ProofOfLifeSaveAndPing_ReturnActions', () => {
-    expect(run('put', '/owner/proof-of-life', 200)).toMatchObject({ action: 'UpdateProofOfLife' })
-    expect(run('post', '/owner/proof-of-life/ping', 200)).toMatchObject({ action: 'PingProofOfLife' })
+  it('describeRequest_LifeConfirmationPost_ReturnsConfirmAlive', () => {
+    expect(run('post', '/owner/life-confirmation', 200)).toMatchObject({ action: 'ConfirmAlive' })
+    expect(run('get', '/owner/life-confirmation', 200)).toBeNull()
   })
 
   it('describeRequest_ExecutorAssignAndRevoke_UseVaultIdFromUrl', () => {
@@ -75,8 +75,7 @@ describe('describeRequest', () => {
     expect(run('get', '/owner/activity-logs', 200)).toBeNull()
   })
 
-  it('describeRequest_SimulateAndUnknown_AreNotRecorded', () => {
-    expect(run('post', '/owner/proof-of-life/simulate', 200)).toBeNull()
+  it('describeRequest_Unknown_IsNotRecorded', () => {
     expect(run('post', '/something/else', 200)).toBeNull()
   })
 })

@@ -69,10 +69,10 @@ describe('mock activity logs', () => {
     expect(data[0]).toMatchObject({ action: 'CreateVault', entityType: 'DigitalVault', entityId: created.data.vaultId, result: 'Success' })
   })
 
-  it('recorder_ProofOfLifePing_AppearsInLogs', async () => {
-    await axiosClient.post('/owner/proof-of-life/ping')
+  it('recorder_ConfirmAlive_AppearsInLogs', async () => {
+    await axiosClient.post('/owner/life-confirmation')
     const { data } = await axiosClient.get('/owner/activity-logs')
-    expect(data[0].action).toBe('PingProofOfLife')
+    expect(data[0].action).toBe('ConfirmAlive')
   })
 
   it('recorder_FailedRequest_IsNotRecorded', async () => {

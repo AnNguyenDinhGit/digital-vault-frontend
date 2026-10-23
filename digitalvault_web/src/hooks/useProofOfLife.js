@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getProofOfLife } from '../callapi/ownerApi'
+import { getLifeConfirmation } from '../callapi/ownerApi'
 
 const INITIAL_STATE = { status: 'loading', data: null, error: '' }
 
-// Cấu hình điểm danh của Owner. data = null nghĩa là chưa thiết lập (BE trả 404).
-// apply nhận kết quả từ lệnh lưu/điểm danh để cập nhật ngay không cần tải lại.
+// Lần xác nhận còn sống gần nhất của Owner: data = { ownerId, lastConfirmedAliveAt } (thời gian là null khi chưa xác nhận lần nào).
+// apply nhận kết quả của lần bấm xác nhận để cập nhật ngay không cần tải lại.
 export function useProofOfLife() {
   const [state, setState] = useState(INITIAL_STATE)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    getProofOfLife()
+    getLifeConfirmation()
       .then((data) => {
         if (!cancelled) setState({ status: 'ready', data, error: '' })
       })
       .catch((error) => {
-        if (cancelled) return
-        if (error?.status === 404) setState({ status: 'ready', data: null, error: '' })
-        else setState({ status: 'error', data: null, error: error?.message || 'Đã có lỗi xảy ra.' })
+        if (!cancelled) setState({ status: 'error', data: null, error: error?.message || 'Đã có lỗi xảy ra.' })
       })
     return () => {
       cancelled = true

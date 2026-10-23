@@ -1,10 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login, register } from '../../callapi/authApi'
-import { simulateTimePassing } from '../../callapi/ownerApi'
-import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
+import { DEMO_ACCOUNT, getDb, resetMockDb, saveDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import ProofOfLifePage from './ProofOfLifePage'
@@ -22,20 +21,17 @@ afterAll(() => server.close())
 const renderPage = (props = {}, route = '/owner/proof-of-life') =>
   renderWithProviders(<ProofOfLifePage {...props} />, { route, path: '/owner/proof-of-life' })
 const waitForPage = () => screen.findByRole('heading', { level: 1, name: 'Điểm danh sự sống' })
-
-const frequencyInput = () => screen.getByLabelText(/^Chu kỳ điểm danh/)
-const graceInput = () => screen.getByLabelText(/^Thời gian ân hạn/)
-const saveButton = () => screen.getByRole('button', { name: 'Lưu cấu hình' })
+const confirmButton = () => screen.getByRole('button', { name: 'Tôi vẫn còn sống' })
 
 describe('ProofOfLifePage loading and error', () => {
   it('render_WhileFetching_ShowsLoadingStatus', async () => {
     renderPage()
-    expect(screen.getByRole('status')).toHaveTextContent('Đang tải cấu hình điểm danh')
+    expect(screen.getByRole('status')).toHaveTextContent('Đang tải thông tin điểm danh')
     await waitForPage()
   })
 
   it('render_ApiFails_ShowsErrorWithRetry', async () => {
-    server.use(http.get('*/api/owner/proof-of-life', () => HttpResponse.json({ status: 500, detail: 'Máy chủ đang bận.' }, { status: 500 })))
+    server.use(http.get('*/api/owner/life-confirmation', () => HttpResponse.json({ status: 500, detail: 'Máy chủ đang bận.' }, { status: 500 })))
     renderPage()
     expect(await screen.findByRole('alert')).toHaveTextContent('Máy chủ đang bận.')
     server.resetHandlers()
@@ -44,253 +40,131 @@ describe('ProofOfLifePage loading and error', () => {
   })
 })
 
-describe('ProofOfLifePage status card', () => {
-  it('render_ActiveConfig_ShowsBadgeAndStats', async () => {
+describe('ProofOfLifePage content', () => {
+  it('render_OwnerWithRecord_ShowsLastConfirmedTimeAndReadOnlyDefaults', async () => {
     renderPage()
     await waitForPage()
-    expect(screen.getByText('Đang hoạt động')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'HẠN ĐIỂM DANH TIẾP THEO' })).toHaveTextContent('Còn 20 ngày')
-    expect(within(screen.getByRole('group', { name: 'SỐ LẦN BỎ LỠ' })).getByText('0')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'LẦN ĐIỂM DANH GẦN NHẤT' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'LẦN XÁC NHẬN GẦN NHẤT' })).not.toHaveTextContent('Chưa xác nhận')
+    expect(screen.getByRole('group', { name: 'CHU KỲ MẶC ĐỊNH' })).toHaveTextContent('30 ngày')
+    expect(screen.getByRole('group', { name: 'THỜI GIAN ÂN HẠN MẶC ĐỊNH' })).toHaveTextContent('14 ngày')
+    expect(screen.getByText(/chưa thể thay đổi/)).toBeInTheDocument()
   })
 
-  it('render_WarningState_ShowsOverdueAndGraceCountdown', async () => {
-    await simulateTimePassing(25)
+  it('render_OwnerNeverConfirmed_ShowsNotConfirmedYet', async () => {
+    delete getDb().proofOfLife[DEMO_ACCOUNT.userId]
+    saveDb()
     renderPage()
     await waitForPage()
-    expect(screen.getByText('Cảnh báo')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'HẠN ĐIỂM DANH TIẾP THEO' })).toHaveTextContent('Quá hạn 5 ngày')
-    expect(screen.getByText(/Còn 2 ngày ân hạn/)).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'LẦN XÁC NHẬN GẦN NHẤT' })).toHaveTextContent('Bạn chưa xác nhận lần nào')
+    expect(confirmButton()).toBeEnabled()
   })
 
-  it('render_TriggeredState_LocksFormAndPing', async () => {
-    await simulateTimePassing(40)
+  it('render_Page_HasNoConfigFormOrTimeSimulation', async () => {
     renderPage()
     await waitForPage()
-    expect(screen.getByText('Đã kích hoạt')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('Quy trình bàn giao đã được kích hoạt')
-    expect(frequencyInput()).toBeDisabled()
-    expect(saveButton()).toBeDisabled()
-    expect(screen.getByRole('button', { name: /Tôi vẫn ổn/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Lưu cấu hình' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Mô phỏng thời gian')).not.toBeInTheDocument()
   })
 
-  it('render_Ready_ShowsTimelineAndInfoCard', async () => {
-    renderPage()
+  it('render_FullMock_ShowsMockNotice', async () => {
+    renderPage({ mockMode: 'full' })
     await waitForPage()
-    const timeline = screen.getByRole('list', { name: 'Các mốc điểm danh' })
-    expect(within(timeline).getAllByRole('listitem')).toHaveLength(4)
-    expect(within(timeline).getByText('Hết ân hạn: kích hoạt bàn giao')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Điều gì xảy ra khi được kích hoạt?' })).toBeInTheDocument()
+    expect(screen.getByRole('note')).toBeInTheDocument()
+  })
+
+  it('render_MockOff_HidesMockNotice', async () => {
+    renderPage({ mockMode: 'off' })
+    await waitForPage()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
   })
 })
 
-describe('ProofOfLifePage config form', () => {
-  it('form_Configured_ShowsCurrentValuesAndCycleSummary', async () => {
+describe('ProofOfLifePage confirm alive', () => {
+  it('confirm_Dialog_OpensAndCancelsWithoutCallingApi', async () => {
     renderPage()
     await waitForPage()
-    expect(frequencyInput()).toHaveValue(30)
-    expect(graceInput()).toHaveValue(7)
-    expect(screen.getByText(/tổng 37 ngày/)).toBeInTheDocument()
-  })
-
-  it('presets_ClickFrequencyPreset_UpdatesInputAndSummary', async () => {
-    renderPage()
-    await waitForPage()
-    const group = screen.getByRole('group', { name: 'Chọn nhanh chu kỳ' })
-    await userEvent.click(within(group).getByRole('button', { name: '14 ngày' }))
-    expect(frequencyInput()).toHaveValue(14)
-    expect(within(group).getByRole('button', { name: '14 ngày' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText(/trong 14 ngày/)).toBeInTheDocument()
-  })
-
-  it('presets_ClickGracePreset_UpdatesInput', async () => {
-    renderPage()
-    await waitForPage()
-    await userEvent.click(within(screen.getByRole('group', { name: 'Chọn nhanh thời gian ân hạn' })).getByRole('button', { name: '14 ngày' }))
-    expect(graceInput()).toHaveValue(14)
-  })
-
-  it('reset_Clicked_RestoresDefaultValues', async () => {
-    renderPage()
-    await waitForPage()
-    await userEvent.clear(frequencyInput())
-    await userEvent.type(frequencyInput(), '90')
-    await userEvent.click(screen.getByRole('button', { name: 'Khôi phục mặc định' }))
-    expect(frequencyInput()).toHaveValue(30)
-    expect(graceInput()).toHaveValue(7)
-  })
-
-  it('save_NegativeFrequency_ShowsInlineErrorAndDoesNotCallApi', async () => {
-    let putCalled = false
-    server.use(http.put('*/api/owner/proof-of-life', () => { putCalled = true; return HttpResponse.json({}) }))
-    renderPage()
-    await waitForPage()
-    await userEvent.clear(frequencyInput())
-    await userEvent.type(frequencyInput(), '-5')
-    await userEvent.click(saveButton())
-    expect(screen.getByText('Chu kỳ hoặc thời gian ân hạn phải là số nguyên dương từ 1 ngày trở lên.')).toBeInTheDocument()
-    expect(frequencyInput()).toHaveAttribute('aria-invalid', 'true')
-    expect(putCalled).toBe(false)
-  })
-
-  it('save_ValidValues_ShowsSuccessToastAndPersists', async () => {
-    renderPage()
-    await waitForPage()
-    await userEvent.clear(frequencyInput())
-    await userEvent.type(frequencyInput(), '14')
-    await userEvent.click(saveButton())
-    expect(await screen.findByText('Cập nhật cấu hình thành công!')).toBeInTheDocument()
-    expect(screen.getByText(/Chu kỳ mới: 14 ngày/)).toBeInTheDocument()
-    expect(screen.getByText(/Tổng 21 ngày/)).toBeInTheDocument()
-  })
-
-  it('save_InProgress_ShowsProcessingButtonAndNote', async () => {
-    server.use(
-      http.put('*/api/owner/proof-of-life', async () => {
-        await delay(300)
-        return HttpResponse.json({ frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date().toISOString(), nextPingDue: new Date().toISOString(), status: 'Active', missedCount: 0 })
-      }),
-    )
-    renderPage()
-    await waitForPage()
-    await userEvent.click(saveButton())
-    const processing = await screen.findByRole('button', { name: 'Đang xử lý dữ liệu...' })
-    expect(processing).toBeDisabled()
-    expect(screen.getByText('Đang đồng bộ cấu hình lên máy chủ...')).toBeInTheDocument()
-    expect(await screen.findByText('Cập nhật cấu hình thành công!')).toBeInTheDocument()
-  })
-
-  it('save_NetworkError_ShowsConnectionBoxAndRetrySucceeds', async () => {
-    server.use(http.put('*/api/owner/proof-of-life', () => HttpResponse.error(), { once: true }))
-    renderPage()
-    await waitForPage()
-    await userEvent.click(saveButton())
-    const box = await screen.findByRole('alert')
-    expect(box).toHaveTextContent('Không thể kết nối đến máy chủ điểm danh')
-    expect(box).toHaveTextContent('chưa được ghi nhận')
-    await userEvent.click(within(box).getByRole('button', { name: 'Thử kết nối lại ngay' }))
-    expect(await screen.findByText('Cập nhật cấu hình thành công!')).toBeInTheDocument()
-    expect(screen.queryByText('Không thể kết nối đến máy chủ điểm danh')).not.toBeInTheDocument()
-  })
-
-  it('save_ServerRejects_ShowsServerMessageUnderForm', async () => {
-    server.use(http.put('*/api/owner/proof-of-life', () => HttpResponse.json({ status: 400, detail: 'Invalid proof of life input.' }, { status: 400 })))
-    renderPage()
-    await waitForPage()
-    await userEvent.click(saveButton())
-    expect(await screen.findByRole('alert')).toHaveTextContent('Cấu hình không hợp lệ')
-  })
-})
-
-describe('ProofOfLifePage not configured', () => {
-  async function loginAsFreshOwner() {
-    await register({ fullName: 'Chủ Mới', email: 'moi@example.com', phone: '', password: 'Registration123!', confirmPassword: 'Registration123!' })
-    await login('moi@example.com', 'Registration123!')
-  }
-
-  it('render_NoConfig_ShowsNoticeAndDefaultForm', async () => {
-    await loginAsFreshOwner()
-    renderPage()
-    expect(await screen.findByText('Bạn chưa thiết lập điểm danh sự sống.')).toBeInTheDocument()
-    expect(frequencyInput()).toHaveValue(30)
-    expect(graceInput()).toHaveValue(7)
-    expect(screen.queryByRole('button', { name: /Tôi vẫn ổn/ })).not.toBeInTheDocument()
-  })
-
-  it('save_NoConfig_CreatesConfigAndShowsStatus', async () => {
-    await loginAsFreshOwner()
-    renderPage()
-    await screen.findByText('Bạn chưa thiết lập điểm danh sự sống.')
-    await userEvent.click(saveButton())
-    expect(await screen.findByText('Cập nhật cấu hình thành công!')).toBeInTheDocument()
-    expect(await screen.findByText('Đang hoạt động')).toBeInTheDocument()
-    expect(screen.queryByText('Bạn chưa thiết lập điểm danh sự sống.')).not.toBeInTheDocument()
-  })
-})
-
-describe('ProofOfLifePage ping', () => {
-  const openConfirm = async () => {
-    await userEvent.click(screen.getByRole('button', { name: /Tôi vẫn ổn/ }))
-    return screen.getByRole('dialog', { name: 'Xác nhận điểm danh' })
-  }
-
-  it('ping_Confirm_ShowsSuccessToastAndClosesDialog', async () => {
-    renderPage()
-    await waitForPage()
-    const dialog = await openConfirm()
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận điểm danh' }))
-    expect(await screen.findByText('Điểm danh thành công!')).toBeInTheDocument()
-    expect(screen.getByText(/gia hạn bộ đếm thêm 30 ngày/)).toBeInTheDocument()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
-  it('ping_Cancel_ClosesDialogWithoutCallingApi', async () => {
-    let pinged = false
-    server.use(http.post('*/api/owner/proof-of-life/ping', () => { pinged = true; return HttpResponse.json({}) }))
-    renderPage()
-    await waitForPage()
-    const dialog = await openConfirm()
+    const before = getDb().proofOfLife[DEMO_ACCOUNT.userId].lastPingAt
+    await userEvent.click(confirmButton())
+    const dialog = screen.getByRole('dialog', { name: 'Xác nhận điểm danh' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(pinged).toBe(false)
+    expect(getDb().proofOfLife[DEMO_ACCOUNT.userId].lastPingAt).toBe(before)
   })
 
-  it('ping_InProgress_ShowsProcessingInsideDialog', async () => {
+  it('confirm_Confirmed_UpdatesLastTimeAndShowsToast', async () => {
+    renderPage()
+    await waitForPage()
+    const before = getDb().proofOfLife[DEMO_ACCOUNT.userId].lastPingAt
+    await userEvent.click(confirmButton())
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xác nhận điểm danh' }))
+    expect(await screen.findByText('Điểm danh thành công!')).toBeInTheDocument()
+    expect(getDb().proofOfLife[DEMO_ACCOUNT.userId].lastPingAt).not.toBe(before)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('confirm_FirstTimeOwner_CreatesRecordAndShowsTime', async () => {
+    delete getDb().proofOfLife[DEMO_ACCOUNT.userId]
+    saveDb()
+    renderPage()
+    await waitForPage()
+    await userEvent.click(confirmButton())
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Xác nhận điểm danh' }))
+    expect(await screen.findByText('Điểm danh thành công!')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'LẦN XÁC NHẬN GẦN NHẤT' })).not.toHaveTextContent('Bạn chưa xác nhận lần nào')
+  })
+
+  it('confirm_WhileRequestRunning_ShowsProcessingAndDisablesButtons', async () => {
     server.use(
-      http.post('*/api/owner/proof-of-life/ping', async () => {
-        await delay(300)
-        return HttpResponse.json({ frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date().toISOString(), nextPingDue: new Date().toISOString(), status: 'Active', missedCount: 0 })
+      http.post('*/api/owner/life-confirmation', async () => {
+        await delay(100)
+        return HttpResponse.json({ ownerId: 1, lastConfirmedAliveAt: new Date().toISOString() })
       }),
     )
     renderPage()
     await waitForPage()
-    const dialog = await openConfirm()
+    await userEvent.click(confirmButton())
+    const dialog = screen.getByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận điểm danh' }))
-    expect(await within(dialog).findByRole('button', { name: 'Đang xử lý dữ liệu...' })).toBeDisabled()
     expect(within(dialog).getByText('Đang đồng bộ điểm danh lên máy chủ...')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Đang xử lý dữ liệu...' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Hủy' })).toBeDisabled()
     expect(await screen.findByText('Điểm danh thành công!')).toBeInTheDocument()
   })
 
-  it('ping_NetworkError_ShowsConnectionBoxInDialogAndRetrySucceeds', async () => {
-    server.use(http.post('*/api/owner/proof-of-life/ping', () => HttpResponse.error(), { once: true }))
+  it('confirm_Conflict409_ShowsReasonAndKeepsDialogOpen', async () => {
+    getDb().handovers.push({ requestId: 50, vaultId: 1, executorId: 5, status: 'Approved', initiatedAt: new Date().toISOString(), documents: [], cases: [] })
+    saveDb()
     renderPage()
     await waitForPage()
-    const dialog = await openConfirm()
+    await userEvent.click(confirmButton())
+    const dialog = screen.getByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận điểm danh' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('đã được duyệt pháp lý')
+  })
+
+  it('confirm_NetworkFailure_ShowsConnectionErrorWithRetry', async () => {
+    server.use(http.post('*/api/owner/life-confirmation', () => HttpResponse.error()))
+    renderPage()
+    await waitForPage()
+    await userEvent.click(confirmButton())
+    const dialog = screen.getByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận điểm danh' }))
     expect(await within(dialog).findByText('Không thể kết nối đến máy chủ điểm danh')).toBeInTheDocument()
+    server.resetHandlers()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Thử kết nối lại ngay' }))
     expect(await screen.findByText('Điểm danh thành công!')).toBeInTheDocument()
   })
 
-  it('ping_FromQueryString_OpensConfirmDialogAutomatically', async () => {
+  it('confirm_PingQueryFlag_OpensDialogAutomatically', async () => {
     renderPage({}, '/owner/proof-of-life?ping=1')
     expect(await screen.findByRole('dialog', { name: 'Xác nhận điểm danh' })).toBeInTheDocument()
   })
 
-  it('ping_FromWarningState_ResetsToActive', async () => {
-    await simulateTimePassing(25)
+  it('confirm_NewOwnerWithoutVault_StillWorks', async () => {
+    await register({ fullName: 'Chủ Mới', email: 'moi@example.com', password: 'MatKhau@12345', confirmPassword: 'MatKhau@12345' })
+    await login('moi@example.com', 'MatKhau@12345')
     renderPage()
     await waitForPage()
-    expect(screen.getByText('Cảnh báo')).toBeInTheDocument()
-    const dialog = await openConfirm()
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận điểm danh' }))
-    expect(await screen.findByText('Đang hoạt động')).toBeInTheDocument()
-    expect(within(screen.getByRole('group', { name: 'SỐ LẦN BỎ LỠ' })).getByText('1')).toBeInTheDocument()
-  })
-})
-
-describe('ProofOfLifePage time simulation', () => {
-  it('simulation_MockOff_IsHidden', async () => {
-    renderPage({ mockMode: 'off' })
-    await waitForPage()
-    expect(screen.queryByRole('heading', { name: 'Mô phỏng thời gian' })).not.toBeInTheDocument()
-  })
-
-  it('simulation_MockOn_FastForwardChangesStatus', async () => {
-    renderPage({ mockMode: 'hybrid' })
-    await waitForPage()
-    expect(screen.getByRole('heading', { name: 'Mô phỏng thời gian' })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: '+40 ngày' }))
-    await waitFor(() => expect(screen.getByText('Đã kích hoạt')).toBeInTheDocument())
+    expect(screen.getByRole('group', { name: 'LẦN XÁC NHẬN GẦN NHẤT' })).toHaveTextContent('Bạn chưa xác nhận lần nào')
   })
 })

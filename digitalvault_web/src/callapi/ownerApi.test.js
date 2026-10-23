@@ -15,17 +15,15 @@ import {
   getExecutors,
   getOwnerHandovers,
   getProfile,
-  getProofOfLife,
+  getLifeConfirmation,
   getVault,
   getVaultExecutor,
   getVaults,
-  pingProofOfLife,
+  confirmAlive,
   removeBeneficiary,
   revokeAsset,
   revokeExecutor,
-  saveProofOfLife,
   setTwoFactor,
-  simulateTimePassing,
   updateAsset,
   updateBeneficiaryAllocation,
   updateProfile,
@@ -208,29 +206,17 @@ describe('ownerApi', () => {
 
   })
 
-  describe('proof of life', () => {
-    it('getProofOfLife_Called_GetsConfigAndReturnsData', async () => {
-      axiosClient.get.mockResolvedValue({ data: { frequencyDays: 30 } })
-      await expect(getProofOfLife()).resolves.toEqual({ frequencyDays: 30 })
-      expect(axiosClient.get).toHaveBeenCalledWith('/owner/proof-of-life')
+  describe('life confirmation', () => {
+    it('getLifeConfirmation_Called_GetsLastConfirmedTime', async () => {
+      axiosClient.get.mockResolvedValue({ data: { ownerId: 1, lastConfirmedAliveAt: null } })
+      await expect(getLifeConfirmation()).resolves.toEqual({ ownerId: 1, lastConfirmedAliveAt: null })
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/life-confirmation')
     })
 
-    it('saveProofOfLife_StringValues_PutsIntegers', async () => {
-      axiosClient.put.mockResolvedValue({ data: { frequencyDays: 14 } })
-      await expect(saveProofOfLife({ frequencyDays: '14', gracePeriodDays: '3' })).resolves.toEqual({ frequencyDays: 14 })
-      expect(axiosClient.put).toHaveBeenCalledWith('/owner/proof-of-life', { frequencyDays: 14, gracePeriodDays: 3 })
-    })
-
-    it('pingProofOfLife_Called_PostsPing', async () => {
-      axiosClient.post.mockResolvedValue({ data: { status: 'Active' } })
-      await expect(pingProofOfLife()).resolves.toEqual({ status: 'Active' })
-      expect(axiosClient.post).toHaveBeenCalledWith('/owner/proof-of-life/ping')
-    })
-
-    it('simulateTimePassing_Days_PostsDays', async () => {
-      axiosClient.post.mockResolvedValue({ data: { status: 'Warning' } })
-      await simulateTimePassing(25)
-      expect(axiosClient.post).toHaveBeenCalledWith('/owner/proof-of-life/simulate', { days: 25 })
+    it('confirmAlive_Called_PostsWithoutBodyAndReturnsServerTime', async () => {
+      axiosClient.post.mockResolvedValue({ data: { ownerId: 1, lastConfirmedAliveAt: '2026-10-22T02:00:00Z' } })
+      await expect(confirmAlive()).resolves.toEqual({ ownerId: 1, lastConfirmedAliveAt: '2026-10-22T02:00:00Z' })
+      expect(axiosClient.post).toHaveBeenCalledWith('/owner/life-confirmation')
     })
   })
 

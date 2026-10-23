@@ -17,6 +17,7 @@ const ACTION_LABELS = {
   DownloadDocument: 'Tải giấy tờ về',
   UpdateProofOfLife: 'Cập nhật cấu hình điểm danh',
   PingProofOfLife: 'Điểm danh sự sống',
+  ConfirmAlive: 'Xác nhận còn sống',
   AssignExecutor: 'Gán người thi hành',
   RevokeExecutor: 'Thu hồi người thi hành',
   UpdateProfile: 'Cập nhật thông tin cá nhân',

@@ -163,9 +163,15 @@ describe('evidence form', () => {
 })
 
 describe('legal verification form', () => {
+  const verifierSelect = async (form) => {
+    const select = await within(form).findByLabelText(/^Người xác minh pháp lý/)
+    await within(select).findByRole('option', { name: 'CCV. Nguyễn Văn Cường' })
+    return select
+  }
+
   const fill = async (user, { verifier = '6', comment = '', evidence = pdf('BangChung.pdf') } = {}) => {
     const form = region('Gửi thẩm định pháp lý')
-    if (verifier) await user.selectOptions(await within(form).findByLabelText(/^Người xác minh pháp lý/), verifier)
+    if (verifier) await user.selectOptions(await verifierSelect(form), verifier)
     if (comment) await user.type(within(form).getByLabelText(/^Ghi chú/), comment)
     if (evidence) await user.upload(within(form).getByLabelText(/^Bằng chứng gửi kèm/), evidence)
     await user.click(within(form).getByRole('button', { name: 'Gửi thẩm định' }))
@@ -212,7 +218,7 @@ describe('legal verification form', () => {
     const user = setupUser()
     await openDetail()
     const form = region('Gửi thẩm định pháp lý')
-    await user.selectOptions(await within(form).findByLabelText(/^Người xác minh pháp lý/), '6')
+    await user.selectOptions(await verifierSelect(form), '6')
     await user.upload(within(form).getByLabelText(/^Bằng chứng gửi kèm/), pdf())
     fireTypeLong(within(form).getByLabelText(/^Ghi chú/), 'x'.repeat(2001))
     await user.click(within(form).getByRole('button', { name: 'Gửi thẩm định' }))

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login, register } from '../../callapi/authApi'
-import { assignExecutor, createVault, getVaults } from '../../callapi/ownerApi'
+import { createVault } from '../../callapi/ownerApi'
 import { DEMO_ACCOUNT, resetMockDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
@@ -171,18 +171,7 @@ describe('ExecutorManagementPage legal profile', () => {
     expect(dialog).toHaveTextContent('Thẻ LS: EX-9021')
     expect(dialog).toHaveTextContent('HD-UQ-2026-0001')
     expect(dialog).toHaveTextContent('6 tài sản')
-    expect(dialog).toHaveTextContent('30 ngày')
-    expect(dialog).toHaveTextContent('7 ngày')
     expect(dialog).toHaveTextContent('giấy chứng tử')
-  })
-
-  it('legalProfile_NoProofOfLifeConfig_ExplainsConditionNotSet', async () => {
-    await loginAsOwnerWithEmptyVault()
-    await assignExecutor((await getVaults())[0].vaultId, 5)
-    renderPage()
-    const card = await screen.findByRole('region', { name: 'Người thi hành hiện tại' })
-    await userEvent.click(within(card).getByRole('button', { name: 'Xem hồ sơ pháp lý' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('chưa thiết lập điểm danh')
   })
 
   it('legalProfile_Close_ClosesDialog', async () => {

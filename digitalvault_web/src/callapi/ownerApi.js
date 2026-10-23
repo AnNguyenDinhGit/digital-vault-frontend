@@ -63,28 +63,15 @@ export async function getActivityLogs() {
   return data
 }
 
-// Điểm danh sự sống (BE chưa có API, đang dùng mock): 404 nghĩa là chưa thiết lập
-export async function getProofOfLife() {
-  const { data } = await axiosClient.get('/owner/proof-of-life')
+// Lần Owner xác nhận còn sống gần nhất (BE: GET /owner/life-confirmation); lastConfirmedAliveAt là null khi chưa xác nhận lần nào
+export async function getLifeConfirmation() {
+  const { data } = await axiosClient.get('/owner/life-confirmation')
   return data
 }
 
-export async function saveProofOfLife({ frequencyDays, gracePeriodDays }) {
-  const { data } = await axiosClient.put('/owner/proof-of-life', {
-    frequencyDays: Number(frequencyDays),
-    gracePeriodDays: Number(gracePeriodDays),
-  })
-  return data
-}
-
-export async function pingProofOfLife() {
-  const { data } = await axiosClient.post('/owner/proof-of-life/ping')
-  return data
-}
-
-// Chỉ có ở mock: tua nhanh thời gian để xem trạng thái Cảnh báo và Đã kích hoạt
-export async function simulateTimePassing(days) {
-  const { data } = await axiosClient.post('/owner/proof-of-life/simulate', { days })
+// Bấm "Tôi vẫn còn sống": không có body, thời gian do máy chủ đặt; BE trả 409 khi hồ sơ bàn giao đã có giấy chứng tử đang xử lý hoặc đã duyệt pháp lý
+export async function confirmAlive() {
+  const { data } = await axiosClient.post('/owner/life-confirmation')
   return data
 }
 

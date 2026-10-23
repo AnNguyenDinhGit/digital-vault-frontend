@@ -12,7 +12,7 @@ function Row({ label, children }) {
 }
 
 // Hồ sơ pháp lý của Executor: thông tin hợp đồng, phạm vi ủy quyền và điều kiện mở khóa tài sản
-export default function ExecutorLegalModal({ executor, assetCount, proofOfLife, onClose }) {
+export default function ExecutorLegalModal({ executor, assetCount, onClose }) {
   return (
     <Modal show onHide={onClose} centered animation={false} dialogClassName="av-modal" aria-labelledby="executor-legal-title">
       <div className="av-modal-head">
@@ -47,11 +47,6 @@ export default function ExecutorLegalModal({ executor, assetCount, proofOfLife, 
             Điều kiện mở khóa tài sản
           </h3>
           <ul className="mb-0 fs-13 text-slate-600" style={{ lineHeight: 1.7 }}>
-            {proofOfLife ? (
-              <li>{`Bạn không điểm danh sự sống trong ${proofOfLife.frequencyDays} ngày, cộng thêm ${proofOfLife.gracePeriodDays} ngày ân hạn.`}</li>
-            ) : (
-              <li>Bạn chưa thiết lập điểm danh sự sống nên chưa có mốc thời gian kích hoạt bàn giao.</li>
-            )}
             <li>Executor nộp giấy chứng tử của bạn và được người xác minh pháp lý thông qua.</li>
             <li>Bạn luôn có toàn quyền thu hồi hoặc thay thế Executor trước khi bàn giao được kích hoạt.</li>
           </ul>
