@@ -18,7 +18,7 @@ export default function BeneficiaryReceiptsPage() {
 
   const awaiting = items.filter((item) => canConfirmReceipt(item.status, item.receipt))
   const confirmed = items.filter((item) => item.receipt)
-  const upcoming = items.filter((item) => !item.receipt && !canConfirmReceipt(item.status, item.receipt))
+  const upcoming = items.filter((item) => !item.receipt && item.status !== 'Cancelled' && !canConfirmReceipt(item.status, item.receipt))
 
   return (
     <div className="d-flex flex-column gap-4">

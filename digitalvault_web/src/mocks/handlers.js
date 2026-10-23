@@ -5,7 +5,6 @@ import { extraHandlers } from './extraHandlers'
 import { fieldOf, hasUnknownFormFields, isValidDocument, isValidSignature } from './formFiles'
 import { executorRoute, hasUnknownFields, isBlank, ownerRoute, problem, route } from './helpers'
 import { parseAllocation, parseAssetUpdate } from './assetInput'
-import { beneficiaryHandlers } from './beneficiaryHandlers'
 
 const vaultDto = ({ vaultId, name, description, status }) => ({ vaultId, name, description, status })
 // BE chỉ trả giấy tờ còn hiệu lực (Status Active), giấy tờ đã thu hồi bị ẩn
@@ -844,6 +843,3 @@ const coreHandlers = [
 // Mock đầy đủ = API đã có ở BE + API chưa có; chế độ hỗn hợp chỉ mock phần BE chưa có
 export const handlers = [...coreHandlers, ...adminHandlers, ...extraHandlers]
 export const hybridHandlers = [...extraHandlers]
-
-// Cổng Người thụ hưởng + thông báo: BE đã có API nên chỉ mock khi chạy mock đầy đủ
-handlers.push(...beneficiaryHandlers)

@@ -75,12 +75,16 @@ function assetIndex(inheritances) {
 }
 
 // Tiến trình bàn giao: các hồ sơ kèm thông tin tài sản; withReceipts lấy thêm biên nhận của từng hồ sơ
+// Biên nhận chỉ có thể tồn tại khi hồ sơ đã bàn giao xong hoặc đã được xác nhận; các trạng thái khác chắc chắn chưa có (404)
+const hasReceiptStatus = (status) => status === 'Completed' || status === 'Received'
+
 export function useBeneficiaryHandovers({ withReceipts = false } = {}) {
   const loader = useCallback(async () => {
     const [cases, inheritances] = await Promise.all([getBeneficiaryHandovers(), getInheritedAssets()])
     const assets = assetIndex(inheritances)
+    // Chỉ 404 được coi là "chưa có biên nhận" (getHandoverReceipt đã đổi thành null); lỗi khác (mạng, OTP hết hạn, 5xx) được ném ra
     const receipts = withReceipts
-      ? await Promise.all(cases.map((item) => getHandoverReceipt(item.handoverId).catch(() => null)))
+      ? await Promise.all(cases.map((item) => (hasReceiptStatus(item.status) ? getHandoverReceipt(item.handoverId) : null)))
       : []
     return cases
       .map((item, index) => ({
