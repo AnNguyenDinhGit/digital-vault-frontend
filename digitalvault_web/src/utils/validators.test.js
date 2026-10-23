@@ -5,6 +5,7 @@ import {
   validateAsset,
   validateBeneficiary,
   validateHandoverDocument,
+  validateDeclineReason,
   validateLegalRequest,
   validateLogin,
   validateNewPassword,
@@ -438,5 +439,20 @@ describe('validateLegalRequest', () => {
 
   it('validateLegalRequest_CommentOver2000_ReturnsError', () => {
     expect(validateLegalRequest({ verifierId: '6', comment: 'x'.repeat(2001), evidence })).toEqual({ comment: 'Ghi chú tối đa 2000 ký tự.' })
+  })
+})
+
+describe('validateDeclineReason', () => {
+  it('validateDeclineReason_Valid_ReturnsNull', () => {
+    expect(validateDeclineReason('Tôi bận')).toBeNull()
+  })
+
+  it.each([[''], ['   '], [undefined], [null]])('validateDeclineReason_Blank_ReturnsRequiredError', (value) => {
+    expect(validateDeclineReason(value)).toBe('Vui lòng nhập lý do từ chối.')
+  })
+
+  it('validateDeclineReason_Over2000_ReturnsError', () => {
+    expect(validateDeclineReason('x'.repeat(2001))).toBe('Lý do tối đa 2000 ký tự.')
+    expect(validateDeclineReason('x'.repeat(2000))).toBeNull()
   })
 })

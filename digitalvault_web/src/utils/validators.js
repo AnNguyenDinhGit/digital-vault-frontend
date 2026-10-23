@@ -168,6 +168,14 @@ export function validateLegalRequest({ verifierId, comment, evidence }) {
   return errors
 }
 
+// Lý do Executor từ chối tiếp nhận hồ sơ: bắt buộc, tối đa 2000 ký tự như BE; trả thông báo lỗi hoặc null
+export function validateDeclineReason(reason) {
+  const trimmed = (reason ?? '').trim()
+  if (!trimmed) return 'Vui lòng nhập lý do từ chối.'
+  if (trimmed.length > 2000) return 'Lý do tối đa 2000 ký tự.'
+  return null
+}
+
 // Giới hạn của kho và tài sản lấy theo CreateVaultInput / CreateAssetInput của BE
 export const VAULT_LIMITS = { name: 100, description: 4000, assetType: 50 }
 const ASSET_TYPE_PATTERN = /^[\x20-\x7E]+$/

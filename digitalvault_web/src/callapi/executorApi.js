@@ -40,6 +40,18 @@ export async function uploadEvidence(requestId, input) {
   return data
 }
 
+// Executor chấp nhận hồ sơ đang chờ tiếp nhận (Pending_Executor → Draft); không có body
+export async function acceptHandover(requestId) {
+  const { data } = await axiosClient.post(`/executor/handovers/${requestId}/accept`)
+  return data
+}
+
+// Executor từ chối tiếp nhận kèm lý do bắt buộc (Pending_Executor → Declined); BE thu hồi phân công và báo cho Owner
+export async function declineHandover(requestId, reason) {
+  const { data } = await axiosClient.post(`/executor/handovers/${requestId}/decline`, { reason: reason.trim() })
+  return data
+}
+
 // Người xác minh pháp lý đủ điều kiện cho hồ sơ: BE đã loại chính Executor, chủ kho và người thụ hưởng
 export async function getLegalVerifiers(requestId) {
   const { data } = await axiosClient.get(`/executor/handovers/${requestId}/legal-verifiers`)

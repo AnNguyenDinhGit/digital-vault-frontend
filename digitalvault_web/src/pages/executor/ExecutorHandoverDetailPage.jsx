@@ -3,7 +3,9 @@ import { useCallback, useState } from 'react'
 import { Alert, Button } from 'react-bootstrap'
 import { Link, useParams } from 'react-router-dom'
 import {
+  acceptHandover,
   completeHandover,
+  declineHandover,
   downloadHandoverDocument,
   requestLegalVerification,
   simulateLegalApproval,
@@ -13,6 +15,7 @@ import {
 } from '../../callapi/executorApi'
 import AppToast from '../../components/common/AppToast'
 import DocumentUploadForm from '../../components/executor/DocumentUploadForm'
+import HandoverIntakePanel from '../../components/executor/HandoverIntakePanel'
 import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import LegalVerificationForm from '../../components/executor/LegalVerificationForm'
 import { useHandover } from '../../hooks/useHandover'
@@ -64,6 +67,25 @@ export default function ExecutorHandoverDetailPage({ mockMode = MOCK_MODE }) {
       setActionBusy(false)
     }
   }
+
+  // Quyết định tiếp nhận: gặp 409 (hồ sơ đã đổi trạng thái) thì tải lại để màn hình khớp với máy chủ; lỗi được ném lại dạng tiếng Việt
+  const decide = async (action, work, successTitle) => {
+    setActionBusy(true)
+    setActionError('')
+    try {
+      await work()
+      notify(successTitle)
+      refresh()
+    } catch (caught) {
+      if (caught?.status === 409) refresh()
+      throw new Error(handoverActionErrorMessage(caught, action), { cause: caught })
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  const handleAccept = () => decide('accept', () => acceptHandover(handover.requestId), 'Đã tiếp nhận hồ sơ').catch((caught) => setActionError(caught.message))
+  const handleDecline = (reason) => decide('decline', () => declineHandover(handover.requestId, reason), 'Đã từ chối hồ sơ')
 
   const submitFile = (upload, successTitle) => async (input) => {
     await upload(handover.requestId, input).catch(toActionError('upload'))
@@ -129,6 +151,11 @@ export default function ExecutorHandoverDetailPage({ mockMode = MOCK_MODE }) {
       </section>
 
       {actionError && <Alert variant="danger" className="av-alert mb-0">{actionError}</Alert>}
+
+      {handover.status === 'Pending_Executor' && (
+        <HandoverIntakePanel requestId={handover.requestId} busy={actionBusy} onAccept={handleAccept} onDecline={handleDecline} />
+      )}
+      {handover.status === 'Declined' && <p className="av-notice mb-0">Bạn đã từ chối tiếp nhận hồ sơ này. Hồ sơ chỉ còn để xem lại.</p>}
 
       <div className="row g-4">
         <section className="col-12 col-xl-7">

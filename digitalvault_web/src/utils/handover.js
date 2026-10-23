@@ -78,6 +78,13 @@ export function handoverActionErrorMessage(error, action) {
     }
     if (status === 409) return 'Hồ sơ không ở trạng thái cho phép gửi thẩm định.'
   }
+  if (action === 'accept' || action === 'decline') {
+    if (status === 409 && /documents and exactly 100/i.test(error?.message ?? '')) {
+      return 'Kho hoặc tài sản chưa đủ điều kiện để tiếp nhận: mỗi tài sản cần có giấy tờ và được phân bổ đủ 100%. Hãy báo chủ kho bổ sung.'
+    }
+    if (status === 409) return 'Hồ sơ không còn ở trạng thái chờ tiếp nhận (chủ kho có thể đã hủy hoặc đã có quyết định). Đã tải lại hồ sơ.'
+    if (status === 400) return 'Lý do từ chối không hợp lệ (bắt buộc, tối đa 2000 ký tự).'
+  }
   if (action === 'start' && status === 409) return 'Hồ sơ chưa ở trạng thái phù hợp để bắt đầu bàn giao (cần được duyệt pháp lý).'
   if (action === 'complete') {
     if (status === 400) {

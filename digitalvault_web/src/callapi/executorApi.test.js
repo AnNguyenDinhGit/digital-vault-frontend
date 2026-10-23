@@ -1,7 +1,9 @@
 import axiosClient from './axiosClient'
 import {
+  acceptHandover,
   completeHandover,
   createHandover,
+  declineHandover,
   downloadHandoverDocument,
   getAssignments,
   getHandover,
@@ -139,5 +141,19 @@ describe('getLegalVerifiers', () => {
   it('getLegalVerifiers_PageDtoShape_ReturnsItems', async () => {
     axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 20, items: [{ userId: 6 }] } })
     await expect(getLegalVerifiers(9)).resolves.toEqual([{ userId: 6 }])
+  })
+})
+
+describe('intake decision', () => {
+  it('acceptHandover_RequestId_PostsAcceptWithoutBody', async () => {
+    axiosClient.post.mockResolvedValue({ data: { requestId: 5, status: 'Draft' } })
+    await expect(acceptHandover(5)).resolves.toEqual({ requestId: 5, status: 'Draft' })
+    expect(axiosClient.post).toHaveBeenCalledWith('/executor/handovers/5/accept')
+  })
+
+  it('declineHandover_Reason_PostsTrimmedReason', async () => {
+    axiosClient.post.mockResolvedValue({ data: { requestId: 5, status: 'Declined' } })
+    await expect(declineHandover(5, '  Bận  ')).resolves.toEqual({ requestId: 5, status: 'Declined' })
+    expect(axiosClient.post).toHaveBeenCalledWith('/executor/handovers/5/decline', { reason: 'Bận' })
   })
 })

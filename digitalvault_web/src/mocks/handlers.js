@@ -78,6 +78,13 @@ async function uploadHandoverDocument({ userId, params, request }, purpose) {
 }
 
 // BE chặn mọi thao tác sửa của Owner trên kho còn hồ sơ bàn giao chưa hủy
+// Thêm thông báo cho một người dùng (BE: ManagementService.Notify)
+function notify(db, userId, type, title, message) {
+  db.notifications ??= []
+  const notificationId = Math.max(0, ...db.notifications.map((item) => item.notificationId)) + 1
+  db.notifications.push({ notificationId, userId, type, title, message, isRead: false, createdAt: new Date().toISOString() })
+}
+
 // Mỗi phân bổ Active của tài sản Active trong kho là một case của hồ sơ bàn giao
 function draftCases(db, vaultId) {
   const assetIds = db.assets.filter((asset) => asset.vaultId === vaultId && asset.status === 'Active').map((asset) => asset.assetId)
@@ -740,7 +747,7 @@ const coreHandlers = [
     '*/api/executor/assignments',
     executorRoute(({ userId }) => {
       const list = Object.entries(getDb().executorAssignments)
-        .filter(([, assignment]) => assignment.executorId === userId)
+        .filter(([, assignment]) => assignment.executorId === userId && assignment.status !== 'Revoked')
         .map(([vaultId, assignment]) => ({ vaultId: Number(vaultId), executorId: assignment.executorId, status: assignment.status, assignedAt: assignment.assignedAt }))
       return HttpResponse.json(list)
     }),
@@ -752,7 +759,8 @@ const coreHandlers = [
     executorRoute(({ userId, params }) => {
       const db = getDb()
       const vaultId = Number(params.vaultId)
-      if (db.executorAssignments[vaultId]?.executorId !== userId) return problem(403, 'This vault is not assigned to you.')
+      const assignment = db.executorAssignments[vaultId]
+      if (assignment?.executorId !== userId || assignment.status === 'Revoked') return problem(403, 'This vault is not assigned to you.')
       if (vaultLocked(db, vaultId)) {
         return problem(409, 'A handover request already exists for this vault.')
       }
@@ -789,6 +797,74 @@ const coreHandlers = [
   http.post('*/api/executor/handovers/:requestId/documents', executorRoute((info) => uploadHandoverDocument(info, 'Evidence'))),
 
   // Gửi thẩm định pháp lý: cần giấy chứng tử, người xác minh độc lập; hồ sơ chuyển sang Pending_Legal
+  // Executor chấp nhận hồ sơ chờ tiếp nhận: kiểm tra lại kho còn đủ điều kiện rồi chuyển sang bản nháp (BE: AcceptRequest)
+  http.post(
+    '*/api/executor/handovers/:requestId/accept',
+    executorRoute(({ userId, params }) => {
+      const db = getDb()
+      const handover = ownHandover(userId, params.requestId)
+      if (!handover) return problem(404, 'Assigned request not found.')
+      if (handover.status !== 'Pending_Executor') return problem(409, 'Only an awaiting Executor request can be accepted.')
+      const vault = db.vaults.find((item) => item.vaultId === handover.vaultId)
+      if (vault?.status !== 'Active') return problem(409, 'Vault is not active.')
+      if (vaultNotReady(db, handover.vaultId)) return problem(409, 'Every active asset needs documents and exactly 100 percent active allocation.')
+      handover.status = 'Draft'
+      notify(db, vault.ownerId, 'Handover', 'Executor accepted handover', 'The assigned Executor accepted your handover request.')
+      saveDb()
+      return HttpResponse.json(handoverDto(handover))
+    }),
+  ),
+
+  // Executor từ chối tiếp nhận: đóng các case, thu hồi phân công và báo cho Owner kèm lý do (BE: DeclineRequest)
+  http.post(
+    '*/api/executor/handovers/:requestId/decline',
+    executorRoute(({ userId, params, body }) => {
+      const db = getDb()
+      if (hasUnknownFields(body, ['reason'])) return problem(400, 'Request contains fields outside the contract.')
+      const reason = typeof body?.reason === 'string' ? body.reason.trim() : ''
+      if (!reason || reason.length > 2000) return problem(400, 'Decline reason is required.')
+      const handover = ownHandover(userId, params.requestId)
+      if (!handover) return problem(404, 'Assigned request not found.')
+      if (handover.status !== 'Pending_Executor') return problem(409, 'Only an awaiting Executor request can be declined.')
+      handover.status = 'Declined'
+      handover.declineReason = reason
+      handover.cases.forEach((item) => (item.status = 'Cancelled'))
+      const assignment = db.executorAssignments[handover.vaultId]
+      if (assignment?.executorId === userId) assignment.status = 'Revoked'
+      const vault = db.vaults.find((item) => item.vaultId === handover.vaultId)
+      notify(db, vault.ownerId, 'Handover', 'Executor declined handover', `Handover #${handover.requestId}: ${reason}`)
+      saveDb()
+      return HttpResponse.json(handoverDto(handover))
+    }),
+  ),
+
+  // Thông báo của chính người dùng, mới nhất trước (BE: NotificationsController)
+  http.get(
+    '*/api/notifications',
+    route(({ userId, request }) => {
+      const url = new URL(request.url)
+      const page = Math.max(Number(url.searchParams.get('page')) || 1, 1)
+      const pageSize = Math.min(Math.max(Number(url.searchParams.get('pageSize')) || 20, 1), 100)
+      const items = (getDb().notifications ?? [])
+        .filter((item) => item.userId === userId)
+        .sort((a, b) => b.notificationId - a.notificationId)
+        .slice((page - 1) * pageSize, page * pageSize)
+        .map(({ notificationId, type, title, message, isRead, createdAt }) => ({ notificationId, type, title, message, isRead, createdAt }))
+      return HttpResponse.json({ page, pageSize, items })
+    }),
+  ),
+
+  http.post(
+    '*/api/notifications/:notificationId/read',
+    route(({ userId, params }) => {
+      const found = (getDb().notifications ?? []).find((item) => item.notificationId === Number(params.notificationId) && item.userId === userId)
+      if (!found) return problem(404, 'Notification not found.')
+      found.isRead = true
+      saveDb()
+      return new HttpResponse(null, { status: 204 })
+    }),
+  ),
+
   // Người xác minh đủ điều kiện cho hồ sơ (BE: ManagementService.LegalVerifiers): loại Executor, chủ kho và người thụ hưởng
   http.get(
     '*/api/executor/handovers/:requestId/legal-verifiers',

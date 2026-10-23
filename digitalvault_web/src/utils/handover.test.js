@@ -1,4 +1,4 @@
-import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, isCancellableStatus, isEditableStatus, ownerCreateHandoverErrorMessage } from './handover'
+import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, handoverActionErrorMessage, isCancellableStatus, isEditableStatus, ownerCreateHandoverErrorMessage } from './handover'
 
 describe('handoverStatusInfo', () => {
   it.each([
@@ -133,5 +133,19 @@ describe('statuses added by the backend intake step', () => {
 
   it('HANDOVER_GROUPS_History_IncludesDeclined', () => {
     expect(HANDOVER_GROUPS.history).toContain('Declined')
+  })
+})
+
+describe('handoverActionErrorMessage for the intake decision', () => {
+  it('handoverActionErrorMessage_Accept409NotReady_ExplainsVaultRequirements', () => {
+    expect(handoverActionErrorMessage({ status: 409, message: 'Every active asset needs documents and exactly 100 percent active allocation.' }, 'accept')).toContain('chưa đủ điều kiện')
+  })
+
+  it('handoverActionErrorMessage_Accept409Other_SaysNoLongerAwaiting', () => {
+    expect(handoverActionErrorMessage({ status: 409, message: 'Only an awaiting Executor request can be accepted.' }, 'accept')).toContain('không còn ở trạng thái chờ tiếp nhận')
+  })
+
+  it('handoverActionErrorMessage_Decline400_ExplainsReasonRules', () => {
+    expect(handoverActionErrorMessage({ status: 400 }, 'decline')).toContain('Lý do từ chối không hợp lệ')
   })
 })
