@@ -142,6 +142,16 @@ const executorHandlers = [
     ownerRoute(() => HttpResponse.json(getDb().executors.map(executorProfile))),
   ),
 
+  // Chi tiết Executor theo ExecutorDetailDto của BE
+  http.get(
+    '*/api/owner/executors/:executorId',
+    ownerRoute(({ params }) => {
+      const profile = getDb().executors.find((executor) => executor.executorId === Number(params.executorId))
+      if (!profile) return problem(404, 'Executor not found.')
+      return HttpResponse.json({ userId: profile.executorId, fullName: profile.fullName, role: 'Executor', status: 'Active', joinedAt: '2025-01-15T00:00:00.000Z' })
+    }),
+  ),
+
   http.get(
     '*/api/owner/vaults/:vaultId/executor',
     ownerRoute(({ userId, params }) => {

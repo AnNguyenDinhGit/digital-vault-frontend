@@ -19,6 +19,7 @@ import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
 import ExecutorManagementPage from './pages/owner/ExecutorManagementPage'
+import ExecutorProfilePage from './pages/owner/ExecutorProfilePage'
 import OwnerHandoverDetailPage from './pages/owner/OwnerHandoverDetailPage'
 import OwnerHandoversPage from './pages/owner/OwnerHandoversPage'
 import ProofOfLifePage from './pages/owner/ProofOfLifePage'
@@ -36,6 +37,8 @@ function App() {
 
           {/* 1. Khu vực Vault Owner */}
           <Route element={<ProtectedRoute role="Owner" />}>
+            {/* Chi tiết Executor mở ở cửa sổ mới nên không dùng layout có sidebar */}
+            <Route path="/owner/executors/:executorId/view" element={<ExecutorProfilePage />} />
             <Route path="/owner" element={<OwnerLayout />}>
               <Route index element={<Navigate to="assets" replace />} />
               <Route path="assets" element={<AssetCatalogPage />} />

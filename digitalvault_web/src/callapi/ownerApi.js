@@ -104,8 +104,15 @@ export async function assignBeneficiary(assetId, { email, allocation }) {
 }
 
 // Người thi hành (BE chưa có API, đang dùng mock): 404 ở getVaultExecutor nghĩa là kho chưa gán
+// BE trả PageDto { items: [{ userId, fullName }] }, mock trả mảng { executorId, ... }: chuẩn hoá để luôn có executorId
 export async function getExecutors() {
-  const { data } = await axiosClient.get('/owner/executors')
+  const items = await getAllPages('/owner/executors')
+  return items.map((item) => ({ ...item, executorId: item.executorId ?? item.userId }))
+}
+
+// Chi tiết một Executor (ExecutorDetailDto của BE); vaultId tuỳ chọn
+export async function getExecutorDetail(executorId, vaultId) {
+  const { data } = await axiosClient.get(`/owner/executors/${executorId}`, { params: vaultId ? { vaultId } : undefined })
   return data
 }
 

@@ -229,3 +229,17 @@ body {
 .av-mock-notice { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px; border: 1px dashed #d97706; border-radius: 8px; background: #fffbeb; font-size: 12px; color: #92400e; }
 
 .av-denied-icon { display: flex; width: 48px; height: 48px; margin: 0 auto; align-items: center; justify-content: center; border-radius: 12px; background: var(--av-red-50); color: var(--av-red-600); }
+
+/* Ô chọn người thi hành trong modal thêm tài sản */
+.av-exec-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 8px 14px; border: 1px solid var(--av-slate-200); border-radius: 10px; background: #fff; transition: border-color 0.15s, box-shadow 0.15s; }
+.av-exec-toggle::after { display: none; }
+.av-exec-toggle:hover:not(:disabled) { border-color: var(--bs-primary); }
+.av-exec-toggle:focus-visible, .av-exec-toggle.show { border-color: var(--bs-primary); box-shadow: 0 0 0 3px var(--av-primary-line); outline: 0; }
+.av-exec-toggle.has-value { border-color: var(--av-primary-line); background: var(--av-primary-tint-70); }
+.av-exec-toggle:disabled { opacity: 0.6; cursor: not-allowed; }
+.av-avatar-sm.is-empty { border-style: dashed; background: #fff; color: var(--av-slate-400); }
+.av-exec-menu { max-height: 280px; overflow-y: auto; border: 1px solid var(--av-slate-200); border-radius: 12px; box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.25); }
+.av-exec-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; }
+.av-exec-row:hover, .av-exec-row:focus-visible { background: var(--av-slate-50); outline: 0; }
+.av-exec-row.is-selected { background: var(--av-primary-tint); }
+@media (max-width: 575px) { .av-exec-row { flex-wrap: wrap; } }
