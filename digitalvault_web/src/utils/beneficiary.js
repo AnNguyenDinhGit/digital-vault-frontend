@@ -98,7 +98,7 @@ export function validateReceipt({ note, accepted }) {
 // khỏi bắt nhập lại OTP khi tải lại trang; cổng OTP luôn hỏi lại BE trước khi tin gợi ý này.
 export const OTP_STORAGE_KEY = 'aeterna.beneficiary.otp'
 // Hạn dự phòng khi phản hồi verify của BE không kèm hạn phiên (khớp thời hạn phiên mặc định của BE)
-export const OTP_SESSION_TTL_MS = 30 * 60 * 1000
+export const OTP_SESSION_TTL_MS = 15 * 60 * 1000
 
 // Lấy mốc hết hạn phiên (ms) từ phản hồi verify của BE: expiresAt/verifiedUntil (ISO) hoặc expiresInSeconds; null nếu không có
 export function otpSessionExpiry(data, now = Date.now()) {

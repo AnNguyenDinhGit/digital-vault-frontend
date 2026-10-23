@@ -6,7 +6,7 @@ import { hasUnknownFields, problem, route } from './helpers'
 // Dữ liệu được tạo lười theo userId trong db.beneficiaryPortal nên không cần đổi DB_VERSION.
 
 const OTP_TTL_MS = 5 * 60 * 1000
-const OTP_SESSION_MS = 30 * 60 * 1000
+const OTP_SESSION_MS = 15 * 60 * 1000
 const MAX_OTP_ATTEMPTS = 5
 
 const beneficiaryRoute = (handler) => route(handler, { role: 'Beneficiary' })
