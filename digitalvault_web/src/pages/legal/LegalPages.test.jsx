@@ -114,8 +114,8 @@ describe('LegalHandoverDetailPage', () => {
     expect(additionalBtn).not.toBeDisabled()
   })
 
-  it('disables review action buttons when status is not Pending_Legal', async () => {
-    const item = seedHandover('Approved')
+  it('disables review action buttons when status is not Pending_Legal and not yet decided', async () => {
+    const item = seedHandover('Draft')
     renderDetail(item.requestId)
 
     expect(await screen.findByRole('heading', { level: 1, name: `Hồ sơ thẩm định #${item.requestId}` })).toBeInTheDocument()
@@ -123,6 +123,15 @@ describe('LegalHandoverDetailPage', () => {
     expect(screen.getByRole('button', { name: /Từ chối/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /Yêu cầu bổ sung thông tin/i })).toBeDisabled()
     expect(screen.getByText(/Chỉ những hồ sơ ở trạng thái/i)).toBeInTheDocument()
+  })
+
+  it('replaces the action buttons with the review outcome once the handover is decided', async () => {
+    const item = seedHandover('Approved')
+    renderDetail(item.requestId)
+
+    expect(await screen.findByRole('heading', { level: 1, name: `Hồ sơ thẩm định #${item.requestId}` })).toBeInTheDocument()
+    expect(screen.getByText('Kết quả thẩm định:')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Duyệt hồ sơ/i })).not.toBeInTheDocument()
   })
 
   it('opens review modal, validates comment length 1-2000 chars, and submits approve', async () => {
@@ -148,10 +157,12 @@ describe('LegalHandoverDetailPage', () => {
     await userEvent.type(textarea, 'Hồ sơ pháp lý đầy đủ và hợp lệ theo Nghị định 23.')
     await userEvent.click(submitBtn)
 
-    // Modal closes and status changes to Approved
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
-    expect(await screen.findByText('Đã lưu thẩm định thành công!')).toBeInTheDocument()
+    // Hộp thoại nhập nhận xét đóng và hộp thoại kết quả hiện ra; bấm Đã hiểu thì đóng nốt
+    const result = await screen.findByRole('heading', { name: 'Đã duyệt hồ sơ' })
+    expect(screen.queryByRole('heading', { name: 'Phê duyệt hồ sơ bàn giao' })).not.toBeInTheDocument()
+    expect(result).toBeInTheDocument()
+    expect(screen.getByText('Trạng thái mới:')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Đã hiểu' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })
