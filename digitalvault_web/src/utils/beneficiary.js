@@ -124,9 +124,19 @@ export function clearOtpVerified() {
 
 // ---- Thời gian ----
 
+// BE (.NET/SQL Server) lưu giờ UTC nhưng có thể trả chuỗi ISO không kèm múi giờ (không có Z hoặc ±hh:mm).
+// JS sẽ hiểu chuỗi đó là giờ địa phương, làm lệch đúng bằng độ lệch múi giờ (UTC+7 → "7 giờ trước"), nên coi là UTC.
+export function parseServerDate(iso) {
+    if (iso instanceof Date) return iso
+    if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) && !/(Z|[+-]\d{2}:?\d{2})$/i.test(iso)) {
+        return new Date(`${iso}Z`)
+    }
+    return new Date(iso)
+}
+
 // "vừa xong", "5 phút trước", "3 giờ trước", "2 ngày trước"
 export function formatRelativeTime(iso, now = Date.now()) {
-    const time = new Date(iso).getTime()
+    const time = parseServerDate(iso).getTime()
     if (Number.isNaN(time)) return ''
     const seconds = Math.max(0, Math.round((now - time) / 1000))
     if (seconds < 60) return 'vừa xong'
@@ -136,12 +146,12 @@ export function formatRelativeTime(iso, now = Date.now()) {
     if (hours < 24) return `${hours} giờ trước`
     const days = Math.floor(hours / 24)
     if (days < 30) return `${days} ngày trước`
-    return new Date(iso).toLocaleDateString('vi-VN')
+    return parseServerDate(iso).toLocaleDateString('vi-VN')
 }
 
 // Số giây còn lại tới mốc hết hạn (không âm)
 export function secondsUntil(iso, now = Date.now()) {
-    const time = new Date(iso).getTime()
+    const time = parseServerDate(iso).getTime()
     if (Number.isNaN(time)) return 0
     return Math.max(0, Math.ceil((time - now) / 1000))
 }
