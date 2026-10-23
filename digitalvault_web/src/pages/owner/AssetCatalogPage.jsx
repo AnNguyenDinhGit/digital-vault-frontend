@@ -63,9 +63,11 @@ export default function AssetCatalogPage() {
     reload()
   }
 
-  const handleAssetCreated = () => {
+  const handleAssetCreated = (_asset, { executorError } = {}) => {
     closeModal()
+    if (executorError) setToast({ title: 'Đã tạo tài sản nhưng chưa gán được người thi hành', detail: executorError })
     reload()
+    executor.reload()
   }
 
   const handleVaultUpdated = () => {
@@ -184,7 +186,7 @@ export default function AssetCatalogPage() {
 
       {modal === 'closeVault' && <CloseVaultModal vault={selectedVault} onClose={closeModal} onClosed={handleVaultClosed} />}
       {modal === 'editVault' && <EditVaultModal vault={selectedVault} onClose={closeModal} onSaved={handleVaultUpdated} />}
-      <AddAssetModal open={modal === 'asset'} vault={selectedVault} onClose={closeModal} onCreated={handleAssetCreated} />
+      <AddAssetModal open={modal === 'asset'} vault={selectedVault} currentExecutorId={executor.data?.executorId ?? null} onClose={closeModal} onCreated={handleAssetCreated} />
       {editingAsset && (
         <EditAssetModal
           asset={editingAsset}
@@ -195,7 +197,7 @@ export default function AssetCatalogPage() {
         />
       )}
       {createVaultModal}
-      <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />
+      <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} detail={toast?.detail} />
     </div>
   )
 }

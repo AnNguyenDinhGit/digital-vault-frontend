@@ -12,8 +12,8 @@ import {
   changePassword,
   getActivityLogs,
   getBeneficiaries,
-  getExecutors,
   getExecutorDetail,
+  getExecutors,
   getNotificationPage,
   getNotifications,
   markNotificationRead,
@@ -173,6 +173,17 @@ describe('ownerApi', () => {
       axiosClient.get.mockResolvedValue({ data: [{ executorId: 5 }] })
       await expect(getExecutors()).resolves.toEqual([{ executorId: 5 }])
       expect(axiosClient.get).toHaveBeenCalledWith('/owner/executors', { params: { page: 1, pageSize: 100 } })
+    })
+
+    it('getExecutors_BePage_MapsUserIdToExecutorId', async () => {
+      axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [{ userId: 9, fullName: 'LS. A' }] } })
+      await expect(getExecutors()).resolves.toEqual([{ userId: 9, fullName: 'LS. A', executorId: 9 }])
+    })
+
+    it('getExecutorDetail_WithVault_SendsVaultIdQuery', async () => {
+      axiosClient.get.mockResolvedValue({ data: { userId: 9 } })
+      await expect(getExecutorDetail(9, 3)).resolves.toEqual({ userId: 9 })
+      expect(axiosClient.get).toHaveBeenCalledWith('/owner/executors/9', { params: { vaultId: 3 } })
     })
 
     it('getVaultExecutor_VaultId_GetsAssignmentOfThatVault', async () => {

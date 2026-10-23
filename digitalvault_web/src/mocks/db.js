@@ -21,7 +21,7 @@ export const ROLE_ACCOUNTS = [
 ]
 
 // Tăng số này mỗi khi đổi cấu trúc dữ liệu seed để bỏ dữ liệu cũ đang lưu trong trình duyệt
-const DB_VERSION = 14
+const DB_VERSION = 16
 
 // hybrid: gọi BE thật cho API đã có, chỉ mock API BE chưa có, nên phiên đăng nhập là của BE thật
 const config = { latencyMs: 0, hybrid: false }
@@ -141,8 +141,153 @@ function createSeed() {
     proofOfLife: {
       1: { frequencyDays: 30, gracePeriodDays: 7, lastPingAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), missedCount: 0 },
     },
-    // Hồ sơ bàn giao do Executor xử lý: { requestId, vaultId, executorId, status, initiatedAt, documents, cases }
-    handovers: [],
+    // Hồ sơ bàn giao do Executor xử lý: { requestId, vaultId, executorId, status, initiatedAt, documents, assetDocuments, cases }
+    handovers: [
+      {
+        requestId: 101,
+        vaultId: 1,
+        executorId: 5,
+        requestType: 'Standard',
+        status: 'Pending_Legal',
+        initiatedAt: hoursAgo(3),
+        documents: [
+          {
+            documentId: 1,
+            fileName: 'Trich_Luc_Khai_Tu_Ban_Chinh.pdf',
+            fileType: 'application/pdf',
+            isEncrypted: true,
+            hasSignature: true,
+            signatureValid: true,
+          },
+          {
+            documentId: 2,
+            fileName: 'Hop_Dong_Uy_Quyen_Cong_Chung.pdf',
+            fileType: 'application/pdf',
+            isEncrypted: true,
+            hasSignature: true,
+            signatureValid: true,
+          },
+        ],
+        assetDocuments: [
+          {
+            documentId: 10,
+            fileName: 'Giay_Chung_Nhan_So_Huu_Dat.pdf',
+            fileType: 'application/pdf',
+            isEncrypted: true,
+          },
+        ],
+        cases: [
+          {
+            handoverId: 101,
+            assetId: 1,
+            beneficiaryId: 7,
+            status: 'Pending',
+          },
+          {
+            handoverId: 102,
+            assetId: 2,
+            beneficiaryId: 7,
+            status: 'Pending',
+          },
+        ],
+      },
+      {
+        requestId: 104,
+        vaultId: 1,
+        executorId: 5,
+        requestType: 'Standard',
+        status: 'Pending_Legal',
+        initiatedAt: hoursAgo(1),
+        documents: [
+          {
+            documentId: 5,
+            fileName: 'Giay_Chung_Tu_Nguyen_Van_An.pdf',
+            fileType: 'application/pdf',
+            isEncrypted: true,
+            hasSignature: true,
+            signatureValid: true,
+          },
+          {
+            documentId: 6,
+            fileName: 'Bien_Ban_Giam_Dinh_Phap_Y.pdf',
+            fileType: 'application/pdf',
+            isEncrypted: true,
+            hasSignature: true,
+            signatureValid: true,
+          },
+        ],
+        assetDocuments: [
+          {
+            documentId: 11,
+            fileName: 'Hop_Dong_So_Huu_Co_Phan.pdf',
+            fileType: 'application/pdf',
+            isEncrypted: true,
+          },
+        ],
+        cases: [
+          {
+            handoverId: 105,
+            assetId: 3,
+            beneficiaryId: 7,
+            status: 'Pending',
+          },
+        ],
+      },
+      {
+        requestId: 102,
+        vaultId: 1,
+        executorId: 5,
+        requestType: 'Standard',
+        status: 'Approved',
+        initiatedAt: hoursAgo(24 * 3),
+        documents: [
+          {
+            documentId: 3,
+            fileName: 'Giay_Chung_Tu_Hop_Phap.pdf',
+            fileType: 'application/pdf',
+            isEncrypted: true,
+            hasSignature: true,
+            signatureValid: true,
+          },
+        ],
+        assetDocuments: [],
+        cases: [
+          {
+            handoverId: 103,
+            assetId: 1,
+            beneficiaryId: 7,
+            status: 'In_Progress',
+          },
+        ],
+      },
+      {
+        requestId: 103,
+        vaultId: 1,
+        executorId: 5,
+        requestType: 'Standard',
+        status: 'Additional_Info',
+        initiatedAt: hoursAgo(24 * 5),
+        documents: [
+          {
+            documentId: 4,
+            fileName: 'Don_Yeu_Cau_Ban_Giao_Chua_Ky.pdf',
+            fileType: 'application/pdf',
+            isEncrypted: true,
+            hasSignature: false,
+            signatureValid: false,
+          },
+        ],
+        assetDocuments: [],
+        cases: [
+          {
+            handoverId: 104,
+            assetId: 2,
+            beneficiaryId: 7,
+            status: 'Pending',
+          },
+        ],
+      },
+    ],
     // Quên mật khẩu: mã OTP đang chờ xác nhận theo email, và mã đặt lại (reset token) đã được xác nhận
     passwordResets: {},
     // Refresh token đang lưu hành (như bảng RefreshTokens của BE): token -> { userId, revoked }

@@ -357,3 +357,27 @@ body {
   .av-ben-hero, .av-ben-asset, .av-ben-case, .av-receipt, .av-locked-card, .av-mailbox-panel, .av-push-toast, .av-push-icon, .av-mailbox-badge, .av-step.is-current .av-step-dot, .av-spin { animation: none; }
   .av-ben-asset:hover { transform: none; }
 }
+/* Ô chọn người thi hành trong modal thêm tài sản */
+.av-exec-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 8px 14px; border: 1px solid var(--av-slate-200); border-radius: 10px; background: #fff; transition: border-color 0.15s, box-shadow 0.15s; }
+.av-exec-toggle::after { display: none; }
+.av-exec-toggle:hover:not(:disabled) { border-color: var(--bs-primary); }
+.av-exec-toggle:focus-visible, .av-exec-toggle.show { border-color: var(--bs-primary); box-shadow: 0 0 0 3px var(--av-primary-line); outline: 0; }
+.av-exec-toggle.has-value { border-color: var(--av-primary-line); background: var(--av-primary-tint-70); }
+.av-exec-toggle:disabled { opacity: 0.6; cursor: not-allowed; }
+.av-avatar-sm.is-empty { border-style: dashed; background: #fff; color: var(--av-slate-400); }
+.av-exec-menu { max-height: 280px; overflow-y: auto; border: 1px solid var(--av-slate-200); border-radius: 12px; box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.25); }
+.av-exec-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; }
+.av-exec-row:hover, .av-exec-row:focus-visible { background: var(--av-slate-50); outline: 0; }
+.av-exec-row.is-selected { background: var(--av-primary-tint); }
+@media (max-width: 575px) { .av-exec-row { flex-wrap: wrap; } }
+
+/* Kết quả thẩm định pháp lý: hộp ở khu vực hành động và biểu tượng trong modal thông báo */
+.av-modal.av-modal-sm { --bs-modal-width: 480px; }
+.av-result-box { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid; border-radius: 12px; }
+.av-result-box.is-ok { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.av-result-box.is-danger { border-color: var(--av-red-200); background: var(--av-red-50); color: var(--av-red-700); }
+.av-result-box.is-warn { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+.av-result-icon { display: flex; width: 56px; height: 56px; align-items: center; justify-content: center; border-radius: 50%; }
+.av-result-icon.is-ok { background: #dcfce7; color: #15803d; }
+.av-result-icon.is-danger { background: #fee2e2; color: #b91c1c; }
+.av-result-icon.is-warn { background: #fef3c7; color: #b45309; }
