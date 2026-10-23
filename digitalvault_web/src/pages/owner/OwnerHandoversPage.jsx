@@ -124,7 +124,7 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
         )}
       </section>
 
-      {creating && <CreateOwnerHandoverModal onClose={() => setCreating(false)} onCreated={handleCreated} />}
+      {creating && <CreateOwnerHandoverModal mockMode={mockMode} onClose={() => setCreating(false)} onCreated={handleCreated} />}
       {cancelling && <CancelHandoverModal handover={cancelling} onClose={() => setCancelling(null)} onCancelled={handleCancelled} />}
       <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />
     </div>

@@ -234,3 +234,117 @@ describe('OwnerHandoversPage new statuses', () => {
     expect(within(table).getByRole('button', { name: 'Hủy hồ sơ' })).toBeDisabled()
   })
 })
+
+describe('OwnerHandoversPage choose Executor when creating', () => {
+  const openModal = async () => {
+    await userEvent.click(screen.getByRole('button', { name: 'Tạo hồ sơ bàn giao' }))
+    return screen.getByRole('dialog', { name: 'Tạo Hồ Sơ Bàn Giao' })
+  }
+  const submit = (dialog) => userEvent.click(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }))
+
+  it('executorSelect_Default_OffersSystemChoiceAndListedExecutors', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    const select = await within(dialog).findByLabelText('Người thi hành')
+    await within(select).findByRole('option', { name: /Lê Hoàng Nam/ })
+    expect(within(select).getByRole('option', { name: 'Để hệ thống tự chọn' })).toHaveValue('')
+    expect(within(select).getAllByRole('option')).toHaveLength(4)
+  })
+
+  it('executorSelect_Chosen_AssignsThenCreatesHandoverForThatExecutor', async () => {
+    const vault = await seedReadyVault()
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    await userEvent.selectOptions(await within(dialog).findByLabelText('Kho cần bàn giao'), String(vault.vaultId))
+    const select = await within(dialog).findByLabelText('Người thi hành')
+    await within(select).findByRole('option', { name: /Trần Đăng Khoa/ })
+    await userEvent.selectOptions(select, '21')
+    await submit(dialog)
+    expect(await screen.findByText(/Đã tạo hồ sơ #/)).toBeInTheDocument()
+    expect(getDb().executorAssignments[vault.vaultId].executorId).toBe(21)
+    expect(getDb().handovers.find((item) => item.vaultId === vault.vaultId).executorId).toBe(21)
+  })
+
+  it('executorSelect_SystemChoice_LeavesAssignmentToBackend', async () => {
+    const vault = await seedReadyVault()
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    await userEvent.selectOptions(await within(dialog).findByLabelText('Kho cần bàn giao'), String(vault.vaultId))
+    await within(dialog).findByLabelText('Người thi hành')
+    await submit(dialog)
+    expect(await screen.findByText(/Đã tạo hồ sơ #/)).toBeInTheDocument()
+    expect(getDb().executorAssignments[vault.vaultId]).toMatchObject({ executorId: 5, status: 'AutoAssigned' })
+  })
+
+  it('executorSelect_AssignRejected_ShowsExecutorErrorAndDoesNotCreate', async () => {
+    const vault = await seedReadyVault()
+    server.use(http.put('*/api/owner/vaults/:vaultId/executor', () => HttpResponse.json({ status: 409, detail: 'Executor must be independent.' }, { status: 409 })))
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    await userEvent.selectOptions(await within(dialog).findByLabelText('Kho cần bàn giao'), String(vault.vaultId))
+    const select = await within(dialog).findByLabelText('Người thi hành')
+    await within(select).findByRole('option', { name: /Trần Đăng Khoa/ })
+    await userEvent.selectOptions(select, '21')
+    await submit(dialog)
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Người thi hành này không khả dụng')
+    expect(getDb().handovers).toHaveLength(0)
+  })
+
+  it('executorSelect_CreateFailsAfterAssign_TellsExecutorWasAlreadyAssigned', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    const select = await within(dialog).findByLabelText('Người thi hành')
+    await within(select).findByRole('option', { name: /Trần Đăng Khoa/ })
+    await userEvent.selectOptions(select, '21')
+    await submit(dialog)
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent('giấy tờ')
+    expect(alert).toHaveTextContent('đã được gán cho kho')
+  })
+
+  it('executorSelect_RetryAfterCreateFailure_DoesNotAssignTwice', async () => {
+    let puts = 0
+    server.use(
+      http.put('*/api/owner/vaults/:vaultId/executor', () => {
+        puts += 1
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    const select = await within(dialog).findByLabelText('Người thi hành')
+    await within(select).findByRole('option', { name: /Trần Đăng Khoa/ })
+    await userEvent.selectOptions(select, '21')
+    await submit(dialog)
+    await within(dialog).findByRole('alert')
+    await submit(dialog)
+    await within(dialog).findByRole('alert')
+    expect(puts).toBe(1)
+  })
+
+  it('executorSelect_ListFails_StillAllowsSystemChoice', async () => {
+    server.use(http.get('*/api/owner/executors', () => HttpResponse.json({ status: 500, detail: 'x' }, { status: 500 })))
+    const vault = await seedReadyVault()
+    renderPage()
+    await waitForPage()
+    const dialog = await openModal()
+    await userEvent.selectOptions(await within(dialog).findByLabelText('Kho cần bàn giao'), String(vault.vaultId))
+    expect(await within(dialog).findByText('Không tải được danh sách người thi hành, hệ thống sẽ tự chọn.')).toBeInTheDocument()
+    await submit(dialog)
+    expect(await screen.findByText(/Đã tạo hồ sơ #/)).toBeInTheDocument()
+  })
+
+  it('executorSelect_HybridMode_IsHiddenBecauseMockListDoesNotMatchRealAccounts', async () => {
+    renderPage({ mockMode: 'hybrid' })
+    await waitForPage()
+    const dialog = await openModal()
+    await within(dialog).findByLabelText('Kho cần bàn giao')
+    expect(within(dialog).queryByLabelText('Người thi hành')).not.toBeInTheDocument()
+  })
+})
