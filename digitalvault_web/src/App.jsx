@@ -21,6 +21,7 @@ import BeneficiariesPage from './pages/owner/BeneficiariesPage'
 import ExecutorManagementPage from './pages/owner/ExecutorManagementPage'
 import OwnerHandoverDetailPage from './pages/owner/OwnerHandoverDetailPage'
 import OwnerHandoversPage from './pages/owner/OwnerHandoversPage'
+import OwnerNotificationsPage from './pages/owner/OwnerNotificationsPage'
 import ProofOfLifePage from './pages/owner/ProofOfLifePage'
 import SecuritySettingsPage from './pages/owner/SecuritySettingsPage'
 
@@ -42,6 +43,7 @@ function App() {
               <Route path="executor" element={<ExecutorManagementPage />} />
               <Route path="handovers" element={<OwnerHandoversPage />} />
               <Route path="handovers/:requestId" element={<OwnerHandoverDetailPage />} />
+              <Route path="notifications" element={<OwnerNotificationsPage />} />
               <Route path="proof-of-life" element={<ProofOfLifePage />} />
               <Route path="activity-log" element={<ActivityLogPage />} />
               <Route path="security" element={<SecuritySettingsPage />} />

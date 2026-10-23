@@ -229,3 +229,7 @@ body {
 .av-mock-notice { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px; border: 1px dashed #d97706; border-radius: 8px; background: #fffbeb; font-size: 12px; color: #92400e; }
 
 .av-denied-icon { display: flex; width: 48px; height: 48px; margin: 0 auto; align-items: center; justify-content: center; border-radius: 12px; background: var(--av-red-50); color: var(--av-red-600); }
+
+/* Thông báo của Owner */
+.av-owner-notice-row { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--av-slate-200); border-radius: 12px; background: #fff; }
+.av-owner-notice-row.is-unread { border-color: var(--av-primary-line); background: var(--av-primary-tint-70); }

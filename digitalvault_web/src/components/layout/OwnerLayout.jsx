@@ -1,6 +1,8 @@
-import { Activity, ClipboardList, FolderLock, History, LogOut, Settings, ShieldCheck, UserCog, Users } from 'lucide-react'
+import { Activity, Bell, ClipboardList, FolderLock, History, LogOut, Settings, ShieldCheck, UserCog, Users } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
+import { formatUnreadCount } from '../../utils/notifications'
 import BrandLogo from '../common/BrandLogo'
 import PortalSwitcher from './PortalSwitcher'
 
@@ -14,6 +16,7 @@ const VAULT_ITEMS = [
 ]
 
 const MONITOR_ITEMS = [
+  { label: 'Thông báo', icon: Bell, to: '/owner/notifications', unreadBadge: true },
   { label: 'Điểm danh sự sống', icon: Activity, to: '/owner/proof-of-life' },
   { label: 'Nhật ký hoạt động', icon: History, to: '/owner/activity-log' },
   { label: 'Cài đặt bảo mật', icon: Settings, to: '/owner/security' },
@@ -25,7 +28,18 @@ function initialsFromEmail(email = '') {
   return (name.slice(0, 2) || 'VO').toUpperCase()
 }
 
-function SidebarItem({ label, icon: Icon, to }) {
+// Huy hiệu số thông báo chưa đọc cạnh mục Thông báo
+function UnreadBadge() {
+  const count = useUnreadNotifications()
+  if (!count) return null
+  return (
+    <span className="av-badge av-badge-warn" aria-label={`${count} thông báo chưa đọc`}>
+      {formatUnreadCount(count)}
+    </span>
+  )
+}
+
+function SidebarItem({ label, icon: Icon, to, unreadBadge }) {
   if (!to) {
     // Chức năng BE chưa có API: hiển thị theo thiết kế nhưng vô hiệu hoá
     return (
@@ -40,6 +54,7 @@ function SidebarItem({ label, icon: Icon, to }) {
     <NavLink to={to} className="av-nav-item">
       <Icon size={16} aria-hidden="true" />
       <span className="flex-grow-1 text-truncate" style={{ minWidth: 0 }}>{label}</span>
+      {unreadBadge && <UnreadBadge />}
     </NavLink>
   )
 }

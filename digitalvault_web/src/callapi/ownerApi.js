@@ -225,6 +225,17 @@ export async function revokeDocument(assetId, documentId) {
   await axiosClient.post(`/owner/assets/${assetId}/documents/${documentId}/revoke`)
 }
 
+// Một trang thông báo (BE: PageDto { page, pageSize, items }, mới nhất trước); bản BE cũ trả mảng thì bọc lại
+export async function getNotificationPage({ page = 1, pageSize = 20 } = {}) {
+  const { data } = await axiosClient.get('/notifications', { params: { page, pageSize } })
+  return Array.isArray(data) ? { page, pageSize, items: data } : data
+}
+
+// Đánh dấu một thông báo đã đọc (BE trả 204, 404 nếu không phải của mình); BE chưa có API đánh dấu tất cả
+export async function markNotificationRead(notificationId) {
+  await axiosClient.post(`/notifications/${notificationId}/read`)
+}
+
 // Thông báo của chính người dùng, mới nhất trước (BE: GET /notifications, PageDto). Dùng để tìm lý do Executor từ chối hồ sơ
 export async function getNotifications() {
   return getAllPages('/notifications')

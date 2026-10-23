@@ -14,7 +14,9 @@ import {
   getBeneficiaries,
   getExecutors,
   getExecutorDetail,
+  getNotificationPage,
   getNotifications,
+  markNotificationRead,
   getOwnerHandovers,
   getProfile,
   getLifeConfirmation,
@@ -433,5 +435,24 @@ describe('getNotifications', () => {
     axiosClient.get.mockResolvedValue({ data: { page: 1, pageSize: 100, items: [{ notificationId: 2 }, { notificationId: 1 }] } })
     await expect(getNotifications()).resolves.toEqual([{ notificationId: 2 }, { notificationId: 1 }])
     expect(axiosClient.get).toHaveBeenCalledWith('/notifications', { params: { page: 1, pageSize: 100 } })
+  })
+})
+
+describe('notification page and read marker', () => {
+  it('getNotificationPage_PageAndSize_GetsOnePageDto', async () => {
+    axiosClient.get.mockResolvedValue({ data: { page: 2, pageSize: 10, items: [{ notificationId: 3 }] } })
+    await expect(getNotificationPage({ page: 2, pageSize: 10 })).resolves.toEqual({ page: 2, pageSize: 10, items: [{ notificationId: 3 }] })
+    expect(axiosClient.get).toHaveBeenCalledWith('/notifications', { params: { page: 2, pageSize: 10 } })
+  })
+
+  it('getNotificationPage_PlainArray_IsWrappedIntoPageDto', async () => {
+    axiosClient.get.mockResolvedValue({ data: [{ notificationId: 1 }] })
+    await expect(getNotificationPage({ page: 1, pageSize: 20 })).resolves.toEqual({ page: 1, pageSize: 20, items: [{ notificationId: 1 }] })
+  })
+
+  it('markNotificationRead_Id_PostsReadEndpoint', async () => {
+    axiosClient.post.mockResolvedValue({ status: 204 })
+    await markNotificationRead(5)
+    expect(axiosClient.post).toHaveBeenCalledWith('/notifications/5/read')
   })
 })
