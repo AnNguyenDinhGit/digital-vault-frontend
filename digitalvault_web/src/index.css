@@ -243,3 +243,14 @@ body {
 .av-exec-row:hover, .av-exec-row:focus-visible { background: var(--av-slate-50); outline: 0; }
 .av-exec-row.is-selected { background: var(--av-primary-tint); }
 @media (max-width: 575px) { .av-exec-row { flex-wrap: wrap; } }
+
+/* Kết quả thẩm định pháp lý: hộp ở khu vực hành động và biểu tượng trong modal thông báo */
+.av-modal.av-modal-sm { --bs-modal-width: 480px; }
+.av-result-box { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid; border-radius: 12px; }
+.av-result-box.is-ok { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.av-result-box.is-danger { border-color: var(--av-red-200); background: var(--av-red-50); color: var(--av-red-700); }
+.av-result-box.is-warn { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+.av-result-icon { display: flex; width: 56px; height: 56px; align-items: center; justify-content: center; border-radius: 50%; }
+.av-result-icon.is-ok { background: #dcfce7; color: #15803d; }
+.av-result-icon.is-danger { background: #fee2e2; color: #b91c1c; }
+.av-result-icon.is-warn { background: #fef3c7; color: #b45309; }

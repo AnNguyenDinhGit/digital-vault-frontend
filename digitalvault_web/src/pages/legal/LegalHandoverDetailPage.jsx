@@ -12,7 +12,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useCallback, useState } from 'react'
-import { Alert, Badge, Button, Col, Row, Table } from 'react-bootstrap'
+import { Alert, Badge, Button, Col, Modal, Row, Table } from 'react-bootstrap'
 import { Link, useParams } from 'react-router-dom'
 import {
   downloadLegalAssetDocument,
@@ -34,12 +34,36 @@ const CASE_STATUS_LABELS = {
   Cancelled: 'Đã hủy',
 }
 
+// Nội dung thông báo theo kết quả thẩm định (trạng thái mới của hồ sơ sau khi duyệt / từ chối / yêu cầu bổ sung)
+const REVIEW_OUTCOMES = {
+  Approved: {
+    title: 'Đã duyệt hồ sơ',
+    description: 'Hồ sơ đã được phê duyệt pháp lý. Người thi hành có thể bắt đầu bàn giao tài sản cho người thụ hưởng.',
+    icon: CheckCircle2,
+    tone: 'ok',
+  },
+  Rejected: {
+    title: 'Đã từ chối hồ sơ',
+    description: 'Hồ sơ đã bị từ chối. Người thi hành sẽ nhận được lý do từ chối.',
+    icon: XCircle,
+    tone: 'danger',
+  },
+  Additional_Info: {
+    title: 'Đã yêu cầu bổ sung thông tin',
+    description: 'Người thi hành sẽ bổ sung giấy tờ rồi gửi lại hồ sơ để thẩm định.',
+    icon: AlertCircle,
+    tone: 'warn',
+  },
+}
+const DEFAULT_OUTCOME = { title: 'Đã lưu kết quả thẩm định', description: 'Kết quả thẩm định đã được ghi nhận.', icon: CheckCircle2, tone: 'ok' }
+
 export default function LegalHandoverDetailPage() {
   const { requestId } = useParams()
   const { status, error, handover, reload } = useLegalHandoverDetail(requestId)
 
   const [reviewModalType, setReviewModalType] = useState(null)
   const [reviewResult, setReviewResult] = useState(null)
+  const [resultModalOpen, setResultModalOpen] = useState(false)
   const [downloadingDocId, setDownloadingDocId] = useState(null)
   const [downloadingAssetDocId, setDownloadingAssetDocId] = useState(null)
   const [downloadError, setDownloadError] = useState('')
@@ -86,10 +110,7 @@ export default function LegalHandoverDetailPage() {
   const handleReviewSuccess = (reviewDto) => {
     setReviewModalType(null)
     setReviewResult(reviewDto)
-    setToast({
-      title: 'Đã lưu kết quả thẩm định pháp lý thành công!',
-      detail: `Trạng thái mới: ${reviewDto?.status || 'Đã cập nhật'}`,
-    })
+    setResultModalOpen(true)
     // Tải lại trang chi tiết hồ sơ ngay sau khi thẩm định
     reload()
   }
@@ -123,7 +144,13 @@ export default function LegalHandoverDetailPage() {
 
   if (!handover) return null
 
-  const isPendingLegal = handover.status === 'Pending_Legal'
+  // Trạng thái hiện tại: ưu tiên kết quả vừa thẩm định để giao diện đổi ngay, không phải chờ tải lại hồ sơ
+  const currentStatus = reviewResult?.status ?? handover.status
+  const isPendingLegal = currentStatus === 'Pending_Legal'
+  const outcome = REVIEW_OUTCOMES[currentStatus]
+  // Kết quả thẩm định đã có (vừa làm xong, hoặc lấy từ hồ sơ khi mở lại trang)
+  const reviewInfo = reviewResult ?? (outcome ? handover.verification : null)
+  const OutcomeIcon = (outcome ?? DEFAULT_OUTCOME).icon
   const handoverDocs = handover.documents ?? []
   const assetDocs = handover.assetDocuments ?? []
   const cases = handover.cases ?? []
@@ -152,7 +179,7 @@ export default function LegalHandoverDetailPage() {
               <h1 className="mb-0 fw-bold text-ink" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>
                 {`Hồ sơ thẩm định #${handover.requestId}`}
               </h1>
-              <HandoverStatusBadge status={handover.status} />
+              <HandoverStatusBadge status={currentStatus} />
             </div>
             <p className="mb-0 fs-12 text-slate-500 d-flex flex-wrap align-items-center gap-2">
               <span>{`Kho di sản #${handover.vaultId}`}</span>
@@ -180,22 +207,6 @@ export default function LegalHandoverDetailPage() {
         </Button>
       </section>
 
-      {/* Thông báo kết quả thẩm định vừa thực hiện (ReviewDto) */}
-      {reviewResult && (
-        <Alert variant="success" className="av-alert d-flex flex-column gap-2 mb-0" dismissible onClose={() => setReviewResult(null)}>
-          <div className="d-flex align-items-center gap-2 fw-bold fs-14">
-            <CheckCircle2 size={16} />
-            Đã lưu thẩm định thành công!
-          </div>
-          <div className="fs-12 text-slate-700">
-            <div><strong>Mã thẩm định:</strong> #{reviewResult.verificationId}</div>
-            <div><strong>Trạng thái cập nhật:</strong> {handoverStatusInfo(reviewResult.status).text}</div>
-            {reviewResult.comment && <div><strong>Ý kiến thẩm định:</strong> {reviewResult.comment}</div>}
-            {reviewResult.reviewedAt && <div><strong>Thời gian thẩm định:</strong> {formatDateTime(reviewResult.reviewedAt)}</div>}
-          </div>
-        </Alert>
-      )}
-
       {/* KHU VỰC HÀNH ĐỘNG THẨM ĐỊNH (3 NÚT: DUYỆT - TỪ CHỐI - YÊU CẦU BỔ SUNG) */}
       <section className="av-panel" aria-label="Hành động thẩm định pháp lý">
         <div className="d-flex flex-column gap-3">
@@ -209,7 +220,20 @@ export default function LegalHandoverDetailPage() {
               </p>
             </div>
 
-            {/* 3 nút hành động */}
+            {/* Đã thẩm định: kết quả thay cho 3 nút; chưa thẩm định: 3 nút hành động */}
+            {outcome ? (
+              <div className={`av-result-box is-${outcome.tone} align-self-stretch`} role="status" style={{ minWidth: 280, maxWidth: 460 }}>
+                <OutcomeIcon size={20} className="flex-shrink-0 mt-1" aria-hidden="true" />
+                <div className="fs-13 d-flex flex-column gap-1" style={{ minWidth: 0 }}>
+                  <div className="d-flex align-items-center flex-wrap gap-2">
+                    <strong>Kết quả thẩm định:</strong>
+                    <HandoverStatusBadge status={currentStatus} />
+                  </div>
+                  {reviewInfo?.comment && <div><strong>Ý kiến thẩm định:</strong> {reviewInfo.comment}</div>}
+                  {reviewInfo?.reviewedAt && <div><strong>Thời gian:</strong> {formatDateTime(reviewInfo.reviewedAt)}</div>}
+                </div>
+              </div>
+            ) : (
             <div className="d-flex align-items-center gap-2 flex-wrap">
               <Button
                 type="button"
@@ -247,14 +271,15 @@ export default function LegalHandoverDetailPage() {
                 Yêu cầu bổ sung thông tin
               </Button>
             </div>
+            )}
           </div>
 
-          {/* Cảnh báo nếu hồ sơ không ở trạng thái Pending_Legal */}
-          {!isPendingLegal && (
+          {/* Cảnh báo nếu hồ sơ không ở trạng thái Pending_Legal và chưa có kết quả thẩm định */}
+          {!isPendingLegal && !outcome && (
             <div className="p-3 rounded bg-light border border-warning-subtle d-flex align-items-center gap-2 fs-12 text-slate-600">
               <Clock size={16} className="text-warning flex-shrink-0" />
               <span>
-                <strong>Lưu ý:</strong> Hồ sơ hiện ở trạng thái <em>{handoverStatusInfo(handover.status).text}</em>. Chỉ những hồ sơ ở trạng thái <strong>Chờ thẩm định pháp lý (Pending_Legal)</strong> mới được thực hiện hành động thẩm định.
+                <strong>Lưu ý:</strong> Hồ sơ hiện ở trạng thái <em>{handoverStatusInfo(currentStatus).text}</em>. Chỉ những hồ sơ ở trạng thái <strong>Chờ thẩm định pháp lý (Pending_Legal)</strong> mới được thực hiện hành động thẩm định.
               </span>
             </div>
           )}
@@ -440,6 +465,45 @@ export default function LegalHandoverDetailPage() {
           onSuccess={handleReviewSuccess}
         />
       )}
+
+      {/* Modal thông báo kết quả thẩm định vừa thực hiện */}
+      <Modal
+        show={resultModalOpen && Boolean(reviewResult)}
+        onHide={() => setResultModalOpen(false)}
+        centered
+        animation={false}
+        dialogClassName="av-modal av-modal-sm"
+        aria-labelledby="review-result-title"
+      >
+        <div className="av-modal-body d-flex flex-column align-items-center text-center gap-3 pt-4">
+          <span className={`av-result-icon is-${(outcome ?? DEFAULT_OUTCOME).tone}`}>
+            <OutcomeIcon size={28} aria-hidden="true" />
+          </span>
+          <div>
+            <h2 id="review-result-title" className="mb-1 fw-bold text-ink" style={{ fontSize: 19, letterSpacing: '-0.025em' }}>
+              {(outcome ?? DEFAULT_OUTCOME).title}
+            </h2>
+            <p className="mb-0 fs-13 text-slate-600">{(outcome ?? DEFAULT_OUTCOME).description}</p>
+          </div>
+          <dl className="av-info-box w-100 mb-0 text-start fs-13 d-flex flex-column gap-1">
+            {reviewResult?.verificationId != null && (
+              <div><dt className="d-inline fw-semibold">Mã thẩm định: </dt><dd className="d-inline mb-0">{`#${reviewResult.verificationId}`}</dd></div>
+            )}
+            <div><dt className="d-inline fw-semibold">Trạng thái mới: </dt><dd className="d-inline mb-0">{handoverStatusInfo(currentStatus).text}</dd></div>
+            {reviewResult?.comment && (
+              <div><dt className="d-inline fw-semibold">Ý kiến thẩm định: </dt><dd className="d-inline mb-0">{reviewResult.comment}</dd></div>
+            )}
+            {reviewResult?.reviewedAt && (
+              <div><dt className="d-inline fw-semibold">Thời gian: </dt><dd className="d-inline mb-0">{formatDateTime(reviewResult.reviewedAt)}</dd></div>
+            )}
+          </dl>
+        </div>
+        <div className="av-modal-foot justify-content-center">
+          <Button type="button" variant="primary" className="av-btn av-btn-md" onClick={() => setResultModalOpen(false)}>
+            Đã hiểu
+          </Button>
+        </div>
+      </Modal>
 
       {/* Toast thông báo */}
       <AppToast
