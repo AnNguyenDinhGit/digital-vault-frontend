@@ -239,6 +239,24 @@ describe('AssetCatalogPage add asset', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Kho này đang không hoạt động')
   })
 
+  it('addAsset_VaultLockedByHandover_ExplainsHandoverLockNotInactive', async () => {
+    server.use(
+      http.post('*/api/owner/assets', () =>
+        HttpResponse.json({ status: 409, detail: 'Handover records protect this vault from mutation.' }, { status: 409 }),
+      ),
+    )
+    renderPage()
+    await waitForCatalog()
+    await openModal()
+    const dialog = screen.getByRole('dialog', { name: 'Thêm Tài Sản Số Mới' })
+    await userEvent.type(within(dialog).getByLabelText(/^Tên tài sản/), 'Tài sản')
+    await userEvent.selectOptions(within(dialog).getByLabelText(/^Loại tài sản/), 'Other')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu tài sản' }))
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent('đang có hồ sơ bàn giao')
+    expect(alert).not.toHaveTextContent('không hoạt động')
+  })
+
   it('addAsset_Cancel_ClosesModal', async () => {
     renderPage()
     await waitForCatalog()
