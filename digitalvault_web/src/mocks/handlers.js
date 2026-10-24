@@ -390,7 +390,11 @@ const coreHandlers = [
 
   http.get(
     '*/api/owner/assets',
-    ownerRoute(({ userId }) => HttpResponse.json(ownedAssets(getDb(), userId).map(assetDto))),
+    ownerRoute(({ userId, request }) => {
+      const vaultId = new URL(request.url).searchParams.get('vaultId')
+      const assets = ownedAssets(getDb(), userId).filter((asset) => vaultId === null || asset.vaultId === Number(vaultId))
+      return HttpResponse.json(assets.map(assetDto))
+    }),
   ),
 
   http.get(

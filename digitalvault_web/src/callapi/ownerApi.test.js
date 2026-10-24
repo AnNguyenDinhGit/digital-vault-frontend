@@ -456,3 +456,11 @@ describe('notification page and read marker', () => {
     expect(axiosClient.post).toHaveBeenCalledWith('/notifications/5/read')
   })
 })
+
+describe('getAssets scoped by vault', () => {
+  it('getAssets_WithVaultId_SendsVaultIdFilter', async () => {
+    axiosClient.get.mockResolvedValue({ data: [{ assetId: 1 }] })
+    await getAssets(4)
+    expect(axiosClient.get).toHaveBeenCalledWith('/owner/assets', { params: { vaultId: 4, page: 1, pageSize: 100 } })
+  })
+})

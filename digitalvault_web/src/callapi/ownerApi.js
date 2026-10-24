@@ -26,8 +26,9 @@ export async function createVault({ name, description }) {
 }
 
 // BE không xoá tài sản mà chỉ đánh dấu Revoked và vẫn trả trong danh sách, nên ẩn các tài sản đã thu hồi
-export async function getAssets() {
-  const data = await getAllPages('/owner/assets')
+// Truyền vaultId để chỉ lấy tài sản của một kho (BE lọc theo ?vaultId=); bỏ trống thì lấy tài sản của mọi kho
+export async function getAssets(vaultId) {
+  const data = await getAllPages('/owner/assets', vaultId === undefined ? {} : { vaultId })
   return data.filter((asset) => asset.status !== 'Revoked')
 }
 

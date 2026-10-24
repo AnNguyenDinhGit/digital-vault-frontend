@@ -419,3 +419,27 @@ describe('AssetCatalogPage close vault', () => {
     expect(screen.getByRole('button', { name: /Thêm tài sản mới/ })).toBeEnabled()
   })
 })
+
+describe('AssetCatalogPage assets per vault', () => {
+  it('selectVault_OtherVault_ShowsOnlyThatVaultsAssets', async () => {
+    await createVault({ name: 'Kho thứ hai', description: '' })
+    const byVault = {
+      [getDb().vaults[0].vaultId]: { assetId: 901, name: 'Tài sản của kho một', type: 'Other', description: null, status: 'Active', documents: [] },
+      [getDb().vaults[1].vaultId]: { assetId: 902, name: 'Tài sản của kho hai', type: 'Other', description: null, status: 'Active', documents: [] },
+    }
+    server.use(
+      http.get('*/api/owner/assets', ({ request }) => {
+        const vaultId = new URL(request.url).searchParams.get('vaultId')
+        return HttpResponse.json({ page: 1, pageSize: 100, items: vaultId ? [byVault[vaultId]] : Object.values(byVault) })
+      }),
+    )
+    renderPage()
+    await waitForCatalog()
+    expect(await screen.findByText('Tài sản của kho một')).toBeInTheDocument()
+    expect(screen.queryByText('Tài sản của kho hai')).not.toBeInTheDocument()
+
+    await userEvent.selectOptions(screen.getByLabelText('Chọn kho'), 'Kho thứ hai')
+    expect(await screen.findByText('Tài sản của kho hai')).toBeInTheDocument()
+    expect(screen.queryByText('Tài sản của kho một')).not.toBeInTheDocument()
+  })
+})
