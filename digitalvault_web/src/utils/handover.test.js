@@ -1,4 +1,4 @@
-import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, declineReasonFromNotifications, handoverActionErrorMessage, isCancellableStatus, isEditableStatus, ownerCreateHandoverErrorMessage } from './handover'
+import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, declineReasonFromNotifications, handoverActionErrorMessage, isCancellableStatus, isEditableStatus, isVaultLockedByHandover, ownerCreateHandoverErrorMessage } from './handover'
 
 describe('handoverStatusInfo', () => {
   it.each([
@@ -172,5 +172,27 @@ describe('declineReasonFromNotifications', () => {
 
   it('declineReasonFromNotifications_NoReasonText_ReturnsNull', () => {
     expect(declineReasonFromNotifications([notice('Handover #7:   ')], 7)).toBeNull()
+  })
+})
+
+describe('isVaultLockedByHandover', () => {
+  const handovers = [
+    { requestId: 1, vaultId: 1, status: 'Cancelled' },
+    { requestId: 2, vaultId: 1, status: 'Declined' },
+    { requestId: 3, vaultId: 2, status: 'Pending_Executor' },
+  ]
+
+  it('isVaultLockedByHandover_OnlyCancelledOrDeclined_ReturnsFalse', () => {
+    expect(isVaultLockedByHandover(handovers, 1)).toBe(false)
+  })
+
+  it('isVaultLockedByHandover_OpenHandoverOfVault_ReturnsTrue', () => {
+    expect(isVaultLockedByHandover(handovers, 2)).toBe(true)
+  })
+
+  it('isVaultLockedByHandover_OtherVaultOrEmpty_ReturnsFalse', () => {
+    expect(isVaultLockedByHandover(handovers, 9)).toBe(false)
+    expect(isVaultLockedByHandover([], 1)).toBe(false)
+    expect(isVaultLockedByHandover(undefined, 1)).toBe(false)
   })
 })

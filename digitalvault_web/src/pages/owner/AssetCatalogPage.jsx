@@ -16,6 +16,7 @@ import VaultBanner from '../../components/owner/VaultBanner'
 import { useOwnerCatalog } from '../../hooks/useOwnerCatalog'
 import { useVaultExecutor } from '../../hooks/useVaultExecutor'
 import { buildStats, filterAssets, getTypeTabs, paginate } from '../../utils/catalog'
+import { isVaultLockedByHandover } from '../../utils/handover'
 
 const DEFAULT_PAGE_SIZE = 4
 
@@ -23,7 +24,7 @@ const DEFAULT_PAGE_SIZE = 4
 export default function AssetCatalogPage() {
   const catalog = useOwnerCatalog()
   const navigate = useNavigate()
-  const { status, error, vaults, assets, beneficiaries, selectedVault, selectVault, reload } = catalog
+  const { status, error, vaults, assets, beneficiaries, handovers, selectedVault, selectVault, reload } = catalog
   const executor = useVaultExecutor(selectedVault?.vaultId ?? null)
 
   const [query, setQuery] = useState('')
@@ -133,6 +134,7 @@ export default function AssetCatalogPage() {
         onEditVault={() => setModal('editVault')}
         onCloseVault={() => setModal('closeVault')}
         onCheckIn={() => navigate('/owner/proof-of-life?ping=1')}
+        lockedByHandover={isVaultLockedByHandover(handovers, selectedVault.vaultId)}
       />
       <StatCards stats={stats} executor={executor} />
 

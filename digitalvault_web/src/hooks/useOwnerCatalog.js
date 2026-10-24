@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getAssets, getBeneficiaries, getVaults } from '../callapi/ownerApi'
+import { getAssets, getBeneficiaries, getOwnerHandovers, getVaults } from '../callapi/ownerApi'
 import { attachBeneficiaries } from '../utils/catalog'
 
 // Tải song song kho, tài sản và người thụ hưởng của Owner đang đăng nhập
 async function fetchCatalog() {
-  const [vaults, assets, beneficiaries] = await Promise.all([getVaults(), getAssets(), getBeneficiaries()])
-  return { vaults, assets, beneficiaries }
+  // Hồ sơ bàn giao chỉ để cảnh báo kho bị khóa nên lỗi tải không làm hỏng cả trang (BE vẫn chặn khi lưu)
+  const [vaults, assets, beneficiaries, handovers] = await Promise.all([getVaults(), getAssets(), getBeneficiaries(), getOwnerHandovers().catch(() => [])])
+  return { vaults, assets, beneficiaries, handovers }
 }
 
-const INITIAL_STATE = { status: 'loading', error: '', vaults: [], assets: [], beneficiaries: [] }
+const INITIAL_STATE = { status: 'loading', error: '', vaults: [], assets: [], beneficiaries: [], handovers: [] }
 
 // Dữ liệu danh mục tài sản: trạng thái tải, danh sách kho/tài sản và kho đang chọn
 export function useOwnerCatalog() {
@@ -49,6 +50,7 @@ export function useOwnerCatalog() {
     vaults: state.vaults,
     assets,
     beneficiaries: state.beneficiaries,
+    handovers: state.handovers,
     selectedVault,
     selectVault: setSelectedVaultId,
     reload,

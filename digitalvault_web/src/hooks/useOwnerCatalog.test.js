@@ -6,6 +6,7 @@ vi.mock('../callapi/ownerApi', () => ({
   getVaults: vi.fn(),
   getAssets: vi.fn(),
   getBeneficiaries: vi.fn(),
+  getOwnerHandovers: vi.fn().mockResolvedValue([]),
 }))
 
 const vaults = [

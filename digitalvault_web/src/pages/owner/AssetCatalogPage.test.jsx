@@ -257,6 +257,31 @@ describe('AssetCatalogPage add asset', () => {
     expect(alert).not.toHaveTextContent('không hoạt động')
   })
 
+  it('addAsset_VaultHasOpenHandover_DisablesButtonAndExplainsWhy', async () => {
+    getDb().handovers = [{ requestId: 1, vaultId: getDb().vaults[0].vaultId, ownerId: DEMO_ACCOUNT.userId, executorId: 3, status: 'Pending_Executor', initiatedAt: new Date().toISOString(), documents: [], cases: [] }]
+    saveDb()
+    renderPage()
+    await waitForCatalog()
+    expect(await screen.findByText(/đang có hồ sơ bàn giao/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Thêm tài sản mới' })).toBeDisabled()
+  })
+
+  it('addAsset_OnlyCancelledHandover_KeepsButtonEnabled', async () => {
+    getDb().handovers = [{ requestId: 1, vaultId: getDb().vaults[0].vaultId, ownerId: DEMO_ACCOUNT.userId, executorId: 3, status: 'Cancelled', initiatedAt: new Date().toISOString(), documents: [], cases: [] }]
+    saveDb()
+    renderPage()
+    await waitForCatalog()
+    expect(screen.getByRole('button', { name: 'Thêm tài sản mới' })).toBeEnabled()
+    expect(screen.queryByText(/đang có hồ sơ bàn giao/)).not.toBeInTheDocument()
+  })
+
+  it('addAsset_HandoversApiFails_DoesNotBlockTheButton', async () => {
+    server.use(http.get('*/api/owner/handovers', () => HttpResponse.json({ status: 500, detail: 'x' }, { status: 500 })))
+    renderPage()
+    await waitForCatalog()
+    expect(screen.getByRole('button', { name: 'Thêm tài sản mới' })).toBeEnabled()
+  })
+
   it('addAsset_Cancel_ClosesModal', async () => {
     renderPage()
     await waitForCatalog()
@@ -382,7 +407,8 @@ describe('AssetCatalogPage close vault', () => {
     const dialog = await openClose()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận đóng kho' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('hồ sơ bàn giao')
-    expect(screen.getByRole('button', { name: /Thêm tài sản mới/ })).toBeEnabled()
+    // Kho vẫn mở (chỉ bị khóa thay đổi vì còn hồ sơ bàn giao)
+    expect(screen.getByText('Đang hoạt động')).toBeInTheDocument()
   })
 
   it('closeVault_Cancel_ClosesDialogWithoutClosingVault', async () => {
