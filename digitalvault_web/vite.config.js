@@ -8,10 +8,10 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       // Giữ port của template Visual Studio (launch.json đang trỏ tới port này)
-      port: 50808,
+      port: 5131,
       proxy: {
         '/api': {
-          target: env.VITE_PROXY_TARGET || 'https://localhost:7015',
+          target: env.VITE_PROXY_TARGET || 'https://localhost:5131',
           changeOrigin: true,
           // BE dev dùng chứng chỉ tự ký của dotnet dev-certs
           secure: false,
