@@ -239,6 +239,49 @@ describe('AssetCatalogPage add asset', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Kho này đang không hoạt động')
   })
 
+  it('addAsset_VaultLockedByHandover_ExplainsHandoverLockNotInactive', async () => {
+    server.use(
+      http.post('*/api/owner/assets', () =>
+        HttpResponse.json({ status: 409, detail: 'Handover records protect this vault from mutation.' }, { status: 409 }),
+      ),
+    )
+    renderPage()
+    await waitForCatalog()
+    await openModal()
+    const dialog = screen.getByRole('dialog', { name: 'Thêm Tài Sản Số Mới' })
+    await userEvent.type(within(dialog).getByLabelText(/^Tên tài sản/), 'Tài sản')
+    await userEvent.selectOptions(within(dialog).getByLabelText(/^Loại tài sản/), 'Other')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu tài sản' }))
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent('đang có hồ sơ bàn giao')
+    expect(alert).not.toHaveTextContent('không hoạt động')
+  })
+
+  it('addAsset_VaultHasOpenHandover_DisablesButtonAndExplainsWhy', async () => {
+    getDb().handovers = [{ requestId: 1, vaultId: getDb().vaults[0].vaultId, ownerId: DEMO_ACCOUNT.userId, executorId: 3, status: 'Pending_Executor', initiatedAt: new Date().toISOString(), documents: [], cases: [] }]
+    saveDb()
+    renderPage()
+    await waitForCatalog()
+    expect(await screen.findByText(/đang có hồ sơ bàn giao/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Thêm tài sản mới' })).toBeDisabled()
+  })
+
+  it('addAsset_OnlyCancelledHandover_KeepsButtonEnabled', async () => {
+    getDb().handovers = [{ requestId: 1, vaultId: getDb().vaults[0].vaultId, ownerId: DEMO_ACCOUNT.userId, executorId: 3, status: 'Cancelled', initiatedAt: new Date().toISOString(), documents: [], cases: [] }]
+    saveDb()
+    renderPage()
+    await waitForCatalog()
+    expect(screen.getByRole('button', { name: 'Thêm tài sản mới' })).toBeEnabled()
+    expect(screen.queryByText(/đang có hồ sơ bàn giao/)).not.toBeInTheDocument()
+  })
+
+  it('addAsset_HandoversApiFails_DoesNotBlockTheButton', async () => {
+    server.use(http.get('*/api/owner/handovers', () => HttpResponse.json({ status: 500, detail: 'x' }, { status: 500 })))
+    renderPage()
+    await waitForCatalog()
+    expect(screen.getByRole('button', { name: 'Thêm tài sản mới' })).toBeEnabled()
+  })
+
   it('addAsset_Cancel_ClosesModal', async () => {
     renderPage()
     await waitForCatalog()
@@ -364,7 +407,8 @@ describe('AssetCatalogPage close vault', () => {
     const dialog = await openClose()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận đóng kho' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('hồ sơ bàn giao')
-    expect(screen.getByRole('button', { name: /Thêm tài sản mới/ })).toBeEnabled()
+    // Kho vẫn mở (chỉ bị khóa thay đổi vì còn hồ sơ bàn giao)
+    expect(screen.getByText('Đang hoạt động')).toBeInTheDocument()
   })
 
   it('closeVault_Cancel_ClosesDialogWithoutClosingVault', async () => {
@@ -373,5 +417,29 @@ describe('AssetCatalogPage close vault', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Quay lại' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Thêm tài sản mới/ })).toBeEnabled()
+  })
+})
+
+describe('AssetCatalogPage assets per vault', () => {
+  it('selectVault_OtherVault_ShowsOnlyThatVaultsAssets', async () => {
+    await createVault({ name: 'Kho thứ hai', description: '' })
+    const byVault = {
+      [getDb().vaults[0].vaultId]: { assetId: 901, name: 'Tài sản của kho một', type: 'Other', description: null, status: 'Active', documents: [] },
+      [getDb().vaults[1].vaultId]: { assetId: 902, name: 'Tài sản của kho hai', type: 'Other', description: null, status: 'Active', documents: [] },
+    }
+    server.use(
+      http.get('*/api/owner/assets', ({ request }) => {
+        const vaultId = new URL(request.url).searchParams.get('vaultId')
+        return HttpResponse.json({ page: 1, pageSize: 100, items: vaultId ? [byVault[vaultId]] : Object.values(byVault) })
+      }),
+    )
+    renderPage()
+    await waitForCatalog()
+    expect(await screen.findByText('Tài sản của kho một')).toBeInTheDocument()
+    expect(screen.queryByText('Tài sản của kho hai')).not.toBeInTheDocument()
+
+    await userEvent.selectOptions(screen.getByLabelText('Chọn kho'), 'Kho thứ hai')
+    expect(await screen.findByText('Tài sản của kho hai')).toBeInTheDocument()
+    expect(screen.queryByText('Tài sản của kho một')).not.toBeInTheDocument()
   })
 })

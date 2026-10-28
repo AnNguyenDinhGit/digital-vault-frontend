@@ -4,6 +4,7 @@ import { Alert, Button, Dropdown, Form, Modal } from 'react-bootstrap'
 import { assignExecutor, createAsset, getExecutors } from '../../callapi/ownerApi'
 import { executorErrorMessage } from '../../utils/executor'
 import { ASSET_TYPE_LABELS, getInitials } from '../../utils/catalog'
+import { conflictMessage } from '../../utils/ownerErrors'
 import { validateAsset } from '../../utils/validators'
 import TextField from '../common/TextField'
 
@@ -12,7 +13,10 @@ const EMPTY_FORM = { name: '', type: '', description: '' }
 // Chuyển lỗi API tạo tài sản sang thông báo tiếng Việt
 function createAssetErrorMessage(error) {
   if (error?.status === 404) return 'Không tìm thấy kho. Vui lòng tải lại trang.'
-  if (error?.status === 409) return 'Kho này đang không hoạt động. Vui lòng chọn kho khác.'
+  // 409 do hồ sơ bàn giao khóa kho khác với kho ngưng hoạt động nên phải giải thích đúng lý do
+  if (error?.status === 409) {
+    return /handover/i.test(error.message ?? '') ? conflictMessage(error.message) : 'Kho này đang không hoạt động. Vui lòng chọn kho khác.'
+  }
   if (error?.status === 400) return 'Thông tin tài sản không hợp lệ. Vui lòng kiểm tra lại.'
   return error?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
 }

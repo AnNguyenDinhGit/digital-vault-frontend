@@ -16,6 +16,7 @@ import VaultBanner from '../../components/owner/VaultBanner'
 import { useOwnerCatalog } from '../../hooks/useOwnerCatalog'
 import { useVaultExecutor } from '../../hooks/useVaultExecutor'
 import { buildStats, filterAssets, getTypeTabs, paginate } from '../../utils/catalog'
+import { isVaultLockedByHandover } from '../../utils/handover'
 
 const DEFAULT_PAGE_SIZE = 4
 
@@ -23,7 +24,7 @@ const DEFAULT_PAGE_SIZE = 4
 export default function AssetCatalogPage() {
   const catalog = useOwnerCatalog()
   const navigate = useNavigate()
-  const { status, error, vaults, assets, beneficiaries, selectedVault, selectVault, reload } = catalog
+  const { status, error, vaults, assets, beneficiaries, handovers, assetsLoading, selectedVault, selectVault, reload } = catalog
   const executor = useVaultExecutor(selectedVault?.vaultId ?? null)
 
   const [query, setQuery] = useState('')
@@ -135,6 +136,7 @@ export default function AssetCatalogPage() {
         onEditVault={() => setModal('editVault')}
         onCloseVault={() => setModal('closeVault')}
         onCheckIn={() => navigate('/owner/proof-of-life?ping=1')}
+        lockedByHandover={isVaultLockedByHandover(handovers, selectedVault.vaultId)}
       />
       <StatCards stats={stats} executor={executor} />
 
@@ -149,7 +151,12 @@ export default function AssetCatalogPage() {
           </p>
         </div>
 
-        {assets.length === 0 ? (
+        {assetsLoading ? (
+          <p role="status" className="d-flex align-items-center gap-3 fs-14 text-slate-500 mb-0">
+            <span className="spinner-border spinner-border-sm text-brand" aria-hidden="true" />
+            Đang tải tài sản của kho...
+          </p>
+        ) : assets.length === 0 ? (
           <div className="av-empty">
             <p className="mb-3">Kho này chưa có tài sản nào.</p>
             <Button type="button" variant="primary" className="av-btn av-btn-sm" onClick={() => setModal('asset')}>

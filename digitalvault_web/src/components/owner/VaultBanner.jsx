@@ -4,7 +4,7 @@ import { Button, Form } from 'react-bootstrap'
 const STATUS_LABELS = { Active: 'Đang hoạt động', Closed: 'Đã đóng' }
 
 // Banner đầu trang: thông tin kho đang chọn, bộ chọn kho (khi có từ 2 kho) và các nút hành động
-export default function VaultBanner({ vault, vaults, onSelectVault, onAddAsset, onCreateVault, onEditVault, onCloseVault, onCheckIn }) {
+export default function VaultBanner({ vault, vaults, onSelectVault, onAddAsset, onCreateVault, onEditVault, onCloseVault, onCheckIn, lockedByHandover = false }) {
   // Kho đã đóng không còn sửa được (BE trả 409 cho mọi thay đổi)
   const isActive = vault.status === 'Active'
   return (
@@ -57,10 +57,15 @@ export default function VaultBanner({ vault, vaults, onSelectVault, onAddAsset, 
           <Activity size={14} aria-hidden="true" />
           Điểm danh ngay
         </button>
-        <Button type="button" variant="primary" onClick={onAddAsset} disabled={!isActive} className="av-btn av-btn-sm">
+        <Button type="button" variant="primary" onClick={onAddAsset} disabled={!isActive || lockedByHandover}className="av-btn av-btn-sm">
           <Plus size={16} aria-hidden="true" />
           Thêm tài sản mới
         </Button>
+        {lockedByHandover && (
+          <p role="note" className="w-100 mb-0 fs-12 text-slate-500 text-end">
+            Kho này đang có hồ sơ bàn giao nên chưa thể thêm hoặc sửa tài sản. Hãy hủy hồ sơ ở mục Hồ sơ bàn giao (khi còn chờ Executor, bản nháp hoặc bị từ chối) để mở lại.
+          </p>
+        )}
       </div>
     </section>
   )

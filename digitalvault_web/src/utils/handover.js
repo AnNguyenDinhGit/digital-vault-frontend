@@ -19,6 +19,10 @@ export function handoverStatusInfo(status) {
 // Owner chỉ hủy được hồ sơ đang chờ Executor tiếp nhận, bản nháp hoặc bị từ chối (BE trả 409 với các trạng thái khác)
 export const isCancellableStatus = (status) => ['Pending_Executor', 'Draft', 'Rejected'].includes(status)
 
+// Như BE: kho bị khóa với Owner khi còn hồ sơ bàn giao chưa hủy và chưa bị Executor từ chối
+export const isVaultLockedByHandover = (handovers, vaultId) =>
+  (handovers ?? []).some((item) => item.vaultId === vaultId && !['Cancelled', 'Declined'].includes(item.status))
+
 // Chỉ ở các trạng thái này Executor mới được nộp thêm giấy chứng tử/bằng chứng và gửi thẩm định
 export const isEditableStatus = (status) => ['Draft', 'Rejected', 'Additional_Info'].includes(status)
 

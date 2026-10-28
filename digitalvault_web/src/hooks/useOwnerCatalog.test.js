@@ -6,6 +6,7 @@ vi.mock('../callapi/ownerApi', () => ({
   getVaults: vi.fn(),
   getAssets: vi.fn(),
   getBeneficiaries: vi.fn(),
+  getOwnerHandovers: vi.fn().mockResolvedValue([]),
 }))
 
 const vaults = [
@@ -85,5 +86,46 @@ describe('useOwnerCatalog', () => {
     expect(result.current.status).toBe('loading')
     await waitFor(() => expect(result.current.status).toBe('ready'))
     expect(ownerApi.getVaults).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('useOwnerCatalog assets scoped by vault', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('useOwnerCatalog_Ready_LoadsAssetsOfFirstVaultOnly', async () => {
+    mockSuccess()
+    const { result } = renderHook(() => useOwnerCatalog())
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(ownerApi.getAssets).toHaveBeenCalledWith(1)
+  })
+
+  it('useOwnerCatalog_SelectVault_LoadsThatVaultsAssets', async () => {
+    mockSuccess()
+    ownerApi.getAssets.mockImplementation(async (vaultId) => [{ assetId: vaultId * 10, name: 'Tài sản kho ' + vaultId, type: 'Other', description: null, status: 'Active', documents: [] }])
+    const { result } = renderHook(() => useOwnerCatalog())
+    await waitFor(() => expect(result.current.assets.map((a) => a.assetId)).toEqual([10]))
+    act(() => result.current.selectVault(2))
+    await waitFor(() => expect(result.current.assets.map((a) => a.assetId)).toEqual([20]))
+    expect(result.current.status).toBe('ready')
+  })
+
+  it('useOwnerCatalog_SelectVault_HidesOldAssetsWhileLoading', async () => {
+    mockSuccess()
+    const { result } = renderHook(() => useOwnerCatalog())
+    await waitFor(() => expect(result.current.assets).toHaveLength(1))
+    ownerApi.getAssets.mockReturnValue(new Promise(() => {}))
+    act(() => result.current.selectVault(2))
+    expect(result.current.assets).toEqual([])
+    expect(result.current.assetsLoading).toBe(true)
+  })
+
+  it('useOwnerCatalog_Beneficiaries_OnlyOfShownAssets', async () => {
+    mockSuccess()
+    ownerApi.getBeneficiaries.mockResolvedValue([...beneficiaries, { assetId: 99, beneficiaryId: 7, fullName: 'Khác', allocation: 100, status: 'Active' }])
+    const { result } = renderHook(() => useOwnerCatalog())
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current.beneficiaries).toEqual(beneficiaries)
   })
 })
