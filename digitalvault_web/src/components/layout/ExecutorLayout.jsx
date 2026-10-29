@@ -2,6 +2,7 @@ import { Activity, Clock, FileText, History, KeyRound, LogOut, Mail, ShieldCheck
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import BrandLogo from '../common/BrandLogo'
+import PortalSwitcher from './PortalSwitcher'
 
 const EXECUTOR_ITEMS = [
   { label: 'Đơn bàn giao di sản', icon: FileText, to: '/executor/orders' },
@@ -74,6 +75,8 @@ export default function ExecutorLayout() {
               Kích hoạt, điều phối và nộp tài liệu bàn giao di sản số.
             </p>
           </div>
+
+          <PortalSwitcher />
 
           <div className="av-user-box">
             <span className="av-avatar">{initialsFromEmail(user?.email)}</span>

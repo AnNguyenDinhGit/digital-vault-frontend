@@ -4,8 +4,11 @@ import { Alert, Button } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { validateLogin } from '../../utils/validators'
+import { getPortalPreference } from '../../utils/portalPreference'
 import { getDefaultRouteForRoles } from '../../utils/roleRoutes'
 import TextField from '../common/TextField'
+import ForgotPasswordModal from './ForgotPasswordModal'
+import TwoFactorModal from './TwoFactorModal'
 
 const COMING_SOON = 'Sắp ra mắt'
 
@@ -25,11 +28,33 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [isForgotOpen, setIsForgotOpen] = useState(false)
+  const [challenge, setChallenge] = useState(null)
+  const [resetNotice, setResetNotice] = useState('')
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setForm((prev) => ({ ...prev, [name]: value }))
     setErrors((prev) => ({ ...prev, [name]: undefined }))
+  }
+
+  // Đặt lại mật khẩu xong: đóng hộp thoại, điền sẵn email và nhắc đăng nhập bằng mật khẩu mới
+  const handlePasswordReset = (email) => {
+    setIsForgotOpen(false)
+    setForm({ email, password: '' })
+    setErrors({})
+    setSubmitError('')
+    setResetNotice('Đã đặt lại mật khẩu. Vui lòng đăng nhập bằng mật khẩu mới.')
+  }
+
+  // Điều hướng theo role sau khi đã có phiên (đăng nhập thường hoặc sau bước nhập mã hai lớp)
+  const enterWorkspace = (user) => {
+    const targetRoute = getDefaultRouteForRoles(user?.roles, getPortalPreference())
+    if (targetRoute) {
+      navigate(targetRoute, { replace: true })
+    } else {
+      setSubmitError('Tài khoản của bạn chưa được phân quyền trong hệ thống. Vui lòng liên hệ quản trị viên.')
+    }
   }
 
   const handleSubmit = async (event) => {
@@ -41,13 +66,10 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
 
     setIsSubmitting(true)
     try {
-      const user = await login(form.email.trim(), form.password)
-      const targetRoute = getDefaultRouteForRoles(user?.roles)
-      if (targetRoute) {
-        navigate(targetRoute, { replace: true })
-      } else {
-        setSubmitError('Tài khoản của bạn chưa được phân quyền trong hệ thống. Vui lòng liên hệ quản trị viên.')
-      }
+      const result = await login(form.email.trim(), form.password)
+      // BE trả 202 khi tài khoản bật xác thực hai lớp: chưa đăng nhập, cần nhập mã
+      if (result.requiresTwoFactor) setChallenge(result)
+      else enterWorkspace(result)
     } catch (error) {
       setSubmitError(loginErrorMessage(error))
     } finally {
@@ -69,9 +91,9 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
         </p>
       </div>
 
-      {notice && (
+      {(resetNotice || notice) && (
         <p role="status" className="av-notice mt-4">
-          {notice}
+          {resetNotice || notice}
         </p>
       )}
 
@@ -103,7 +125,7 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
           onChange={handleChange}
           error={errors.password}
           labelAside={
-            <button type="button" disabled title={COMING_SOON} className="av-link-btn fs-12">
+            <button type="button" onClick={() => setIsForgotOpen(true)} className="av-link-btn fs-12">
               Quên mật khẩu?
             </button>
           }
@@ -164,6 +186,20 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
           Đăng ký tạo Vault mới
         </button>
       </p>
+      {challenge && (
+        <TwoFactorModal
+          challenge={challenge}
+          email={form.email.trim()}
+          onClose={() => setChallenge(null)}
+          onVerified={(user) => {
+            setChallenge(null)
+            enterWorkspace(user)
+          }}
+        />
+      )}
+      {isForgotOpen && (
+        <ForgotPasswordModal initialEmail={form.email} onClose={() => setIsForgotOpen(false)} onReset={handlePasswordReset} />
+      )}
     </section>
   )
 }

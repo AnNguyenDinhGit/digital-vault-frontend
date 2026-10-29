@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as authApi from '../../callapi/authApi'
 import { ApiError } from '../../callapi/axiosClient'
@@ -9,6 +9,11 @@ vi.mock('../../callapi/authApi', () => ({
   login: vi.fn(),
   logout: vi.fn(),
   checkSession: vi.fn(),
+  requestPasswordReset: vi.fn(),
+  verifyResetOtp: vi.fn(),
+  resetPassword: vi.fn(),
+  verifyTwoFactor: vi.fn(),
+  resendTwoFactor: vi.fn(),
 }))
 
 const renderForm = () =>
@@ -122,8 +127,58 @@ describe('LoginForm', () => {
 
   it('unsupportedFeatures_Rendered_AreDisabled', () => {
     renderForm()
-    expect(screen.getByRole('button', { name: /Quên mật khẩu/ })).toBeDisabled()
     expect(screen.getByLabelText(/Ghi nhớ phiên đăng nhập này/)).toBeDisabled()
+  })
+
+  it('forgotPassword_LinkClicked_OpensRecoveryDialogWithTypedEmail', async () => {
+    renderForm()
+    expect(screen.getByRole('button', { name: /Quên mật khẩu/ })).toBeEnabled()
+    await userEvent.type(screen.getByLabelText(/^Email/), 'an.nguyen@aeternavault.io')
+    await userEvent.click(screen.getByRole('button', { name: /Quên mật khẩu/ }))
+    const dialog = screen.getByRole('dialog', { name: 'Quên Mật Khẩu' })
+    expect(within(dialog).getByLabelText(/^Email/)).toHaveValue('an.nguyen@aeternavault.io')
+  })
+
+  it('forgotPassword_Reset_ClosesDialogAndPrefillsEmailWithNotice', async () => {
+    authApi.requestPasswordReset.mockResolvedValue({ maskedEmail: 'a***n@x.co', expiresInSeconds: 300 })
+    authApi.verifyResetOtp.mockResolvedValue({ resetToken: 'token-abc-123456' })
+    authApi.resetPassword.mockResolvedValue(undefined)
+    renderForm()
+    await userEvent.type(screen.getByLabelText(/^Email/), 'an@x.co')
+    await userEvent.click(screen.getByRole('button', { name: /Quên mật khẩu/ }))
+    const dialog = screen.getByRole('dialog', { name: 'Quên Mật Khẩu' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Gửi mã xác nhận' }))
+    await userEvent.type(await within(dialog).findByLabelText(/^Mã xác nhận/), '123456')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận mã' }))
+    await userEvent.type(await within(dialog).findByLabelText(/^Mật khẩu mới/), 'MatKhauMoi#2026')
+    await userEvent.type(within(dialog).getByLabelText(/^Xác nhận mật khẩu mới/), 'MatKhauMoi#2026')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Đặt lại mật khẩu' }))
+    expect(await screen.findByText('Đã đặt lại mật khẩu. Vui lòng đăng nhập bằng mật khẩu mới.')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/^Email/)).toHaveValue('an@x.co')
+  })
+
+  it('login_TwoFactorRequired_OpensCodeDialogAndFinishesLoginAfterVerify', async () => {
+    authApi.login.mockResolvedValue({ requiresTwoFactor: true, challengeId: 'c'.repeat(32), method: 'Email', expiresAt: 'x' })
+    authApi.verifyTwoFactor.mockResolvedValue({ userId: 1, roles: ['Owner'] })
+    renderForm()
+    await fillAndSubmit()
+    const dialog = await screen.findByRole('dialog', { name: 'Xác Thực Hai Lớp' })
+    expect(screen.queryByText('owner-assets-page')).not.toBeInTheDocument()
+    await userEvent.type(within(dialog).getByLabelText(/^Mã xác thực/), '123456')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận' }))
+    expect(await screen.findByText('owner-assets-page')).toBeInTheDocument()
+    expect(authApi.verifyTwoFactor).toHaveBeenCalledWith('c'.repeat(32), '123456')
+  })
+
+  it('login_TwoFactorDialogCancelled_StaysOnLoginForm', async () => {
+    authApi.login.mockResolvedValue({ requiresTwoFactor: true, challengeId: 'c'.repeat(32), method: 'Email', expiresAt: 'x' })
+    renderForm()
+    await fillAndSubmit()
+    const dialog = await screen.findByRole('dialog', { name: 'Xác Thực Hai Lớp' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Đăng Nhập Cổng An Toàn' })).toBeInTheDocument()
   })
 
   it('registerLink_Clicked_CallsOnOpenRegister', async () => {

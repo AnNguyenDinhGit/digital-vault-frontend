@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
-// Cấu hình Vite: proxy /api sang BE để cookie SameSite=Strict hoạt động (cùng origin khi dev)
+// Cấu hình Vite: proxy /api sang BE để gọi cùng origin khi dev, không phải cấu hình CORS
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: './src/setupTests.js',
       css: false,
+      // Bộ test lớn chạy song song, các test gõ phím nhiều (đăng ký, đăng nhập) dễ vượt 5 giây mặc định khi máy bận
+      testTimeout: 20000,
     },
   }
 })

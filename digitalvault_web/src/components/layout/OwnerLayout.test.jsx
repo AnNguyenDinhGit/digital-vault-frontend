@@ -1,10 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
 import OwnerLayout from './OwnerLayout'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: vi.fn() }))
+vi.mock('../../hooks/useUnreadNotifications', () => ({ useUnreadNotifications: vi.fn() }))
 
 const logout = vi.fn()
 
@@ -28,6 +30,7 @@ const renderLayout = () => {
 describe('OwnerLayout', () => {
   beforeEach(() => {
     logout.mockReset().mockResolvedValue()
+    useUnreadNotifications.mockReset().mockReturnValue(0)
   })
 
   it('render_Default_ShowsSidebarSectionsAndOutlet', () => {
@@ -48,13 +51,36 @@ describe('OwnerLayout', () => {
     expect(screen.getByRole('link', { name: /Người thụ hưởng/ })).toHaveAttribute('href', '/owner/beneficiaries')
   })
 
-  it('render_UnsupportedItems_AreDisabledWithComingSoon', () => {
+  it('render_ProofOfLifeLink_IsEnabled', () => {
     renderLayout()
-    for (const name of [/Người thi hành/, /Điểm danh sự sống/, /Nhật ký hoạt động/, /Cài đặt bảo mật/]) {
-      const item = screen.getByRole('button', { name })
-      expect(item).toBeDisabled()
-      expect(item).toHaveAttribute('title', 'Sắp ra mắt')
-    }
+    expect(screen.getByRole('link', { name: /Điểm danh sự sống/ })).toHaveAttribute('href', '/owner/proof-of-life')
+  })
+
+  it('render_ExecutorLink_IsEnabled', () => {
+    renderLayout()
+    expect(screen.getByRole('link', { name: /Người thi hành/ })).toHaveAttribute('href', '/owner/executor')
+  })
+
+  it('render_ActivityLogLink_IsEnabled', () => {
+    renderLayout()
+    expect(screen.getByRole('link', { name: /Nhật ký hoạt động/ })).toHaveAttribute('href', '/owner/activity-log')
+  })
+
+  it('render_HandoversLink_IsEnabled', () => {
+    renderLayout()
+    expect(screen.getByRole('link', { name: /Hồ sơ bàn giao/ })).toHaveAttribute('href', '/owner/handovers')
+  })
+
+  it('render_SecuritySettingsLink_IsEnabled', () => {
+    renderLayout()
+    expect(screen.getByRole('link', { name: /Cài đặt bảo mật/ })).toHaveAttribute('href', '/owner/security')
+  })
+
+  it('render_AllSidebarItems_AreLinks', () => {
+    renderLayout()
+    const nav = screen.getByRole('navigation', { name: 'Điều hướng Vault Owner' })
+    expect(within(nav).queryAllByRole('button')).toHaveLength(0)
+    expect(within(nav).getAllByRole('link')).toHaveLength(8)
   })
 
   it('render_LoggedInUser_ShowsEmailAndInitials', () => {
@@ -68,5 +94,35 @@ describe('OwnerLayout', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }))
     expect(logout).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('landing-page')).toBeInTheDocument()
+  })
+})
+
+describe('OwnerLayout notifications entry', () => {
+  beforeEach(() => {
+    logout.mockReset().mockResolvedValue()
+  })
+
+  it('nav_Notifications_LinksToNotificationsPage', () => {
+    useUnreadNotifications.mockReturnValue(0)
+    renderLayout()
+    expect(screen.getByRole('link', { name: /Thông báo/ })).toHaveAttribute('href', '/owner/notifications')
+  })
+
+  it('nav_NoUnread_ShowsNoBadge', () => {
+    useUnreadNotifications.mockReturnValue(0)
+    renderLayout()
+    expect(screen.queryByLabelText(/chưa đọc/)).not.toBeInTheDocument()
+  })
+
+  it('nav_UnreadNotifications_ShowsCountBadge', () => {
+    useUnreadNotifications.mockReturnValue(3)
+    renderLayout()
+    expect(screen.getByLabelText('3 thông báo chưa đọc')).toHaveTextContent('3')
+  })
+
+  it('nav_ManyUnread_CapsBadgeAtNinetyNinePlus', () => {
+    useUnreadNotifications.mockReturnValue(150)
+    renderLayout()
+    expect(screen.getByLabelText('150 thông báo chưa đọc')).toHaveTextContent('99+')
   })
 })

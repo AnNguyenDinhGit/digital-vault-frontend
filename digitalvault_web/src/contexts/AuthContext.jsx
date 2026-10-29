@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as authApi from '../callapi/authApi'
 import { setUnauthorizedHandler } from '../callapi/axiosClient'
+import { clearPortalPreference } from '../utils/portalPreference'
 import { AuthContext, USER_STORAGE_KEY } from './authContextInstance'
 
 // Đọc user đã lưu, trả null nếu không có hoặc dữ liệu hỏng
@@ -10,6 +11,14 @@ function readStoredUser() {
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
+  }
+}
+
+function storeUser(user) {
+  try {
+    sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+  } catch {
+    // Bỏ qua khi trình duyệt chặn storage
   }
 }
 
@@ -31,16 +40,19 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
-  // Khi F5: xác nhận lại cookie còn hạn trước khi khôi phục user
+  // Khi F5: hỏi BE (GET /auth/me) xem token còn hợp lệ không và lấy role/email mới nhất
   useEffect(() => {
     if (!initialUser) return
     let cancelled = false
     authApi
       .checkSession()
-      .then((valid) => {
+      .then((me) => {
         if (cancelled) return
-        if (valid) setUser(initialUser)
-        else clearStoredUser()
+        if (me) {
+          const restored = { userId: me.userId, roles: me.roles ?? [], email: me.email }
+          storeUser(restored)
+          setUser(restored)
+        } else clearStoredUser()
       })
       .catch(() => {
         // Không kết nối được BE: giữ user, request sau sẽ báo lỗi rõ ràng
@@ -60,18 +72,29 @@ export function AuthProvider({ children }) {
     return () => setUnauthorizedHandler(null)
   }, [clearUser])
 
-  const login = useCallback(async (email, password) => {
-    const result = await authApi.login(email, password)
-    // BE chỉ trả userId và roles nên lưu thêm email đã nhập để hiển thị trên giao diện
+  // BE chỉ trả userId và roles nên lưu thêm email đã nhập để hiển thị trên giao diện
+  const finishLogin = useCallback((result, email) => {
     const nextUser = { userId: result.userId, roles: result.roles ?? [], email }
-    try {
-      sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser))
-    } catch {
-      // Bỏ qua khi trình duyệt chặn storage
-    }
+    storeUser(nextUser)
     setUser(nextUser)
     return nextUser
   }, [])
+
+  // Trả về user khi đăng nhập xong, hoặc thông tin challenge (requiresTwoFactor) khi cần nhập mã hai lớp
+  const login = useCallback(
+    async (email, password) => {
+      const result = await authApi.login(email, password)
+      return result.requiresTwoFactor ? result : finishLogin(result, email)
+    },
+    [finishLogin],
+  )
+
+  const verifyTwoFactor = useCallback(
+    async (challengeId, code, email) => finishLogin(await authApi.verifyTwoFactor(challengeId, code), email),
+    [finishLogin],
+  )
+
+  const resendTwoFactor = useCallback((challengeId) => authApi.resendTwoFactor(challengeId), [])
 
   const logout = useCallback(async () => {
     try {
@@ -79,6 +102,8 @@ export function AuthProvider({ children }) {
     } catch {
       // Vẫn xoá phiên phía FE dù BE lỗi
     } finally {
+      // Đăng xuất chủ động thì quên cổng đã chọn; phiên hết hạn (401) thì giữ để đăng nhập lại vào đúng cổng
+      clearPortalPreference()
       clearUser()
     }
   }, [clearUser])
@@ -86,8 +111,8 @@ export function AuthProvider({ children }) {
   const hasRole = useCallback((role) => Boolean(user?.roles?.includes(role)), [user])
 
   const value = useMemo(
-    () => ({ user, isChecking, login, logout, hasRole }),
-    [user, isChecking, login, logout, hasRole],
+    () => ({ user, isChecking, login, verifyTwoFactor, resendTwoFactor, logout, hasRole }),
+    [user, isChecking, login, verifyTwoFactor, resendTwoFactor, logout, hasRole],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -15,3 +15,5 @@ dist/
 # Build output của Visual Studio
 obj/
 bin/
+allcode.txt
+*.txt

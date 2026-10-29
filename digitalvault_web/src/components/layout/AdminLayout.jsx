@@ -1,12 +1,14 @@
-import { CreditCard, History, LayoutDashboard, LogOut, ShieldCheck, SlidersHorizontal, Users, Workflow } from 'lucide-react'
+import { CreditCard, History, KeyRound, LayoutDashboard, LogOut, ShieldCheck, SlidersHorizontal, Users, Workflow } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import BrandLogo from '../common/BrandLogo'
+import PortalSwitcher from './PortalSwitcher'
 
 const ADMIN_ITEMS = [
   { label: 'Tổng quan hệ thống', icon: LayoutDashboard, to: '/admin/dashboard' },
   { label: 'Quản lý người dùng & KYC', icon: Users, to: '/admin/users' },
-  { label: 'Giám sát mã hóa & HSM', icon: ShieldCheck, to: '/admin/hsm' },
+  { label: 'Vai trò & phân quyền', icon: KeyRound, to: '/admin/roles' },
+  { label: 'Giám sát mã hóa & khóa', icon: ShieldCheck, to: '/admin/hsm' },
   { label: 'Quy trình bàn giao', icon: Workflow, to: '/admin/handovers' },
 ]
 
@@ -74,6 +76,8 @@ export default function AdminLayout() {
               Giám sát hạ tầng mã hóa HSM L4, quản lý người dùng và rà soát audit log.
             </p>
           </div>
+
+          <PortalSwitcher />
 
           <div className="av-user-box">
             <span className="av-avatar">{initialsFromEmail(user?.email)}</span>

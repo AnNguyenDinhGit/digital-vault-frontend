@@ -1,3 +1,6 @@
+import { http, HttpResponse } from 'msw'
+import { setupServer } from 'msw/node'
+import { clearTokens, getTokens, setTokens } from '../utils/tokenStorage'
 import axiosClient, { ApiError, setUnauthorizedHandler } from './axiosClient'
 
 // Adapter giả: trả về response hoặc lỗi theo status mong muốn
@@ -11,6 +14,8 @@ const errorAdapter = (status, data) =>
   })
 
 describe('axiosClient', () => {
+  beforeEach(() => clearTokens())
+
   afterEach(() => {
     setUnauthorizedHandler(null)
   })
@@ -27,10 +32,23 @@ describe('axiosClient', () => {
     expect(adapter.mock.calls[0][0].headers['X-Vault-Request']).toBeUndefined()
   })
 
-  it('request_Always_SendsCredentials', async () => {
+  it('request_Always_DoesNotSendCookies', async () => {
     const adapter = okAdapter()
     await axiosClient.get('/owner/vaults', { adapter })
-    expect(adapter.mock.calls[0][0].withCredentials).toBe(true)
+    expect(adapter.mock.calls[0][0].withCredentials).toBeFalsy()
+  })
+
+  it('request_NoTokens_DoesNotSendAuthorization', async () => {
+    const adapter = okAdapter()
+    await axiosClient.get('/owner/vaults', { adapter })
+    expect(adapter.mock.calls[0][0].headers.Authorization).toBeUndefined()
+  })
+
+  it('request_WithTokens_SendsBearerAccessToken', async () => {
+    setTokens({ accessToken: 'abc.def', refreshToken: 'r1' })
+    const adapter = okAdapter()
+    await axiosClient.get('/owner/vaults', { adapter })
+    expect(adapter.mock.calls[0][0].headers.Authorization).toBe('Bearer abc.def')
   })
 
   it('request_Default_UsesApiBaseUrl', () => {
@@ -71,5 +89,120 @@ describe('axiosClient', () => {
     const error = await axiosClient.post('/auth/login', {}, { adapter, skipAuthRedirect: true }).catch((e) => e)
     expect(handler).not.toHaveBeenCalled()
     expect(error.status).toBe(401)
+  })
+})
+
+describe('axiosClient token refresh', () => {
+  const server = setupServer()
+  const handler = vi.fn()
+  let vaultCalls
+  let refreshCalls
+
+  // BE giả: access token 'old' hết hạn, 'new' hợp lệ; refresh-token đổi 'r-old' lấy cặp mới
+  const useBackend = ({ refreshStatus = 200, vaultsAlways401 = false } = {}) => {
+    server.use(
+      http.get('*/api/owner/vaults', ({ request }) => {
+        vaultCalls += 1
+        const ok = request.headers.get('Authorization') === 'Bearer new' && !vaultsAlways401
+        return ok ? HttpResponse.json([{ vaultId: 1 }]) : HttpResponse.json({ status: 401, detail: 'Authentication required.' }, { status: 401 })
+      }),
+      http.post('*/api/auth/refresh-token', async ({ request }) => {
+        refreshCalls.push(await request.json())
+        if (refreshStatus !== 200) return HttpResponse.json({ message: 'RefreshToken đã hết hạn.' }, { status: refreshStatus })
+        return HttpResponse.json({ accessToken: 'new', refreshToken: 'r-new', refreshTokenExpiresAt: '2026-10-21T00:00:00Z' })
+      }),
+    )
+  }
+
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+  beforeEach(() => {
+    vaultCalls = 0
+    refreshCalls = []
+    handler.mockClear()
+    setUnauthorizedHandler(handler)
+    clearTokens()
+    setTokens({ accessToken: 'old', refreshToken: 'r-old' })
+  })
+  afterEach(() => {
+    server.resetHandlers()
+    setUnauthorizedHandler(null)
+    clearTokens()
+  })
+  afterAll(() => server.close())
+
+  it('response_401WithRefreshToken_RefreshesAndRetriesOnce', async () => {
+    useBackend()
+    const { data } = await axiosClient.get('/owner/vaults')
+    expect(data).toEqual([{ vaultId: 1 }])
+    expect(refreshCalls).toEqual([{ refreshToken: 'r-old' }])
+    expect(vaultCalls).toBe(2)
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('response_RefreshSucceeds_StoresNewTokens', async () => {
+    useBackend()
+    await axiosClient.get('/owner/vaults')
+    expect(getTokens()).toMatchObject({ accessToken: 'new', refreshToken: 'r-new', expiresAt: '2026-10-21T00:00:00Z' })
+  })
+
+  it('response_RefreshRequest_SendsVaultHeader', async () => {
+    let header
+    useBackend()
+    server.use(
+      http.post('*/api/auth/refresh-token', ({ request }) => {
+        header = request.headers.get('X-Vault-Request')
+        return HttpResponse.json({ accessToken: 'new', refreshToken: 'r-new' })
+      }),
+    )
+    await axiosClient.get('/owner/vaults')
+    expect(header).toBe('1')
+  })
+
+  it('response_RefreshRejected_ClearsTokensAndCallsUnauthorizedHandler', async () => {
+    useBackend({ refreshStatus: 401 })
+    const error = await axiosClient.get('/owner/vaults').catch((e) => e)
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error.status).toBe(401)
+    expect(getTokens()).toBeNull()
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('response_StillUnauthorizedAfterRefresh_DoesNotLoopAndCallsHandler', async () => {
+    useBackend({ vaultsAlways401: true })
+    const error = await axiosClient.get('/owner/vaults').catch((e) => e)
+    expect(error.status).toBe(401)
+    expect(refreshCalls).toHaveLength(1)
+    expect(vaultCalls).toBe(2)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('response_ConcurrentUnauthorized_RefreshesOnlyOnce', async () => {
+    useBackend()
+    const results = await Promise.all([axiosClient.get('/owner/vaults'), axiosClient.get('/owner/vaults'), axiosClient.get('/owner/vaults')])
+    expect(results.every((r) => r.status === 200)).toBe(true)
+    expect(refreshCalls).toHaveLength(1)
+  })
+
+  it('response_401WithoutRefreshToken_SkipsRefreshAndCallsHandler', async () => {
+    clearTokens()
+    useBackend()
+    const error = await axiosClient.get('/owner/vaults').catch((e) => e)
+    expect(error.status).toBe(401)
+    expect(refreshCalls).toHaveLength(0)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('response_401WithSkipFlagAfterFailedRefresh_StillClearsTokensButNotHandler', async () => {
+    useBackend({ refreshStatus: 400 })
+    const error = await axiosClient.get('/owner/vaults', { skipAuthRedirect: true }).catch((e) => e)
+    expect(error.status).toBe(401)
+    expect(getTokens()).toBeNull()
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('response_401OnRefreshEndpointItself_DoesNotTriggerAnotherRefresh', async () => {
+    useBackend({ refreshStatus: 401 })
+    await axiosClient.get('/owner/vaults').catch(() => {})
+    expect(refreshCalls).toHaveLength(1)
   })
 })
