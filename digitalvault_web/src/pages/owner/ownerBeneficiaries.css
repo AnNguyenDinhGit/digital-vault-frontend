@@ -1,0 +1,227 @@
+/* ==========================================
+   Owner Beneficiaries Page - Người thụ hưởng
+   (dùng lại các class chung trong ownerAssets.css)
+   ========================================== */
+
+/* Bố cục 2 cột: danh sách + panel phụ */
+.av-bnf-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .av-bnf-layout { grid-template-columns: 1fr; }
+}
+
+/* Danh sách */
+.av-bnf-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.av-bnf-list .av-asset-row {
+  animation: av-bnf-fade-in 0.25s ease both;
+}
+
+@keyframes av-bnf-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.av-bnf-avatar {
+  --c: var(--bs-primary);
+  display: flex;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 14%, #fff);
+  border: 1px solid color-mix(in srgb, var(--c) 30%, #fff);
+  color: var(--c);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.av-bnf-share {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .av-bnf-share { display: none; }
+}
+
+/* Thanh tiến độ nhỏ */
+.av-bnf-mini-bar {
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--av-slate-100);
+  overflow: hidden;
+}
+
+.av-bnf-mini-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--bs-primary);
+  transition: width 0.4s ease;
+}
+
+.av-bnf-icon-danger:hover {
+  background: var(--av-red-50);
+  color: var(--av-red-600);
+}
+
+/* Panel cơ cấu phân bổ */
+.av-bnf-stack-bar {
+  display: flex;
+  height: 12px;
+  gap: 2px;
+  border-radius: 999px;
+  background: var(--av-slate-100);
+  overflow: hidden;
+}
+
+.av-bnf-stack-bar > span {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.av-bnf-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--av-slate-600);
+}
+
+.av-bnf-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.av-bnf-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.av-bnf-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.av-bnf-hint svg { flex-shrink: 0; margin-top: 2px; }
+
+/* Quy trình nhận di sản */
+.av-bnf-steps {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.av-bnf-steps::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 11px;
+  width: 1px;
+  background: var(--av-slate-200);
+}
+
+.av-bnf-steps li {
+  position: relative;
+  display: flex;
+  gap: 10px;
+}
+
+.av-bnf-step-num {
+  display: flex;
+  width: 23px;
+  height: 23px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--av-primary-line);
+  border-radius: 50%;
+  background: var(--av-primary-tint);
+  color: var(--bs-primary);
+  font-family: var(--bs-font-monospace);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Modal form */
+.av-bnf-step-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+.av-bnf-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.av-bnf-span-2 { grid-column: span 2; }
+
+.av-bnf-share-input { position: relative; }
+.av-bnf-share-input .av-input.form-control { padding-right: 40px; }
+
+.av-bnf-share-suffix {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--av-slate-400);
+  pointer-events: none;
+}
+
+.av-bnf-range {
+  width: 100%;
+  accent-color: var(--bs-primary);
+}
+
+/* Modal xác nhận xóa */
+.av-bnf-confirm { --bs-modal-width: 420px; }
+
+.av-bnf-danger-btn {
+  border-color: var(--av-red-600);
+  background: var(--av-red-600);
+  color: #fff;
+}
+
+.av-bnf-danger-btn:hover {
+  border-color: var(--av-red-700);
+  background: var(--av-red-700);
+  color: #fff;
+}
+
+.av-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
