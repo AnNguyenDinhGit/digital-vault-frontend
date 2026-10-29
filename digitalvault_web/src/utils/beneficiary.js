@@ -124,6 +124,10 @@ export function readOtpSessionHint(userKey, now = Date.now()) {
     }
 }
 
+export function isOtpVerified(userKey, now = Date.now()) {
+    return readOtpSessionHint(userKey, now) !== null
+}
+
 // Lưu gợi ý phiên và trả về mốc hết hạn (ms) đã dùng
 export function markOtpVerified(userKey, expiresAt = null, now = Date.now()) {
     const until = Number.isFinite(expiresAt) && expiresAt > now ? expiresAt : now + OTP_SESSION_TTL_MS
