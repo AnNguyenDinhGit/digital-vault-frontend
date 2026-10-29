@@ -1,6 +1,6 @@
 import { setupServer } from 'msw/node'
 import axiosClient from '../callapi/axiosClient'
-import { DEMO_ACCOUNT, ROLE_ACCOUNTS, resetMockDb } from './db'
+import { DEMO_ACCOUNT, ROLE_ACCOUNTS, getDb, resetMockDb, saveDb } from './db'
 import { handlers } from './handlers'
 
 const server = setupServer(...handlers)
@@ -182,5 +182,209 @@ describe('mock admin audit logs', () => {
     const { data } = await axiosClient.get('/admin/audit-logs', { params: { pageSize: 3 } })
     expect(data.items.map((log) => log.action)).toEqual(['UpdateUserStatus', 'UpdateUserRoles', 'AdminCreateUser'])
     expect(data.items.every((log) => log.userEmail === 'admin@example.com')).toBe(true)
+  })
+})
+
+describe('mock admin edit user and reset password', () => {
+  it('updateUser_Fields_TrimsAndReturnsUpdatedUser', async () => {
+    const created = (await call(axiosClient.post('/admin/users', newUser()))).data
+    const { status, data } = await call(axiosClient.put(`/admin/users/${created.userId}`, { fullName: '  Hà Mới ', phone: ' 0912345678 ', identityNumber: '' }))
+    expect(status).toBe(200)
+    expect(data).toMatchObject({ userId: created.userId, fullName: 'Hà Mới', phone: '0912345678', identityNumber: null })
+  })
+
+  it('updateUser_BlankFullName_KeepsOldName', async () => {
+    const created = (await call(axiosClient.post('/admin/users', newUser()))).data
+    const { data } = await call(axiosClient.put(`/admin/users/${created.userId}`, { fullName: ' ', phone: '', identityNumber: '' }))
+    expect(data.fullName).toBe('Phạm Thu Hà')
+  })
+
+  it('updateUser_TooLongPhoneOrUnknownField_Returns400', async () => {
+    const created = (await call(axiosClient.post('/admin/users', newUser()))).data
+    expect((await call(axiosClient.put(`/admin/users/${created.userId}`, { phone: '1'.repeat(21) }))).status).toBe(400)
+    expect((await call(axiosClient.put(`/admin/users/${created.userId}`, { email: 'x@y.vn' }))).status).toBe(400)
+  })
+
+  it('updateUser_UnknownUser_Returns404', async () => {
+    expect((await call(axiosClient.put('/admin/users/9999', { fullName: 'A' }))).status).toBe(404)
+  })
+
+  it('updateUser_Success_WritesAuditLog', async () => {
+    const created = (await call(axiosClient.post('/admin/users', newUser()))).data
+    await call(axiosClient.put(`/admin/users/${created.userId}`, { fullName: 'B' }))
+    const { data } = await call(axiosClient.get('/admin/audit-logs', { params: { action: 'AdminUpdateUserProfile' } }))
+    expect(data.items[0]).toMatchObject({ action: 'AdminUpdateUserProfile', entityType: 'User', entityId: created.userId })
+  })
+
+  it('resetPassword_ValidPassword_ChangesLoginPassword', async () => {
+    const created = (await call(axiosClient.post('/admin/users', newUser()))).data
+    const { status, data } = await call(axiosClient.post(`/admin/users/${created.userId}/reset-password`, { newPassword: 'MatKhauMoi@2026' }))
+    expect(status).toBe(200)
+    expect(data.message).toBeTruthy()
+    const login = await call(axiosClient.post('/auth/login', { email: 'ha.pham@example.com', password: 'MatKhauMoi@2026' }))
+    expect(login.status).toBe(200)
+  })
+
+  it('resetPassword_ShortPassword_Returns400', async () => {
+    const created = (await call(axiosClient.post('/admin/users', newUser()))).data
+    expect((await call(axiosClient.post(`/admin/users/${created.userId}/reset-password`, { newPassword: 'ngan' }))).status).toBe(400)
+  })
+
+  it('resetPassword_UnknownUser_Returns404', async () => {
+    expect((await call(axiosClient.post('/admin/users/9999/reset-password', { newPassword: 'MatKhauMoi@2026' }))).status).toBe(404)
+  })
+})
+
+describe('mock admin roles matrix', () => {
+  it('getRoles_Admin_ReturnsFiveRolesWithPermissionsAndActiveCounts', async () => {
+    const { status, data } = await call(axiosClient.get('/admin/roles'))
+    expect(status).toBe(200)
+    expect(data.map((role) => role.roleName)).toEqual(['Owner', 'Executor', 'LegalVerifier', 'Beneficiary', 'Admin'])
+    expect(data[0].permissions).toContain('vault:create')
+    expect(data.find((role) => role.roleName === 'Admin').activeUsersCount).toBeGreaterThanOrEqual(1)
+  })
+
+  it('getRoles_DisabledUser_IsNotCounted', async () => {
+    const before = (await call(axiosClient.get('/admin/roles'))).data.find((role) => role.roleName === 'Owner').activeUsersCount
+    const created = (await call(axiosClient.post('/admin/users', newUser({ roles: ['Owner'] })))).data
+    await call(axiosClient.put(`/admin/users/${created.userId}/status`, { status: 'Disabled' }))
+    const after = (await call(axiosClient.get('/admin/roles'))).data.find((role) => role.roleName === 'Owner').activeUsersCount
+    expect(after).toBe(before)
+  })
+})
+
+describe('mock admin security alerts', () => {
+  const seedLogs = (rows) => {
+    const db = getDb()
+    db.activityLogs = rows.map((row, index) => ({ logId: index + 1, userId: 1, action: 'FailedLogin', entityType: 'User', entityId: 1, result: 'Failed', ipAddress: '10.0.0.1', timestamp: new Date().toISOString(), ...row }))
+    saveDb()
+  }
+
+  it('getAlerts_NoLogs_ReturnsZerosAndNoAlerts', async () => {
+    seedLogs([])
+    const { data } = await call(axiosClient.get('/admin/security/alerts'))
+    expect(data).toMatchObject({ totalAuditLogs24h: 0, failedActions24h: 0, activeAlertsCount: 0, failureRatePercentage: 0, recentAlerts: [], topFailedActions: [] })
+  })
+
+  it('getAlerts_OnlySuccessLogs_ReturnsInfoNormalAlertNotCounted', async () => {
+    seedLogs([{ action: 'Login', result: 'Success' }])
+    const { data } = await call(axiosClient.get('/admin/security/alerts'))
+    expect(data.recentAlerts.map((alert) => alert.alertId)).toEqual(['INFO-NORMAL'])
+    expect(data.activeAlertsCount).toBe(0)
+  })
+
+  it('getAlerts_ManyFailures_RaisesSpikeUserAndBruteForceAlerts', async () => {
+    seedLogs(Array.from({ length: 5 }, () => ({})))
+    const { data } = await call(axiosClient.get('/admin/security/alerts'))
+    expect(data.failedActions24h).toBe(5)
+    expect(data.failureRatePercentage).toBe(100)
+    const ids = data.recentAlerts.map((alert) => alert.alertId)
+    expect(ids).toContain('ALERT-SPIKE-FAIL')
+    expect(ids).toContain('ALERT-FAIL-USER-1')
+    expect(ids.some((id) => id.startsWith('ALERT-IP-BRUTE-'))).toBe(true)
+    expect(data.activeAlertsCount).toBe(3)
+    expect(data.topFailedActions).toEqual([{ key: 'FailedLogin', value: 5 }])
+  })
+
+  it('getAlerts_OldLogs_AreIgnored', async () => {
+    seedLogs(Array.from({ length: 6 }, () => ({ timestamp: new Date(Date.now() - 48 * 3600000).toISOString() })))
+    const { data } = await call(axiosClient.get('/admin/security/alerts'))
+    expect(data.totalAuditLogs24h).toBe(0)
+  })
+})
+
+describe('mock admin system config', () => {
+  it('getConfig_Default_ReturnsFourPolicies', async () => {
+    const { status, data } = await call(axiosClient.get('/admin/system/config'))
+    expect(status).toBe(200)
+    expect(data.encryptionPolicy).toEqual({ defaultAlgorithm: 'AES-256-GCM', keyRotationIntervalDays: 90, minPasswordLength: 12, require2FAForAdmin: true })
+    expect(data.proofOfLifePolicy).toEqual({ defaultPingIntervalDays: 30, gracePeriodDays: 7, warningDaysBeforeGrace: 3 })
+    expect(data.storagePolicy.allowedExtensions).toContain('.pdf')
+    expect(data.backupPolicy).toMatchObject({ autoBackupEnabled: true, retentionDays: 30 })
+  })
+
+  it('updateConfig_OnePolicy_ReplacesOnlyThatPolicyAndStampsAdmin', async () => {
+    const { status, data } = await call(
+      axiosClient.put('/admin/system/config', { proofOfLifePolicy: { defaultPingIntervalDays: 45, gracePeriodDays: 10, warningDaysBeforeGrace: 3 } }),
+    )
+    expect(status).toBe(200)
+    expect(data.proofOfLifePolicy.defaultPingIntervalDays).toBe(45)
+    expect(data.encryptionPolicy.keyRotationIntervalDays).toBe(90)
+    expect(data.updatedByAdminEmail).toBe(admin.email)
+    expect((await call(axiosClient.get('/admin/system/config'))).data.proofOfLifePolicy.gracePeriodDays).toBe(10)
+  })
+
+  it('updateConfig_UnknownGroup_Returns400', async () => {
+    expect((await call(axiosClient.put('/admin/system/config', { nope: {} }))).status).toBe(400)
+  })
+
+  it('updateConfig_Success_WritesAuditLog', async () => {
+    await call(axiosClient.put('/admin/system/config', { backupPolicy: { autoBackupEnabled: false, cronSchedule: '0 2 * * *', retentionDays: 10 } }))
+    const { data } = await call(axiosClient.get('/admin/audit-logs', { params: { action: 'UpdateSystemConfig' } }))
+    expect(data.items[0]).toMatchObject({ entityType: 'SystemConfig', result: 'Success' })
+  })
+})
+
+describe('mock admin key rotation', () => {
+  it('getKeyRotation_Default_ReturnsOneKeyPerAssetWithSummary', async () => {
+    const { status, data } = await call(axiosClient.get('/admin/system/key-rotation'))
+    expect(status).toBe(200)
+    expect(data.totalKeys).toBe(getDb().assets.length)
+    expect(data.activeKeys).toBe(data.totalKeys)
+    expect(data.rotatedKeys).toBe(0)
+    expect(data.rotationIntervalDays).toBe(90)
+    expect(data.keys[0]).toMatchObject({ algorithm: 'AES-256-GCM', keyVersion: 1, status: 'Active', rotatedAt: null })
+  })
+
+  it('getKeyRotation_OldKeys_NeedRotationUntilIntervalIsLonger', async () => {
+    const first = (await call(axiosClient.get('/admin/system/key-rotation'))).data
+    expect(first.keysNeedingRotation).toBe(first.totalKeys)
+    expect(first.keys.every((key) => key.needsRotation)).toBe(true)
+    await call(axiosClient.put('/admin/system/config', { encryptionPolicy: { defaultAlgorithm: 'AES-256-GCM', keyRotationIntervalDays: 3650, minPasswordLength: 12, require2FAForAdmin: true } }))
+    const second = (await call(axiosClient.get('/admin/system/key-rotation'))).data
+    expect(second.rotationIntervalDays).toBe(3650)
+    expect(second.keysNeedingRotation).toBe(0)
+  })
+
+  it('rotate_Active_BumpsVersionAndRecordsRotationTime', async () => {
+    const before = (await call(axiosClient.get('/admin/system/key-rotation'))).data
+    const { status, data } = await call(axiosClient.post('/admin/system/key-rotation/rotate', {}))
+    expect(status).toBe(200)
+    expect(data.rotatedKeys).toBe(before.activeKeys)
+    expect(data.keysNeedingRotation).toBe(0)
+    expect(data.lastRotatedAt).toBeTruthy()
+    expect(data.keys.every((key) => key.keyVersion === 2 && key.rotatedAt)).toBe(true)
+  })
+
+  it('rotate_Success_WritesAuditLog', async () => {
+    await call(axiosClient.post('/admin/system/key-rotation/rotate', {}))
+    const { data } = await call(axiosClient.get('/admin/audit-logs', { params: { action: 'RotateEncryptionKeys' } }))
+    expect(data.items[0]).toMatchObject({ entityType: 'EncryptionKey' })
+  })
+})
+
+describe('mock admin integrations', () => {
+  it('getIntegrations_Default_ReturnsFiveConnectedServices', async () => {
+    const { status, data } = await call(axiosClient.get('/admin/integrations'))
+    expect(status).toBe(200)
+    expect(data.map((item) => item.serviceId)).toEqual(['ekyc-vnpt', 'ca-vnpt', 'notary-gateway', 'blob-storage', 'smtp-gateway'])
+    expect(data.every((item) => item.status === 'Connected')).toBe(true)
+  })
+
+  it('ping_KnownService_ReturnsSuccessWithMessage', async () => {
+    const { status, data } = await call(axiosClient.post('/admin/integrations/ekyc-vnpt/ping'))
+    expect(status).toBe(200)
+    expect(data).toMatchObject({ serviceId: 'ekyc-vnpt', success: true })
+    expect(data.message).toContain('VNPT AI')
+  })
+
+  it('ping_UnknownService_Returns404', async () => {
+    expect((await call(axiosClient.post('/admin/integrations/khong-co/ping'))).status).toBe(404)
+  })
+
+  it('ping_Success_WritesAuditLog', async () => {
+    await call(axiosClient.post('/admin/integrations/ca-vnpt/ping'))
+    const { data } = await call(axiosClient.get('/admin/audit-logs', { params: { action: 'TestIntegrationConnection' } }))
+    expect(data.items[0]).toMatchObject({ entityType: 'Integration' })
   })
 })

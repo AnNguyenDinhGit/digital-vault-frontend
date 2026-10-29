@@ -185,6 +185,7 @@ body {
 .av-badge-ok { background: #dcfce7; color: #15803d; }
 .av-badge-info { background: #dbeafe; color: #1d4ed8; }
 .av-badge-warn { background: #fee2e2; color: #b91c1c; }
+.av-badge-caution { background: #fef3c7; color: #b45309; }
 .av-badge-muted { background: var(--av-slate-100); color: var(--av-slate-500); }
 .av-ghost-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--av-slate-200); border-radius: 8px; background: #fff; font-size: 12px; font-weight: 600; color: var(--bs-body-color); text-decoration: none; transition: background 0.15s; }
 .av-ghost-btn:hover:not(:disabled) { background: var(--av-slate-50); color: var(--bs-body-color); }

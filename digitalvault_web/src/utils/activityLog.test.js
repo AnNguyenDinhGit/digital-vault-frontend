@@ -141,3 +141,23 @@ describe('buildCsv', () => {
     expect(buildCsv([]).split('\r\n')).toHaveLength(1)
   })
 })
+
+describe('admin system action labels', () => {
+  it('actionLabel_AdminSystemActions_ReturnVietnameseLabels', () => {
+    expect(actionLabel('AdminUpdateUserProfile')).toBe('Admin sửa thông tin người dùng')
+    expect(actionLabel('AdminResetUserPassword')).toBe('Admin đặt lại mật khẩu người dùng')
+    expect(actionLabel('UpdateSystemConfig')).toBe('Cập nhật cấu hình hệ thống')
+    expect(actionLabel('RotateEncryptionKeys')).toBe('Xoay vòng khóa mã hóa')
+    expect(actionLabel('TestIntegrationConnection')).toBe('Kiểm tra kết nối tích hợp')
+  })
+
+  it('entityLabel_SystemEntities_ReturnVietnameseNames', () => {
+    expect(entityLabel('SystemConfig', null)).toBe('Cấu hình hệ thống')
+    expect(entityLabel('EncryptionKey', null)).toBe('Khóa mã hóa')
+    expect(entityLabel('Integration', null)).toBe('Dịch vụ tích hợp')
+  })
+
+  it('KNOWN_ACTIONS_Always_ContainsNewAdminSystemActions', () => {
+    expect(KNOWN_ACTIONS).toEqual(expect.arrayContaining(['AdminUpdateUserProfile', 'AdminResetUserPassword', 'UpdateSystemConfig', 'RotateEncryptionKeys', 'TestIntegrationConnection']))
+  })
+})

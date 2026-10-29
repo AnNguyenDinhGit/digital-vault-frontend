@@ -29,6 +29,11 @@ const ACTION_LABELS = {
   AdminCreateUser: 'Admin tạo người dùng',
   UpdateUserRoles: 'Admin đổi vai trò người dùng',
   UpdateUserStatus: 'Admin đổi trạng thái người dùng',
+  AdminUpdateUserProfile: 'Admin sửa thông tin người dùng',
+  AdminResetUserPassword: 'Admin đặt lại mật khẩu người dùng',
+  UpdateSystemConfig: 'Cập nhật cấu hình hệ thống',
+  RotateEncryptionKeys: 'Xoay vòng khóa mã hóa',
+  TestIntegrationConnection: 'Kiểm tra kết nối tích hợp',
 }
 
 // Danh sách mã thao tác đã biết, dùng cho ô lọc của Admin (BE lọc đúng theo mã, không có API liệt kê)
@@ -39,6 +44,9 @@ const ENTITY_LABELS = {
   DigitalVault: 'Kho',
   DigitalAsset: 'Tài sản',
   HandoverRequest: 'Đơn bàn giao',
+  SystemConfig: 'Cấu hình hệ thống',
+  EncryptionKey: 'Khóa mã hóa',
+  Integration: 'Dịch vụ tích hợp',
 }
 
 const RESULT_INFO = {
