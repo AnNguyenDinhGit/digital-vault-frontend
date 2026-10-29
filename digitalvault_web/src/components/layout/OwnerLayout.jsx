@@ -1,4 +1,4 @@
-import { Activity, Bell, ClipboardList, FolderLock, History, LogOut, Settings, ShieldCheck, UserCog, Users } from 'lucide-react'
+import { Activity, Bell, ClipboardList, CreditCard, FolderLock, History, LogOut, Settings, ShieldCheck, UserCog, Users } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
@@ -13,6 +13,7 @@ const VAULT_ITEMS = [
   { label: 'Người thụ hưởng', icon: Users, to: '/owner/beneficiaries' },
   { label: 'Người thi hành (Executor)', icon: UserCog, to: '/owner/executor' },
   { label: 'Hồ sơ bàn giao', icon: ClipboardList, to: '/owner/handovers' },
+  { label: 'Gói dịch vụ', icon: CreditCard, to: '/owner/plans' },
 ]
 
 const MONITOR_ITEMS = [

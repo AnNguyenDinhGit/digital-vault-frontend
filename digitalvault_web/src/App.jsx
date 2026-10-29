@@ -18,6 +18,11 @@ import ExecutorOrdersPage from './pages/executor/ExecutorOrdersPage'
 import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminEncryptionPage from './pages/admin/AdminEncryptionPage'
+import AdminPlansPage from './pages/admin/AdminPlansPage'
+import MockVnpayGatewayPage from './pages/payment/MockVnpayGatewayPage'
+import OwnerPlansPage from './pages/owner/OwnerPlansPage'
+import VnpayReturnPage from './pages/payment/VnpayReturnPage'
+import { MOCK_MODE } from './mocks/mode'
 import AdminRolesPage from './pages/admin/AdminRolesPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
@@ -46,6 +51,10 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
 
+          {/* Công khai: VNPay đưa khách về đây sau khi thanh toán, nên không bắt đăng nhập */}
+          <Route path="/payment/vnpay-return" element={<VnpayReturnPage />} />
+          {MOCK_MODE !== 'off' && <Route path="/payment/mock-vnpay" element={<MockVnpayGatewayPage />} />}
+
           {/* 1. Khu vực Vault Owner */}
           <Route element={<ProtectedRoute role="Owner" />}>
             {/* Chi tiết Executor mở ở cửa sổ mới nên không dùng layout có sidebar */}
@@ -59,6 +68,7 @@ function App() {
               <Route path="handovers" element={<OwnerHandoversPage />} />
               <Route path="handovers/:requestId" element={<OwnerHandoverDetailPage />} />
               <Route path="notifications" element={<OwnerNotificationsPage />} />
+              <Route path="plans" element={<OwnerPlansPage />} />
               <Route path="proof-of-life" element={<ProofOfLifePage />} />
               <Route path="activity-log" element={<ActivityLogPage />} />
               <Route path="security" element={<SecuritySettingsPage />} />
@@ -193,7 +203,7 @@ function App() {
               <Route path="roles" element={<AdminRolesPage />} />
               <Route path="hsm" element={<AdminEncryptionPage />} />
               <Route path="handovers" element={<RolePlaceholderPage title="Giám sát quy trình bàn giao (Handover)" />} />
-              <Route path="plans" element={<RolePlaceholderPage title="Gói dịch vụ & Giao dịch thanh toán" />} />
+              <Route path="plans" element={<AdminPlansPage />} />
               <Route path="audit-logs" element={<AdminAuditLogsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
