@@ -16,6 +16,10 @@ import ExecutorHandoverDetailPage from './pages/executor/ExecutorHandoverDetailP
 import ExecutorHandoverListPage from './pages/executor/ExecutorHandoverListPage'
 import ExecutorOrdersPage from './pages/executor/ExecutorOrdersPage'
 import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminEncryptionPage from './pages/admin/AdminEncryptionPage'
+import AdminRolesPage from './pages/admin/AdminRolesPage'
+import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import BeneficiariesPage from './pages/owner/BeneficiariesPage'
 import ExecutorManagementPage from './pages/owner/ExecutorManagementPage'
@@ -184,13 +188,14 @@ function App() {
           <Route element={<ProtectedRoute role="Admin" />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<RolePlaceholderPage title="Trung tâm kiểm soát quản trị hệ thống" />} />
+              <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUsersPage />} />
-              <Route path="hsm" element={<RolePlaceholderPage title="Giám sát mã hóa & Mô-đun HSM" />} />
+              <Route path="roles" element={<AdminRolesPage />} />
+              <Route path="hsm" element={<AdminEncryptionPage />} />
               <Route path="handovers" element={<RolePlaceholderPage title="Giám sát quy trình bàn giao (Handover)" />} />
               <Route path="plans" element={<RolePlaceholderPage title="Gói dịch vụ & Giao dịch thanh toán" />} />
               <Route path="audit-logs" element={<AdminAuditLogsPage />} />
-              <Route path="settings" element={<RolePlaceholderPage title="Cấu hình tham số hệ thống" />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
           </Route>
 

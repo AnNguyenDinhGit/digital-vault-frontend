@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
-import { ROLE_ACCOUNTS, resetMockDb } from '../../mocks/db'
+import { ROLE_ACCOUNTS, getDb, resetMockDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import AdminUsersPage from './AdminUsersPage'
@@ -200,6 +200,142 @@ describe('AdminUsersPage edit user', () => {
     renderPage()
     await waitForPage()
     const dialog = await openEdit('Lê Minh Quân')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('AdminUsersPage edit profile', () => {
+  const openProfile = async (fullName) => {
+    await userEvent.click(screen.getByRole('button', { name: `Sửa thông tin ${fullName}` }))
+    return screen.getByRole('dialog', { name: 'Sửa Thông Tin Người Dùng' })
+  }
+
+  it('profile_Open_PrefillsCurrentValuesAndDisablesSaveUntilChanged', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openProfile('Lê Minh Quân')
+    expect(within(dialog).getByLabelText(/^Họ và tên/)).toHaveValue('Lê Minh Quân')
+    expect(within(dialog).getByText(/quan\.le@example\.com/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Lưu thông tin' })).toBeDisabled()
+  })
+
+  it('profile_ChangeNameAndPhone_SavesShowsToastAndRefreshesList', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openProfile('Lê Minh Quân')
+    const name = within(dialog).getByLabelText(/^Họ và tên/)
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Lê Minh Quân Mới')
+    await userEvent.type(within(dialog).getByLabelText('Số điện thoại'), '0912345678')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thông tin' }))
+    expect(await screen.findByText('Đã cập nhật thông tin người dùng')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const row = dataRows().find((item) => within(item).queryByText('quan.le@example.com'))
+    expect(await within(row).findByText('Lê Minh Quân Mới')).toBeInTheDocument()
+    expect(within(row).getByText('0912345678')).toBeInTheDocument()
+  })
+
+  it('profile_BlankName_ShowsErrorAndDoesNotCallApi', async () => {
+    let called = false
+    server.use(
+      http.put('*/api/admin/users/:userId', () => {
+        called = true
+        return HttpResponse.json({})
+      }),
+    )
+    renderPage()
+    await waitForPage()
+    const dialog = await openProfile('Lê Minh Quân')
+    await userEvent.clear(within(dialog).getByLabelText(/^Họ và tên/))
+    await userEvent.type(within(dialog).getByLabelText('Số CCCD'), '001200001234')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thông tin' }))
+    expect(await within(dialog).findByText('Vui lòng nhập họ tên.')).toBeInTheDocument()
+    expect(called).toBe(false)
+  })
+
+  it('profile_ApiFails_ShowsErrorAndKeepsDialogOpen', async () => {
+    server.use(http.put('*/api/admin/users/:userId', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+    renderPage()
+    await waitForPage()
+    const dialog = await openProfile('Lê Minh Quân')
+    await userEvent.type(within(dialog).getByLabelText('Số điện thoại'), '0912345678')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thông tin' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không tìm thấy người dùng.')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('profile_Cancel_ClosesDialog', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openProfile('Lê Minh Quân')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('AdminUsersPage reset password', () => {
+  const openReset = async (fullName) => {
+    await userEvent.click(screen.getByRole('button', { name: `Đặt lại mật khẩu ${fullName}` }))
+    return screen.getByRole('dialog', { name: 'Đặt Lại Mật Khẩu' })
+  }
+  const fill = async (dialog, password, confirm = password) => {
+    await userEvent.type(within(dialog).getByLabelText(/^Mật khẩu mới/), password)
+    await userEvent.type(within(dialog).getByLabelText(/^Nhập lại mật khẩu mới/), confirm)
+  }
+
+  it('reset_Open_ShowsTargetUser', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openReset('Lê Minh Quân')
+    expect(dialog).toHaveTextContent('Lê Minh Quân')
+    expect(dialog).toHaveTextContent('quan.le@example.com')
+  })
+
+  it('reset_ValidPassword_ChangesPasswordShowsToastAndClosesDialog', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openReset('Lê Minh Quân')
+    await fill(dialog, 'MatKhauMoi@2026')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Đặt lại mật khẩu' }))
+    expect(await screen.findByText('Đã đặt lại mật khẩu')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(getDb().users.find((user) => user.email === 'quan.le@example.com').password).toBe('MatKhauMoi@2026')
+  })
+
+  it('reset_ShortPassword_ShowsErrorAndDoesNotCallApi', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openReset('Lê Minh Quân')
+    await fill(dialog, 'ngan')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Đặt lại mật khẩu' }))
+    expect(await within(dialog).findByText('Mật khẩu tối thiểu 12 ký tự.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('reset_ConfirmMismatch_ShowsMismatchError', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openReset('Lê Minh Quân')
+    await fill(dialog, 'MatKhauMoi@2026', 'MatKhauKhac@2026')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Đặt lại mật khẩu' }))
+    expect(await within(dialog).findByText('Mật khẩu nhập lại không khớp.')).toBeInTheDocument()
+  })
+
+  it('reset_ApiFails_ShowsErrorAndKeepsDialogOpen', async () => {
+    server.use(http.post('*/api/admin/users/:userId/reset-password', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+    renderPage()
+    await waitForPage()
+    const dialog = await openReset('Lê Minh Quân')
+    await fill(dialog, 'MatKhauMoi@2026')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Đặt lại mật khẩu' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không tìm thấy người dùng.')
+  })
+
+  it('reset_Cancel_ClosesDialog', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openReset('Lê Minh Quân')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })

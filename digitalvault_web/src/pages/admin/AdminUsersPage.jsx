@@ -5,6 +5,8 @@ import { getAdminUsers } from '../../callapi/adminApi'
 import AdminPager from '../../components/admin/AdminPager'
 import CreateUserModal from '../../components/admin/CreateUserModal'
 import EditUserModal from '../../components/admin/EditUserModal'
+import EditUserProfileModal from '../../components/admin/EditUserProfileModal'
+import ResetPasswordModal from '../../components/admin/ResetPasswordModal'
 import AppToast from '../../components/common/AppToast'
 import MockNotice from '../../components/common/MockNotice'
 import { useAdminList } from '../../hooks/useAdminList'
@@ -139,14 +141,32 @@ export default function AdminUsersPage({ mockMode = MOCK_MODE }) {
                       </td>
                       <td className="text-nowrap">{formatDate(user.createdAt)}</td>
                       <td className="text-end">
-                        <button
-                          type="button"
-                          className="av-ghost-btn is-brand"
-                          aria-label={`Phân quyền ${user.fullName}`}
-                          onClick={() => setModal({ type: 'edit', user })}
-                        >
-                          Phân quyền
-                        </button>
+                        <div className="d-flex flex-wrap justify-content-end gap-1">
+                          <button
+                            type="button"
+                            className="av-ghost-btn is-brand"
+                            aria-label={`Sửa thông tin ${user.fullName}`}
+                            onClick={() => setModal({ type: 'profile', user })}
+                          >
+                            Sửa thông tin
+                          </button>
+                          <button
+                            type="button"
+                            className="av-ghost-btn is-brand"
+                            aria-label={`Phân quyền ${user.fullName}`}
+                            onClick={() => setModal({ type: 'edit', user })}
+                          >
+                            Phân quyền
+                          </button>
+                          <button
+                            type="button"
+                            className="av-ghost-btn is-brand"
+                            aria-label={`Đặt lại mật khẩu ${user.fullName}`}
+                            onClick={() => setModal({ type: 'reset', user })}
+                          >
+                            Đặt lại mật khẩu
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -180,6 +200,17 @@ export default function AdminUsersPage({ mockMode = MOCK_MODE }) {
           onClose={closeModal}
           onSaved={() => finish('Đã cập nhật người dùng', modal.user.fullName)}
         />
+      )}
+
+      {modal?.type === 'profile' && (
+        <EditUserProfileModal
+          user={modal.user}
+          onClose={closeModal}
+          onSaved={(user) => finish('Đã cập nhật thông tin người dùng', `${user.fullName} (${user.email})`)}
+        />
+      )}
+      {modal?.type === 'reset' && (
+        <ResetPasswordModal user={modal.user} onClose={closeModal} onReset={() => finish('Đã đặt lại mật khẩu', `${modal.user.fullName} (${modal.user.email})`)} />
       )}
 
       <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} detail={toast?.detail} />
