@@ -7,6 +7,7 @@ import MockNotice from '../../components/common/MockNotice'
 import HandoverTable from '../../components/executor/HandoverTable'
 import { useExecutorPortal } from '../../hooks/useExecutorPortal'
 import { MOCK_MODE } from '../../mocks/mode'
+import { vaultLabel, vaultNamesOf } from '../../utils/executor'
 import { createHandoverErrorMessage, filterHandovers } from '../../utils/handover'
 import { formatDate } from '../../utils/proofOfLife'
 
@@ -85,7 +86,8 @@ export default function ExecutorOrdersPage({ mockMode = MOCK_MODE }) {
               return (
                 <li key={assignment.vaultId} className="av-doc-item">
                   <div className="av-doc-main">
-                    <p className="mb-0 fs-13 fw-semibold text-ink">{`Kho #${assignment.vaultId}`}</p>
+                    <p className="mb-0 fs-13 fw-semibold text-ink">{vaultLabel(assignment.vaultId, assignment.vaultName)}</p>
+                    {assignment.owner?.fullName && <p className="mb-0 fs-12 text-slate-600">{`Chủ kho: ${assignment.owner.fullName}`}</p>}
                     <p className="mb-0 fs-12 text-slate-500">
                       {`${ASSIGNMENT_STATUS_LABELS[assignment.status] ?? assignment.status} · phân công ${formatDate(assignment.assignedAt)}`}
                     </p>
@@ -116,7 +118,7 @@ export default function ExecutorOrdersPage({ mockMode = MOCK_MODE }) {
         <h2 className="mb-0 fw-bold text-ink" style={{ fontSize: 16 }}>
           Hồ sơ bàn giao
         </h2>
-        {handovers.length === 0 ? <p className="av-empty mb-0">Chưa có hồ sơ bàn giao nào.</p> : <HandoverTable handovers={filterHandovers(handovers)} />}
+        {handovers.length === 0 ? <p className="av-empty mb-0">Chưa có hồ sơ bàn giao nào.</p> : <HandoverTable handovers={filterHandovers(handovers)} vaultNames={vaultNamesOf(assignments)} />}
       </section>
     </div>
   )

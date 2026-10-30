@@ -26,7 +26,7 @@ const renderDetail = (requestId) =>
     path: '/executor/handovers/:requestId',
     extraRoutes: [{ path: '/executor/orders', element: <p>orders-page</p> }],
   })
-const waitForDetail = () => screen.findByRole('heading', { level: 1, name: /^Hồ sơ #/ })
+const waitForDetail = () => screen.findByRole('heading', { level: 1, name: /^HS-/ })
 const panel = () => screen.queryByRole('region', { name: 'Quyết định tiếp nhận' })
 
 // Hồ sơ do Owner tạo (Pending_Executor) rồi đưa về trạng thái cần thử; trả về mã hồ sơ

@@ -9,7 +9,7 @@ import CancelHandoverModal from '../../components/owner/CancelHandoverModal'
 import CreateOwnerHandoverModal from '../../components/owner/CreateOwnerHandoverModal'
 import { useOwnerHandovers } from '../../hooks/useOwnerHandovers'
 import { MOCK_MODE } from '../../mocks/mode'
-import { filterHandovers, isCancellableStatus } from '../../utils/handover'
+import { filterHandovers, handoverCode, isCancellableStatus } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
 
@@ -103,7 +103,7 @@ export default function OwnerHandoversPage({ mockMode = MOCK_MODE }) {
                 {filterHandovers(handovers).map((item) => (
                   <tr key={item.requestId}>
                     <td className="fw-semibold text-ink">
-                      <Link to={`/owner/handovers/${item.requestId}`} className="text-ink">{`Hồ sơ #${item.requestId}`}</Link>
+                      <Link to={`/owner/handovers/${item.requestId}`} className="text-ink">{handoverCode(item)}</Link>
                     </td>
                     <td>{`Kho #${item.vaultId}`}</td>
                     <td className="text-nowrap">{formatDateTime(item.initiatedAt)}</td>

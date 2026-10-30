@@ -45,7 +45,7 @@ async function openDetail(status = 'Draft') {
     route: `/executor/handovers/${request.requestId}`,
     path: '/executor/handovers/:requestId',
   })
-  await screen.findByRole('heading', { level: 1, name: /^Hồ sơ #/ })
+  await screen.findByRole('heading', { level: 1, name: /^HS-/ })
   return request.requestId
 }
 

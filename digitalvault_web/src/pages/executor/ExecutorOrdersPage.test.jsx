@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { login } from '../../callapi/authApi'
 import { createHandover } from '../../callapi/executorApi'
+import { handoverCode } from '../../utils/handover'
 import { DEMO_ACCOUNT, ROLE_ACCOUNTS, getDb, resetMockDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
@@ -126,8 +127,8 @@ describe('ExecutorOrdersPage handover table', () => {
     renderPage()
     await waitForPage()
     const table = await screen.findByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
-    const row = within(table).getByRole('row', { name: /Hồ sơ #/ })
-    expect(within(row).getByRole('link', { name: `Hồ sơ #${request.requestId}` })).toHaveAttribute('href', `/executor/handovers/${request.requestId}`)
+    const row = within(table).getByRole('row', { name: /HS-/ })
+    expect(within(row).getByRole('link', { name: handoverCode(request) })).toHaveAttribute('href', `/executor/handovers/${request.requestId}`)
     expect(row).toHaveTextContent('Kho #1')
     expect(row).toHaveTextContent('Bản nháp')
     expect(row).toHaveTextContent('4 tài sản')
@@ -141,7 +142,7 @@ describe('ExecutorOrdersPage handover table', () => {
     await waitForPage()
     const table = await screen.findByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
     const links = within(table).getAllByRole('link').map((link) => link.textContent)
-    expect(links).toEqual([`Hồ sơ #${second.requestId}`, `Hồ sơ #${first.requestId}`])
+    expect(links).toEqual([handoverCode(second), handoverCode(first)])
   })
 
   it('role_OwnerAccount_ShowsErrorBecauseBackendRejectsRole', async () => {

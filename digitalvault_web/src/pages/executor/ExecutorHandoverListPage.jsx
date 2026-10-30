@@ -2,10 +2,11 @@ import { Alert, Button } from 'react-bootstrap'
 import HandoverTable from '../../components/executor/HandoverTable'
 import { useExecutorPortal } from '../../hooks/useExecutorPortal'
 import { filterHandovers } from '../../utils/handover'
+import { vaultNamesOf } from '../../utils/executor'
 
 // Danh sách hồ sơ bàn giao lọc theo nhóm trạng thái (chờ thẩm định, đã duyệt, đang bàn giao, lịch sử)
 export default function ExecutorHandoverListPage({ title, description, statuses, emptyMessage }) {
-  const { status, error, handovers, reload } = useExecutorPortal()
+  const { status, error, handovers, assignments, reload } = useExecutorPortal()
 
   if (status === 'loading') {
     return (
@@ -41,7 +42,7 @@ export default function ExecutorHandoverListPage({ title, description, statuses,
       </section>
 
       <section className="av-panel" aria-label={title}>
-        {items.length === 0 ? <p className="av-empty mb-0">{emptyMessage}</p> : <HandoverTable handovers={items} />}
+        {items.length === 0 ? <p className="av-empty mb-0">{emptyMessage}</p> : <HandoverTable handovers={items} vaultNames={vaultNamesOf(assignments)} />}
       </section>
     </div>
   )
