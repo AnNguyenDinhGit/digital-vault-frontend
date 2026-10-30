@@ -6,6 +6,7 @@ import { getLegalHandovers } from '../../callapi/legalApi'
 import AdminPager from '../../components/admin/AdminPager'
 import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import { useAdminList } from '../../hooks/useAdminList'
+import { vaultLabel } from '../../utils/executor'
 import { handoverCode } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
@@ -101,7 +102,8 @@ export default function LegalHandoverListPage({
                       <span className="fw-semibold text-ink">{handoverCode(handover)}</span>
                     </td>
                     <td className="py-3">
-                      <span className="text-slate-600">{`Kho #${handover.vaultId}`}</span>
+                      <span className="d-block text-slate-600">{vaultLabel(handover.vaultId, handover.vaultName)}</span>
+                      {handover.ownerName && <span className="d-block fs-12 text-slate-500">{`Chủ kho: ${handover.ownerName}`}</span>}
                     </td>
                     <td className="py-3">
                       <HandoverStatusBadge status={handover.status} />

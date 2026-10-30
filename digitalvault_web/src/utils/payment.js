@@ -74,7 +74,7 @@ export function returnErrorMessage(error) {
 // ----- Quản lý gói dịch vụ của Admin -----
 
 const GIB = 1024 ** 3
-const PLAN_LIMITS = { nameMax: 100, vaultsMax: 100000, durationMax: 3650, priceMax: 10000000000000000 }
+const PLAN_LIMITS = { nameMax: 100, vaultsMax: 100000, durationMax: 3650, priceMin: 0, priceMax: 1000000000 }
 
 const toNumber = (value) => Number(String(value ?? '').trim().replace(',', '.'))
 const isPositiveInteger = (value) => /^\d+$/.test(String(value ?? '').trim()) && Number(value) >= 1
@@ -105,8 +105,9 @@ export function validatePlanForm({ planName, maxVaults, storageGb, price, durati
   if (!String(storageGb).trim() || !Number.isFinite(gb) || gb <= 0 || Math.round(gb * GIB) < 1) errors.storageGb = 'Dung lượng phải lớn hơn 0 GB.'
 
   const amount = toNumber(price)
-  // Cho phép giá 0 ₫ cho gói miễn phí; nếu BE chưa chấp nhận thì sẽ báo lỗi khi lưu
-  if (!String(price).trim() || !Number.isFinite(amount) || amount < 0 || amount > PLAN_LIMITS.priceMax) errors.price = 'Giá phải từ 0 ₫ trở lên (0 ₫ là gói miễn phí).'
+  if (!String(price).trim() || !Number.isFinite(amount) || amount < PLAN_LIMITS.priceMin || amount > PLAN_LIMITS.priceMax) {
+    errors.price = `Giá phải từ ${formatVnd(PLAN_LIMITS.priceMin)} (gói miễn phí) đến ${formatVnd(PLAN_LIMITS.priceMax)}.`
+  }
 
   if (!isPositiveInteger(durationDays) || Number(durationDays) > PLAN_LIMITS.durationMax) errors.durationDays = `Thời hạn là số nguyên từ 1 đến ${PLAN_LIMITS.durationMax} ngày.`
   return errors

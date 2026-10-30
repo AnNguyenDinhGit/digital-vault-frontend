@@ -53,7 +53,7 @@ describe('Executor: hiển thị tên thay cho ID', () => {
         </Routes>
       </MemoryRouter>,
     )
-    expect(await screen.findByText('Kho #17 · Kho gia đình')).toBeInTheDocument()
+    expect(await screen.findByText('Kho gia đình')).toBeInTheDocument()
     expect(screen.getByText('Chủ kho: Phạm Nhật Tiến')).toBeInTheDocument()
     const table = screen.getByRole('table', { name: 'Tài sản và người thụ hưởng' })
     expect(within(table).getByText('Ví lạnh')).toBeInTheDocument()
@@ -81,10 +81,10 @@ describe('Executor: hiển thị tên thay cho ID', () => {
       </MemoryRouter>,
     )
     const assignments = await screen.findByRole('region', { name: 'Kho được phân công' })
-    expect(within(assignments).getByText('Kho #17 · Kho gia đình')).toBeInTheDocument()
+    expect(within(assignments).getByText('Kho gia đình')).toBeInTheDocument()
     expect(within(assignments).getByText('Chủ kho: Phạm Nhật Tiến')).toBeInTheDocument()
     const table = screen.getByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
-    expect(within(table).getByText('Kho #17 · Kho gia đình')).toBeInTheDocument()
+    expect(within(table).getByText('Kho gia đình')).toBeInTheDocument()
     expect(within(table).getByText('Chủ kho: Phạm Nhật Tiến')).toBeInTheDocument()
     expect(within(table).getByText('Ví lạnh')).toBeInTheDocument()
   })

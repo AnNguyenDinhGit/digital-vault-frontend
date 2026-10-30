@@ -25,7 +25,8 @@ import OwnerStatusCard from '../../components/legal/OwnerStatusCard'
 import ReviewHistory from '../../components/legal/ReviewHistory'
 import { useLegalHandoverDetail } from '../../hooks/useLegalHandoverDetail'
 import { downloadBlob } from '../../utils/download'
-import { assetTypeLabel } from '../../utils/catalog'
+import { assetTypeLabel, formatAllocation } from '../../utils/catalog'
+import { vaultLabel } from '../../utils/executor'
 import { handoverCode, handoverStatusInfo } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
@@ -185,7 +186,7 @@ export default function LegalHandoverDetailPage() {
           <div>
             <div className="d-flex align-items-center gap-2 mb-1">
               <h1 className="mb-0 fw-bold text-ink" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>
-                {[handoverCode(handover), ownerName, `Kho #${handover.vaultId}`].filter(Boolean).join(' · ')}
+                {[handoverCode(handover), ownerName, vaultLabel(handover.vaultId, handover.vaultName)].filter(Boolean).join(' · ')}
               </h1>
               <HandoverStatusBadge status={currentStatus} />
             </div>
@@ -473,7 +474,8 @@ export default function LegalHandoverDetailPage() {
                 <tr className="fs-11 text-slate-500 text-uppercase border-bottom">
                   <th scope="col" className="py-2">Mã bàn giao</th>
                   <th scope="col" className="py-2">Tài sản</th>
-                  <th scope="col" className="py-2">Người thụ hưởng ID</th>
+                  <th scope="col" className="py-2">Người thụ hưởng</th>
+                  <th scope="col" className="py-2 text-end">Tỉ lệ phân bổ</th>
                   <th scope="col" className="py-2">Trạng thái bàn giao</th>
                 </tr>
               </thead>
@@ -482,7 +484,8 @@ export default function LegalHandoverDetailPage() {
                   <tr key={c.handoverId}>
                     <td className="fw-semibold text-ink">#{c.handoverId}</td>
                     <td>{c.assetName ?? assetNames.get(c.assetId) ?? `Tài sản #${c.assetId}`}</td>
-                    <td>{`Người nhận #${c.beneficiaryId}`}</td>
+                    <td>{c.beneficiaryName ?? `Người nhận #${c.beneficiaryId}`}</td>
+                    <td className="text-end fw-semibold text-ink">{c.allocationPercentage == null ? "—" : formatAllocation(c.allocationPercentage)}</td>
                     <td>
                       <span className="badge bg-light text-dark border">
                         {CASE_STATUS_LABELS[c.status] || c.status}

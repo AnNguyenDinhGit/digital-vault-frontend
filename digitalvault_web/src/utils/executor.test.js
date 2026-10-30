@@ -56,7 +56,7 @@ describe('tên hiển thị của hồ sơ (kho, chủ kho, tài sản)', () => 
   })
 
   it('vaultLabel_WithAndWithoutName', () => {
-    expect(vaultLabel(17, 'Kho gia đình')).toBe('Kho #17 · Kho gia đình')
+    expect(vaultLabel(17, 'Kho gia đình')).toBe('Kho gia đình')
     expect(vaultLabel(17, null)).toBe('Kho #17')
   })
 

@@ -29,8 +29,8 @@ export function revokeExecutorErrorMessage(error) {
 // Tên chủ kho của hồ sơ: BE trả cả ownerName lẫn owner.fullName
 export const handoverOwnerName = (handover) => handover?.ownerName ?? handover?.owner?.fullName ?? null
 
-// Nhãn kho: "Kho #17 · Kho gia đình", hoặc "Kho #17" khi chưa có tên
-export const vaultLabel = (vaultId, vaultName) => (vaultName ? `Kho #${vaultId} · ${vaultName}` : `Kho #${vaultId}`)
+// Nhãn kho: chỉ hiện tên kho ("Kho gia đình"); chưa có tên thì dùng "Kho #17"
+export const vaultLabel = (vaultId, vaultName) => vaultName || `Kho #${vaultId}`
 
 // vaultId -> tên kho, lấy từ danh sách phân công (ExecutorAssignmentDto.vaultName)
 export const vaultNamesOf = (assignments) => new Map((assignments ?? []).filter((item) => item.vaultName).map((item) => [item.vaultId, item.vaultName]))
