@@ -125,7 +125,7 @@ export default function OwnerPlansPage({ mockMode = MOCK_MODE }) {
         </div>
       )}
 
-      <PaymentHistoryPanel />
+      <PaymentHistoryPanel plans={plans ?? []} />
     </div>
   )
 }

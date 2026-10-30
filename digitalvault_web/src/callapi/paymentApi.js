@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient'
 
-// API thanh toán gói dịch vụ qua VNPay của BE (PaymentController)
+// API thanh toán gói dịch vụ của BE (PaymentController)
 
 // Danh sách gói đang bán (công khai), giá thấp trước; chấp nhận cả mảng thuần và PageDto
 export async function getPlans() {
@@ -22,6 +22,12 @@ export async function getMyTransactions({ page = 1, pageSize = 10, status } = {}
   if (status) params.status = status
   const { data } = await axiosClient.get('/payments/me/transactions', { params })
   return { page: data?.page ?? page, pageSize: data?.pageSize ?? pageSize, total: data?.total ?? 0, items: data?.items ?? [] }
+}
+
+// Kích hoạt gói miễn phí (0đ): BE tạo UserSubscription (Active) ngay và trả CurrentSubscriptionDto
+export async function selectFreePlan(planId) {
+  const { data } = await axiosClient.post('/payments/select-free', { planId })
+  return data
 }
 
 // Tạo giao dịch chờ thanh toán và nhận paymentUrl để chuyển trình duyệt sang VNPay (BE trả 503 khi chưa cấu hình VNPay)

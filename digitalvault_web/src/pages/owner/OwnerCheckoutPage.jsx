@@ -2,7 +2,7 @@ import { AlertTriangle, Building2, CalendarClock, CreditCard, HardDrive, Landmar
 import { useState } from 'react'
 import { Alert, Button, Form } from 'react-bootstrap'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { createVnpayCheckout, getMySubscription, getPlans } from '../../callapi/paymentApi'
+import { createVnpayCheckout, getMySubscription, getPlans, selectFreePlan } from '../../callapi/paymentApi'
 import AdminResourceState from '../../components/admin/AdminResourceState'
 import { BackLink } from '../../components/beneficiary/BeneficiaryUi'
 import MockNotice from '../../components/common/MockNotice'
@@ -12,15 +12,20 @@ import { MOCK_MODE } from '../../mocks/mode'
 import { redirectTo } from '../../utils/navigation'
 import {
   checkoutErrorMessage,
+  clearPendingCheckout,
   estimatedEndDate,
   formatDuration,
   formatPaymentDate,
   formatPlanPrice,
   formatStorage,
   formatVnd,
+  getPendingCheckoutByPlan,
+  getPendingGatewayError,
   isFreePlan,
   needsGatewayRedirect,
   PAYMENT_METHODS,
+  savePendingCheckout,
+  savePendingGatewayError,
 } from '../../utils/payment'
 
 const METHOD_ICONS = { VNPay: Landmark, MoMo: Wallet, BankTransfer: Building2 }
@@ -112,17 +117,32 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
   const renewing = current?.plan?.planId === plan.planId
   const canPay = agreed && (free || method === 'VNPay') && paying === null
 
-  // Gọi API checkout. BE trả paymentUrl rỗng khi đã kích hoạt gói ngay (gói 0đ): báo thành công và về trang Gói dịch vụ.
-  // Có paymentUrl thì 'redirect' chuyển cả trình duyệt sang VNPay, 'qr' hiện mã QR chứa link thanh toán.
-  const startCheckout = async (mode) => {
+  // Gọi API checkout. Nếu cùng gói đang có giao dịch Pending còn hạn (< 15 phút) thì dùng lại đúng link VNPay cũ để không sinh thêm dòng Pending.
+  const startCheckout = async (mode, { forceNew = false } = {}) => {
     setPaying(mode)
     setPayError('')
     try {
-      const checkout = await createVnpayCheckout(plan.planId)
+      if (free) {
+        await selectFreePlan(plan.planId)
+        navigate('/owner/plans', { state: { notice: `Đã kích hoạt ${plan.planName} thành công.` } })
+        return
+      }
+      if (forceNew) clearPendingCheckout(plan.planId, qrCheckout?.transactionCode)
+      const cached = !forceNew ? getPendingCheckoutByPlan(plan.planId) : null
+      if (!cached && !forceNew) {
+        const cachedErr = getPendingGatewayError(plan.planId)
+        if (cachedErr) {
+          setPaying(null)
+          setPayError(checkoutErrorMessage(cachedErr))
+          return
+        }
+      }
+      const checkout = cached ?? (await createVnpayCheckout(plan.planId))
       if (!needsGatewayRedirect(checkout)) {
         navigate('/owner/plans', { state: { notice: `Đã kích hoạt ${plan.planName} thành công.` } })
         return
       }
+      if (!cached) savePendingCheckout(plan.planId, checkout)
       if (mode === 'redirect') {
         // Giữ nút khóa cho tới khi trình duyệt rời trang để không tạo hai giao dịch
         redirectTo(checkout.paymentUrl)
@@ -131,6 +151,7 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
       setQrCheckout(checkout)
       setPaying(null)
     } catch (caught) {
+      savePendingGatewayError(plan.planId, caught?.status)
       setPaying(null)
       setPayError(checkoutErrorMessage(caught))
     }
@@ -242,7 +263,7 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
                 key={qrCheckout.transactionCode}
                 checkout={qrCheckout}
                 pollMs={qrPollMs}
-                onNewCode={() => startCheckout('qr')}
+                onNewCode={() => startCheckout('qr', { forceNew: true })}
                 onCancel={() => setQrCheckout(null)}
               />
             ) : (

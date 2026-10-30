@@ -37,15 +37,30 @@ function activateSubscription(payment) {
       item.endDate = new Date(now).toISOString()
     })
   const subscriptionId = subscriptions().reduce((max, item) => Math.max(max, item.subscriptionId), 0) + 1
-  subscriptions().push({
+  const created = {
     subscriptionId,
     userId: payment.userId,
     planId: plan.planId,
     status: 'Active',
     startDate: new Date(now).toISOString(),
     endDate: new Date(now + plan.durationDays * DAY_MS).toISOString(),
-  })
+  }
+  subscriptions().push(created)
   payment.subscriptionId = subscriptionId
+  return created
+}
+
+// Lấy giao dịch Pending hiện có của người dùng để cập nhật trực tiếp tại chỗ (đảm bảo mỗi người dùng chỉ có tối đa 1 dòng Pending, không sinh thêm dòng thừa)
+function takeExistingPending(userId) {
+  const list = transactions()
+  const existing = list.find((item) => item.userId === userId && item.status === 'Pending')
+  if (!existing) return null
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    if (list[index].userId === userId && list[index].status === 'Pending' && list[index] !== existing) {
+      list.splice(index, 1)
+    }
+  }
+  return existing
 }
 
 // Mã giao dịch 32 ký tự thập lục phân như BE (yyMMddHHmmss + Guid cắt còn 32)
@@ -101,26 +116,84 @@ export const paymentHandlers = [
     }),
   ),
 
+  // Kích hoạt gói miễn phí 0đ (POST /api/payments/select-free): BE tạo UserSubscription (Active) và trả CurrentSubscriptionDto
+  http.post(
+    '*/api/payments/select-free',
+    route(({ userId, body }) => {
+      if (hasUnknownFields(body, ['planId']) || !Number.isInteger(body?.planId)) return problem(400, 'PlanId is required.')
+      const plan = PLANS.find((item) => item.planId === body.planId)
+      if (!plan) return problem(404, 'Subscription plan not found or inactive.')
+      if (plan.price > 0) return problem(400, 'This endpoint is only for free plans.')
+      const existing = takeExistingPending(userId)
+      const transactionCode = newTransactionCode()
+      const payment = existing
+        ? Object.assign(existing, {
+            transactionCode,
+            planId: plan.planId,
+            planName: plan.planName,
+            amount: 0,
+            paymentMethod: 'Free',
+            status: 'Success',
+            createdAt: new Date().toISOString(),
+          })
+        : {
+            transactionId: transactions().length + 1,
+            transactionCode,
+            userId,
+            planId: plan.planId,
+            planName: plan.planName,
+            amount: 0,
+            paymentMethod: 'Free',
+            status: 'Success',
+            createdAt: new Date().toISOString(),
+          }
+      if (!existing) transactions().push(payment)
+      const created = activateSubscription(payment)
+      saveDb()
+      return HttpResponse.json({
+        hasActiveSubscription: true,
+        subscription: {
+          subscriptionId: created.subscriptionId,
+          status: created.status,
+          startDate: created.startDate,
+          endDate: created.endDate,
+          plan,
+        },
+      })
+    }),
+  ),
+
   http.post(
     '*/api/payments/vnpay/checkout',
     route(({ userId, body }) => {
       if (hasUnknownFields(body, ['planId']) || !Number.isInteger(body?.planId)) return problem(400, 'PlanId is required.')
       const plan = PLANS.find((item) => item.planId === body.planId)
       if (!plan) return problem(404, 'Subscription plan not found or inactive.')
+      const existing = takeExistingPending(userId)
       const free = !(plan.price > 0)
-      const transactionCode = newTransactionCode()
-      const payment = {
-        transactionId: transactions().length + 1,
-        transactionCode,
-        userId,
-        planId: plan.planId,
-        planName: plan.planName,
-        amount: plan.price,
-        paymentMethod: free ? 'Free' : 'VNPay',
-        status: free ? 'Success' : 'Pending',
-        createdAt: new Date().toISOString(),
-      }
-      transactions().push(payment)
+      const transactionCode = existing && existing.planId === plan.planId && !free ? existing.transactionCode : newTransactionCode()
+      const payment = existing
+        ? Object.assign(existing, {
+            transactionCode,
+            planId: plan.planId,
+            planName: plan.planName,
+            amount: plan.price,
+            paymentMethod: free ? 'Free' : 'VNPay',
+            status: free ? 'Success' : 'Pending',
+            createdAt: new Date().toISOString(),
+          })
+        : {
+            transactionId: transactions().length + 1,
+            transactionCode,
+            userId,
+            planId: plan.planId,
+            planName: plan.planName,
+            amount: plan.price,
+            paymentMethod: free ? 'Free' : 'VNPay',
+            status: free ? 'Success' : 'Pending',
+            createdAt: new Date().toISOString(),
+          }
+      if (!existing) transactions().push(payment)
       // Như BE: gói 0đ được kích hoạt ngay trong DB và trả paymentUrl rỗng để FE không chuyển sang VNPay
       if (free) {
         activateSubscription(payment)

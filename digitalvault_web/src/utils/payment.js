@@ -29,6 +29,94 @@ const PAYMENT_STATUS_INFO = {
 }
 export const paymentStatusInfo = (status) => PAYMENT_STATUS_INFO[status] ?? { text: status, tone: 'muted' }
 
+// Link thanh toán VNPay chỉ có hiệu lực 15 phút; quá hạn mà BE vẫn ghi Pending nghĩa là khách đã bỏ dở (VNPay không gọi lại)
+export const PENDING_EXPIRE_MS = 15 * 60 * 1000
+export function isPendingExpired(item, now = Date.now()) {
+  if (item?.status !== 'Pending') return false
+  const created = parseServerDate(item.createdAt).getTime()
+  return !Number.isNaN(created) && now - created > PENDING_EXPIRE_MS
+}
+
+const PENDING_CHECKOUT_KEY = 'aeterna.pendingCheckouts'
+
+// Lưu lại paymentUrl của giao dịch Pending vừa tạo (chỉ giữ 1 gói Pending duy nhất) để khách bấm "Tiếp tục thanh toán" mở lại đúng link VNPay cũ mà không tạo đơn Pending mới
+export function savePendingCheckout(planId, checkout) {
+  if (!checkout?.transactionCode || !checkout?.paymentUrl) return
+  try {
+    const entry = {
+      planId: Number(planId),
+      transactionCode: checkout.transactionCode,
+      amount: checkout.amount,
+      paymentUrl: checkout.paymentUrl,
+      createdAt: Date.now(),
+    }
+    const map = {
+      [String(planId)]: entry,
+      [`tx:${checkout.transactionCode}`]: entry,
+    }
+    localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify(map))
+  } catch {
+    // Bỏ qua khi trình duyệt chặn storage
+  }
+}
+
+// Khi BE lỗi 503 (chưa cấu hình VNPay nhưng BE đã lỡ ghi 1 dòng Pending vào DB), ghi nhận để các lần bấm lại không gọi POST tạo thêm dòng Pending trùng
+export function savePendingGatewayError(planId, status = 503) {
+  if (status !== 503) return
+  try {
+    const map = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || '{}')
+    map[`err:${planId}`] = { status: 503, createdAt: Date.now() }
+    localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify(map))
+  } catch {
+    // Bỏ qua khi trình duyệt chặn storage
+  }
+}
+
+export function getPendingGatewayError(planId, now = Date.now()) {
+  try {
+    const map = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || '{}')
+    const entry = map[`err:${planId}`]
+    if (!entry || now - entry.createdAt > PENDING_EXPIRE_MS) return null
+    return entry
+  } catch {
+    return null
+  }
+}
+
+export function getPendingCheckoutByPlan(planId, now = Date.now()) {
+  try {
+    const map = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || '{}')
+    const entry = map[String(planId)]
+    if (!entry?.paymentUrl || now - entry.createdAt > PENDING_EXPIRE_MS) return null
+    return entry
+  } catch {
+    return null
+  }
+}
+
+export function getPendingCheckoutByCode(transactionCode, now = Date.now()) {
+  if (!transactionCode) return null
+  try {
+    const map = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || '{}')
+    const entry = map[`tx:${transactionCode}`]
+    if (!entry?.paymentUrl || now - entry.createdAt > PENDING_EXPIRE_MS) return null
+    return entry
+  } catch {
+    return null
+  }
+}
+
+export function clearPendingCheckout(planId, transactionCode) {
+  try {
+    const map = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || '{}')
+    if (planId !== undefined) delete map[String(planId)]
+    if (transactionCode) delete map[`tx:${transactionCode}`]
+    localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify(map))
+  } catch {
+    // Bỏ qua khi trình duyệt chặn storage
+  }
+}
+
 // Bộ lọc trạng thái của lịch sử giao dịch (giá trị gửi lên BE qua ?status=)
 export const PAYMENT_STATUS_FILTERS = [
   { value: '', label: 'Tất cả' },
@@ -106,7 +194,7 @@ export function checkoutErrorMessage(error) {
     case 404:
       return 'Gói dịch vụ không còn khả dụng. Vui lòng tải lại trang.'
     case 400:
-      return 'Gói dịch vụ này chưa thể thanh toán (giá chưa hợp lệ).'
+      return error?.message || 'Gói dịch vụ này chưa thể thanh toán (giá chưa hợp lệ).'
     case 503:
       return NOT_CONFIGURED
     default:

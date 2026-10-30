@@ -187,4 +187,40 @@ describe('OwnerPlansPage navigation and history', () => {
     expect(screen.getByRole('table', { name: 'Lịch sử thanh toán' })).toHaveTextContent('TXN-OK')
     expect(screen.getByRole('table', { name: 'Lịch sử thanh toán' })).not.toHaveTextContent('TXN-FAIL')
   })
+
+  it('history_MultiplePendingTransactions_KeepsOnlyLatestPendingRow', async () => {
+    getDb().paymentTransactions = Array.from({ length: 12 }, (_, index) => ({
+      transactionId: index + 1,
+      transactionCode: index === 0 ? 'TXN-NEW' : `TXN-DUP-${index}`,
+      userId: demoUserId(),
+      planId: 2,
+      planName: 'Nâng cao',
+      amount: 499000,
+      paymentMethod: 'VNPay',
+      status: 'Pending',
+      createdAt: new Date(Date.now() - (index + 1) * 60 * 1000).toISOString(),
+    }))
+    renderPage()
+    const table = await screen.findByRole('table', { name: 'Lịch sử thanh toán' })
+    await screen.findByRole('article', { name: 'Cơ bản' })
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('TXN-NEW')
+    expect(rows[0]).toHaveTextContent('Đang chờ xác nhận')
+    expect(within(rows[0]).getByRole('button', { name: 'Tiếp tục thanh toán' })).toHaveAttribute('href', '/owner/plans/2/checkout')
+    expect(table).not.toHaveTextContent('TXN-DUP-1')
+    expect(screen.queryByRole('navigation', { name: 'Phân trang lịch sử thanh toán' })).not.toBeInTheDocument()
+  })
+
+  it('history_ExpiredPendingTransaction_MarksExpiredAndOffersRetry', async () => {
+    getDb().paymentTransactions = [
+      { transactionId: 2, transactionCode: 'TXN-OLD', userId: demoUserId(), planId: 1, planName: 'Cơ bản', amount: 99000, paymentMethod: 'VNPay', status: 'Pending', createdAt: new Date(Date.now() - DAY).toISOString() },
+    ]
+    renderPage()
+    const table = await screen.findByRole('table', { name: 'Lịch sử thanh toán' })
+    await screen.findByRole('article', { name: 'Cơ bản' })
+    const [old] = within(table).getAllByRole('row').slice(1)
+    expect(old).toHaveTextContent('Quá hạn thanh toán')
+    expect(within(old).getByRole('button', { name: 'Thanh toán lại' })).toHaveAttribute('href', '/owner/plans/1/checkout')
+  })
 })

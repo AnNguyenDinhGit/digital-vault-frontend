@@ -221,6 +221,7 @@ export function resetMockDb() {
   state = createSeed()
   try {
     localStorage.removeItem(DB_STORAGE_KEY)
+    localStorage.removeItem('aeterna.pendingCheckouts')
     sessionStorage.removeItem(SESSION_STORAGE_KEY)
   } catch {
     // Bỏ qua khi trình duyệt chặn storage

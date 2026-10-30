@@ -114,6 +114,25 @@ describe('OwnerCheckoutPage payment', () => {
     expect(stored[0]).toMatchObject({ planId: 2, status: 'Pending' })
   })
 
+  it('pay_ClickMultipleTimesOrReenter_KeepsOnlySinglePendingTransaction', async () => {
+    const first = renderCheckout()
+    await waitForCheckout()
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(payButton())
+    await vi.waitFor(() => expect(redirectTo).toHaveBeenCalledTimes(1))
+    const firstUrl = redirectTo.mock.calls[0][0]
+    expect(getDb().paymentTransactions).toHaveLength(1)
+
+    first.unmount()
+    renderCheckout()
+    await waitForCheckout()
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(payButton())
+    await vi.waitFor(() => expect(redirectTo).toHaveBeenCalledTimes(2))
+    expect(redirectTo.mock.calls[1][0]).toBe(firstUrl)
+    expect(getDb().paymentTransactions).toHaveLength(1)
+  })
+
   it('pay_WhileProcessing_KeepsButtonDisabled', async () => {
     server.use(
       http.post('*/api/payments/vnpay/checkout', async () => {
