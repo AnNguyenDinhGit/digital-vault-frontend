@@ -20,12 +20,10 @@ import {
   formatStorage,
   formatVnd,
   getPendingCheckoutByPlan,
-  getPendingGatewayError,
   isFreePlan,
   needsGatewayRedirect,
   PAYMENT_METHODS,
   savePendingCheckout,
-  savePendingGatewayError,
 } from '../../utils/payment'
 
 const METHOD_ICONS = { VNPay: Landmark, MoMo: Wallet, BankTransfer: Building2 }
@@ -129,14 +127,6 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
       }
       if (forceNew) clearPendingCheckout(plan.planId, qrCheckout?.transactionCode)
       const cached = !forceNew ? getPendingCheckoutByPlan(plan.planId) : null
-      if (!cached && !forceNew) {
-        const cachedErr = getPendingGatewayError(plan.planId)
-        if (cachedErr) {
-          setPaying(null)
-          setPayError(checkoutErrorMessage(cachedErr))
-          return
-        }
-      }
       const checkout = cached ?? (await createVnpayCheckout(plan.planId))
       if (!needsGatewayRedirect(checkout)) {
         navigate('/owner/plans', { state: { notice: `Đã kích hoạt ${plan.planName} thành công.` } })
@@ -151,7 +141,6 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
       setQrCheckout(checkout)
       setPaying(null)
     } catch (caught) {
-      savePendingGatewayError(plan.planId, caught?.status)
       setPaying(null)
       setPayError(checkoutErrorMessage(caught))
     }

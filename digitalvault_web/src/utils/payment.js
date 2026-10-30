@@ -60,29 +60,6 @@ export function savePendingCheckout(planId, checkout) {
   }
 }
 
-// Khi BE lỗi 503 (chưa cấu hình VNPay nhưng BE đã lỡ ghi 1 dòng Pending vào DB), ghi nhận để các lần bấm lại không gọi POST tạo thêm dòng Pending trùng
-export function savePendingGatewayError(planId, status = 503) {
-  if (status !== 503) return
-  try {
-    const map = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || '{}')
-    map[`err:${planId}`] = { status: 503, createdAt: Date.now() }
-    localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify(map))
-  } catch {
-    // Bỏ qua khi trình duyệt chặn storage
-  }
-}
-
-export function getPendingGatewayError(planId, now = Date.now()) {
-  try {
-    const map = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || '{}')
-    const entry = map[`err:${planId}`]
-    if (!entry || now - entry.createdAt > PENDING_EXPIRE_MS) return null
-    return entry
-  } catch {
-    return null
-  }
-}
-
 export function getPendingCheckoutByPlan(planId, now = Date.now()) {
   try {
     const map = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_KEY) || '{}')
