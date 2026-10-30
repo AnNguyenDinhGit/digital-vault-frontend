@@ -21,6 +21,7 @@ import AdminEncryptionPage from './pages/admin/AdminEncryptionPage'
 import AdminPlansPage from './pages/admin/AdminPlansPage'
 import MockVnpayGatewayPage from './pages/payment/MockVnpayGatewayPage'
 import OwnerPlansPage from './pages/owner/OwnerPlansPage'
+import OwnerCheckoutPage from './pages/owner/OwnerCheckoutPage'
 import VnpayReturnPage from './pages/payment/VnpayReturnPage'
 import { MOCK_MODE } from './mocks/mode'
 import AdminRolesPage from './pages/admin/AdminRolesPage'
@@ -69,6 +70,7 @@ function App() {
               <Route path="handovers/:requestId" element={<OwnerHandoverDetailPage />} />
               <Route path="notifications" element={<OwnerNotificationsPage />} />
               <Route path="plans" element={<OwnerPlansPage />} />
+              <Route path="plans/:planId/checkout" element={<OwnerCheckoutPage />} />
               <Route path="proof-of-life" element={<ProofOfLifePage />} />
               <Route path="activity-log" element={<ActivityLogPage />} />
               <Route path="security" element={<SecuritySettingsPage />} />

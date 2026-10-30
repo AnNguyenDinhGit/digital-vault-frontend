@@ -12,12 +12,14 @@
     <PackageJsonScriptsTest Condition="$(PackageJsonScriptsTest) == ''">vitest run</PackageJsonScriptsTest>
     <PackageJsonScriptsTestWatch Condition="$(PackageJsonScriptsTestWatch) == ''">vitest</PackageJsonScriptsTestWatch>
     <PackageJsonDependenciesAxios Condition="$(PackageJsonDependenciesAxios) == ''">^1.20.0</PackageJsonDependenciesAxios>
+    <PackageJsonDependenciesBootstrap Condition="$(PackageJsonDependenciesBootstrap) == ''">^5.3.8</PackageJsonDependenciesBootstrap>
     <PackageJsonDependenciesLucideReact Condition="$(PackageJsonDependenciesLucideReact) == ''">^1.53.0</PackageJsonDependenciesLucideReact>
+    <PackageJsonDependenciesQrcodeReact Condition="$(PackageJsonDependenciesQrcodeReact) == ''">^4.2.0</PackageJsonDependenciesQrcodeReact>
     <PackageJsonDependenciesReact Condition="$(PackageJsonDependenciesReact) == ''">^19.2.8</PackageJsonDependenciesReact>
+    <PackageJsonDependenciesReactBootstrap Condition="$(PackageJsonDependenciesReactBootstrap) == ''">^2.10.10</PackageJsonDependenciesReactBootstrap>
     <PackageJsonDependenciesReactDom Condition="$(PackageJsonDependenciesReactDom) == ''">^19.2.8</PackageJsonDependenciesReactDom>
     <PackageJsonDependenciesReactRouterDom Condition="$(PackageJsonDependenciesReactRouterDom) == ''">^7.18.4</PackageJsonDependenciesReactRouterDom>
     <PackageJsonDevdependenciesEslintJs Condition="$(PackageJsonDevdependenciesEslintJs) == ''">^10.0.1</PackageJsonDevdependenciesEslintJs>
-    <PackageJsonDevdependenciesTailwindcssVite Condition="$(PackageJsonDevdependenciesTailwindcssVite) == ''">^4.3.3</PackageJsonDevdependenciesTailwindcssVite>
     <PackageJsonDevdependenciesTestingLibraryDom Condition="$(PackageJsonDevdependenciesTestingLibraryDom) == ''">^10.4.2</PackageJsonDevdependenciesTestingLibraryDom>
     <PackageJsonDevdependenciesTestingLibraryJestDom Condition="$(PackageJsonDevdependenciesTestingLibraryJestDom) == ''">^7.0.1</PackageJsonDevdependenciesTestingLibraryJestDom>
     <PackageJsonDevdependenciesTestingLibraryReact Condition="$(PackageJsonDevdependenciesTestingLibraryReact) == ''">^16.3.3</PackageJsonDevdependenciesTestingLibraryReact>
@@ -30,7 +32,7 @@
     <PackageJsonDevdependenciesEslintPluginReactRefresh Condition="$(PackageJsonDevdependenciesEslintPluginReactRefresh) == ''">^0.5.6</PackageJsonDevdependenciesEslintPluginReactRefresh>
     <PackageJsonDevdependenciesGlobals Condition="$(PackageJsonDevdependenciesGlobals) == ''">^17.12.0</PackageJsonDevdependenciesGlobals>
     <PackageJsonDevdependenciesJsdom Condition="$(PackageJsonDevdependenciesJsdom) == ''">^29.1.1</PackageJsonDevdependenciesJsdom>
-    <PackageJsonDevdependenciesTailwindcss Condition="$(PackageJsonDevdependenciesTailwindcss) == ''">^4.3.3</PackageJsonDevdependenciesTailwindcss>
+    <PackageJsonDevdependenciesMsw Condition="$(PackageJsonDevdependenciesMsw) == ''">^2.15.0</PackageJsonDevdependenciesMsw>
     <PackageJsonDevdependenciesVite Condition="$(PackageJsonDevdependenciesVite) == ''">^8.3.0</PackageJsonDevdependenciesVite>
     <PackageJsonDevdependenciesVitest Condition="$(PackageJsonDevdependenciesVitest) == ''">^5.0.3</PackageJsonDevdependenciesVitest>
   </PropertyGroup>

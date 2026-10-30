@@ -274,3 +274,17 @@ export function setSessionUserId(userId) {
     // Bỏ qua khi trình duyệt chặn storage
   }
 }
+
+// Trang VNPay giả lập mở ở tab khác (ví dụ link trong mã QR) ghi kết quả vào localStorage; tab đang chờ nhận lại các bảng thanh toán
+// để thấy giao dịch đổi trạng thái. Sự kiện storage chỉ bắn ở các tab khác nên không ảnh hưởng tab đang ghi.
+export function listenForOtherTabs(keys = ['paymentTransactions', 'userSubscriptions']) {
+  if (typeof window === 'undefined') return
+  window.addEventListener('storage', (event) => {
+    if (event.key !== DB_STORAGE_KEY) return
+    const stored = loadState()
+    if (!stored) return
+    keys.forEach((key) => {
+      if (stored[key] !== undefined) state[key] = stored[key]
+    })
+  })
+}
