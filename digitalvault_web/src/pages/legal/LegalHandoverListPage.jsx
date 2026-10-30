@@ -6,6 +6,7 @@ import { getLegalHandovers } from '../../callapi/legalApi'
 import AdminPager from '../../components/admin/AdminPager'
 import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import { useAdminList } from '../../hooks/useAdminList'
+import { handoverCode } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
 export default function LegalHandoverListPage({
@@ -97,7 +98,7 @@ export default function LegalHandoverListPage({
                 {handovers.map((handover) => (
                   <tr key={handover.requestId}>
                     <td className="ps-4 py-3">
-                      <span className="fw-semibold text-ink">{`#REQ-${handover.requestId}`}</span>
+                      <span className="fw-semibold text-ink">{handoverCode(handover)}</span>
                     </td>
                     <td className="py-3">
                       <span className="text-slate-600">{`Kho #${handover.vaultId}`}</span>

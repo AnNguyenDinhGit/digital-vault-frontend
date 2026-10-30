@@ -21,9 +21,12 @@ import {
 import AppToast from '../../components/common/AppToast'
 import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import ReviewActionModal from '../../components/legal/ReviewActionModal'
+import OwnerStatusCard from '../../components/legal/OwnerStatusCard'
+import ReviewHistory from '../../components/legal/ReviewHistory'
 import { useLegalHandoverDetail } from '../../hooks/useLegalHandoverDetail'
 import { downloadBlob } from '../../utils/download'
-import { handoverStatusInfo } from '../../utils/handover'
+import { assetTypeLabel } from '../../utils/catalog'
+import { handoverCode, handoverStatusInfo } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
 const CASE_STATUS_LABELS = {
@@ -151,8 +154,13 @@ export default function LegalHandoverDetailPage() {
   // Kết quả thẩm định đã có (vừa làm xong, hoặc lấy từ hồ sơ khi mở lại trang)
   const reviewInfo = reviewResult ?? (outcome ? handover.verification : null)
   const OutcomeIcon = (outcome ?? DEFAULT_OUTCOME).icon
+  // Tên chủ kho: BE trả ownerName và owner.fullName (bản cũ chỉ có owner)
+  const ownerName = handover.ownerName ?? handover.owner?.fullName ?? null
   const handoverDocs = handover.documents ?? []
-  const assetDocs = handover.assetDocuments ?? []
+  // Tài sản của chủ kho kèm tài liệu (BE: GET /legal/handovers/{id}/assets); dữ liệu phẳng cũ chỉ có assetDocuments thì gom vào một nhóm chung
+  const assetGroups = (handover.assets ?? (handover.assetDocuments?.length ? [{ assetId: null, name: 'Tài liệu tài sản', documents: handover.assetDocuments }] : [])).map((asset) => ({ ...asset, documents: asset.documents ?? [] }))
+  const assetDocCount = assetGroups.reduce((sum, asset) => sum + asset.documents.length, 0)
+  const assetNames = new Map(assetGroups.map((asset) => [asset.assetId, asset.name]))
   const cases = handover.cases ?? []
 
   return (
@@ -177,12 +185,12 @@ export default function LegalHandoverDetailPage() {
           <div>
             <div className="d-flex align-items-center gap-2 mb-1">
               <h1 className="mb-0 fw-bold text-ink" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>
-                {`Hồ sơ thẩm định #${handover.requestId}`}
+                {[handoverCode(handover), ownerName, `Kho #${handover.vaultId}`].filter(Boolean).join(' · ')}
               </h1>
               <HandoverStatusBadge status={currentStatus} />
             </div>
             <p className="mb-0 fs-12 text-slate-500 d-flex flex-wrap align-items-center gap-2">
-              <span>{`Kho di sản #${handover.vaultId}`}</span>
+              <span>Hồ sơ thẩm định pháp lý</span>
               <span aria-hidden="true">·</span>
               <span>{`Khởi tạo lúc ${formatDateTime(handover.initiatedAt)}`}</span>
               {handover.requestType && (
@@ -286,6 +294,16 @@ export default function LegalHandoverDetailPage() {
         </div>
       </section>
 
+      {/* Tình trạng chủ kho (owner-status): trạng thái sống, giấy chứng tử, thời điểm xác minh */}
+      <OwnerStatusCard
+        status={handover.ownerStatus}
+        certificateName={handoverDocs.find((doc) => doc.documentId === handover.ownerStatus?.deathCertificateDocumentId)?.fileName ?? null}
+        downloading={downloadingDocId === handover.ownerStatus?.deathCertificateDocumentId}
+        onDownloadDeathCertificate={(documentId) =>
+          handleDownloadHandoverDoc(handoverDocs.find((doc) => doc.documentId === documentId) ?? { documentId, fileName: `giay-chung-tu-${documentId}.pdf` })
+        }
+      />
+
       {/* Lỗi download nếu có */}
       {downloadError && (
         <Alert variant="danger" className="av-alert mb-0" dismissible onClose={() => setDownloadError('')}>
@@ -367,48 +385,71 @@ export default function LegalHandoverDetailPage() {
                 Tài liệu của tài sản trong kho
               </h2>
               <Badge bg="secondary" className="fs-11 fw-normal">
-                {assetDocs.length} tệp
+                {`${assetGroups.length} tài sản · ${assetDocCount} tệp`}
               </Badge>
             </div>
 
-            {assetDocs.length === 0 ? (
-              <p className="av-empty mb-0 fs-13 text-slate-500 py-4 text-center">
-                Không có tài liệu đính kèm tài sản riêng trong hồ sơ này.
-              </p>
+            {assetGroups.length === 0 ? (
+              <p className="av-empty mb-0 fs-13 text-slate-500 py-4 text-center">Hồ sơ này chưa có tài sản nào của chủ kho.</p>
             ) : (
-              <div className="d-flex flex-column gap-2">
-                {assetDocs.map((doc) => (
-                  <div key={doc.documentId} className="p-3 border rounded-3 bg-white d-flex align-items-center justify-content-between gap-3">
-                    <div className="d-flex align-items-center gap-3 overflow-hidden">
-                      <span className="av-icon-tile" style={{ width: 36, height: 36, minWidth: 36 }}>
-                        <FileCheck size={16} />
-                      </span>
+              <div className="d-flex flex-column gap-3">
+                {assetGroups.map((asset) => (
+                  <div key={asset.assetId ?? 'other'} className="border rounded-3 bg-white">
+                    <div className="px-3 py-2 d-flex align-items-center justify-content-between gap-2 border-bottom bg-light rounded-top-3">
                       <div className="overflow-hidden">
-                        <p className="mb-0 fs-13 fw-semibold text-ink text-truncate" title={doc.fileName}>
-                          {doc.fileName || `Tài liệu tài sản #${doc.documentId}`}
+                        <p className="mb-0 fs-13 fw-bold text-ink text-truncate" title={asset.name}>
+                          {asset.name || `Tài sản #${asset.assetId}`}
                         </p>
-                        <div className="d-flex align-items-center gap-2 fs-11 text-slate-500 mt-1">
-                          {doc.fileType && <span>{doc.fileType}</span>}
-                          {doc.isEncrypted && (
-                            <span className="badge bg-light text-secondary border d-inline-flex align-items-center gap-1">
-                              <Lock size={10} /> Đã mã hóa
-                            </span>
-                          )}
-                        </div>
+                        {(asset.type || asset.description) && (
+                          <p className="mb-0 fs-11 text-slate-500 text-truncate">
+                            {[asset.type && assetTypeLabel(asset.type), asset.description].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
                       </div>
+                      <span className="badge bg-white text-secondary border flex-shrink-0">{`${asset.documents.length} tệp`}</span>
                     </div>
 
-                    <Button
-                      type="button"
-                      variant="outline-primary"
-                      size="sm"
-                      className="d-inline-flex align-items-center gap-1 flex-shrink-0 fs-12 px-3"
-                      disabled={downloadingAssetDocId === doc.documentId}
-                      onClick={() => handleDownloadAssetDoc(doc)}
-                    >
-                      <Download size={13} />
-                      {downloadingAssetDocId === doc.documentId ? 'Đang tải...' : 'Tải về'}
-                    </Button>
+                    {asset.documents.length === 0 ? (
+                      <p className="mb-0 px-3 py-3 fs-12 text-slate-500">Tài sản này chưa có giấy tờ nào.</p>
+                    ) : (
+                      <div className="d-flex flex-column gap-2 p-2">
+                        {asset.documents.map((doc) => (
+                          <div key={doc.documentId} className="p-2 border rounded-3 d-flex align-items-center justify-content-between gap-3">
+                            <div className="d-flex align-items-center gap-3 overflow-hidden">
+                              <span className="av-icon-tile" style={{ width: 36, height: 36, minWidth: 36 }}>
+                                <FileCheck size={16} />
+                              </span>
+                              <div className="overflow-hidden">
+                                <p className="mb-0 fs-13 fw-semibold text-ink text-truncate" title={doc.fileName}>
+                                  {doc.fileName || `Tài liệu tài sản #${doc.documentId}`}
+                                </p>
+                                <div className="d-flex align-items-center flex-wrap gap-2 fs-11 text-slate-500 mt-1">
+                                  {doc.fileType && <span>{doc.fileType}</span>}
+                                  {doc.isEncrypted && (
+                                    <span className="badge bg-light text-secondary border d-inline-flex align-items-center gap-1">
+                                      <Lock size={10} /> Đã mã hóa
+                                    </span>
+                                  )}
+                                  {doc.status && doc.status !== 'Active' && <span className="badge bg-light text-secondary border">{doc.status}</span>}
+                                </div>
+                              </div>
+                            </div>
+
+                            <Button
+                              type="button"
+                              variant="outline-primary"
+                              size="sm"
+                              className="d-inline-flex align-items-center gap-1 flex-shrink-0 fs-12 px-3"
+                              disabled={downloadingAssetDocId === doc.documentId}
+                              onClick={() => handleDownloadAssetDoc(doc)}
+                            >
+                              <Download size={13} />
+                              {downloadingAssetDocId === doc.documentId ? 'Đang tải...' : 'Tải về'}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -431,7 +472,7 @@ export default function LegalHandoverDetailPage() {
               <thead className="bg-light">
                 <tr className="fs-11 text-slate-500 text-uppercase border-bottom">
                   <th scope="col" className="py-2">Mã bàn giao</th>
-                  <th scope="col" className="py-2">Tài sản ID</th>
+                  <th scope="col" className="py-2">Tài sản</th>
                   <th scope="col" className="py-2">Người thụ hưởng ID</th>
                   <th scope="col" className="py-2">Trạng thái bàn giao</th>
                 </tr>
@@ -440,7 +481,7 @@ export default function LegalHandoverDetailPage() {
                 {cases.map((c) => (
                   <tr key={c.handoverId}>
                     <td className="fw-semibold text-ink">#{c.handoverId}</td>
-                    <td>{`Tài sản #${c.assetId}`}</td>
+                    <td>{c.assetName ?? assetNames.get(c.assetId) ?? `Tài sản #${c.assetId}`}</td>
                     <td>{`Người nhận #${c.beneficiaryId}`}</td>
                     <td>
                       <span className="badge bg-light text-dark border">
@@ -454,6 +495,9 @@ export default function LegalHandoverDetailPage() {
           </div>
         )}
       </section>
+
+      {/* Lịch sử các lần thẩm định của hồ sơ */}
+      <ReviewHistory entries={handover.history ?? []} />
 
       {/* Modal xác nhận thẩm định kèm ô nhập nhận xét validation 1-2000 ký tự */}
       {reviewModalType && (
