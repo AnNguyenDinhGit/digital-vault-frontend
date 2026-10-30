@@ -5,6 +5,7 @@ import { MOCK_VNPAY_SIGNATURE } from './vnpayMock'
 
 // Mock thanh toán VNPay, bám PaymentController/VnPayService của BE
 const PLANS = [
+  { planId: 4, planName: 'Miễn phí', maxVaults: 1, maxStorageBytes: 536870912, price: 0, durationDays: 30 },
   { planId: 1, planName: 'Cơ bản', maxVaults: 1, maxStorageBytes: 1073741824, price: 99000, durationDays: 30 },
   { planId: 2, planName: 'Nâng cao', maxVaults: 5, maxStorageBytes: 10737418240, price: 499000, durationDays: 180 },
   { planId: 3, planName: 'Gia đình', maxVaults: 20, maxStorageBytes: 53687091200, price: 899000, durationDays: 365 },
@@ -106,19 +107,26 @@ export const paymentHandlers = [
       if (hasUnknownFields(body, ['planId']) || !Number.isInteger(body?.planId)) return problem(400, 'PlanId is required.')
       const plan = PLANS.find((item) => item.planId === body.planId)
       if (!plan) return problem(404, 'Subscription plan not found or inactive.')
-      if (!(plan.price > 0)) return problem(400, 'This plan cannot be purchased.')
+      const free = !(plan.price > 0)
       const transactionCode = newTransactionCode()
-      transactions().push({
+      const payment = {
         transactionId: transactions().length + 1,
         transactionCode,
         userId,
         planId: plan.planId,
         planName: plan.planName,
         amount: plan.price,
-        paymentMethod: 'VNPay',
-        status: 'Pending',
+        paymentMethod: free ? 'Free' : 'VNPay',
+        status: free ? 'Success' : 'Pending',
         createdAt: new Date().toISOString(),
-      })
+      }
+      transactions().push(payment)
+      // Như BE: gói 0đ được kích hoạt ngay trong DB và trả paymentUrl rỗng để FE không chuyển sang VNPay
+      if (free) {
+        activateSubscription(payment)
+        saveDb()
+        return HttpResponse.json({ transactionCode, amount: 0, paymentUrl: '' })
+      }
       saveDb()
       const query = new URLSearchParams({ vnp_TxnRef: transactionCode, vnp_Amount: String(plan.price * 100), vnp_OrderInfo: `Payment for ${plan.planName}` })
       return HttpResponse.json({ transactionCode, amount: plan.price, paymentUrl: `/payment/mock-vnpay?${query}` })

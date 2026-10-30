@@ -26,7 +26,10 @@ export async function getMyTransactions({ page = 1, pageSize = 10, status } = {}
 
 // Tạo giao dịch chờ thanh toán và nhận paymentUrl để chuyển trình duyệt sang VNPay (BE trả 503 khi chưa cấu hình VNPay)
 export async function createVnpayCheckout(planId) {
-  const { data } = await axiosClient.post('/payments/vnpay/checkout', { planId })
+  const { data: raw } = await axiosClient.post('/payments/vnpay/checkout', { planId })
+  // Swagger ghi mã giao dịch là transactionCode, tài liệu gói 0đ của BE lại ghi reference: nhận cả hai.
+  // Gói 0đ: BE kích hoạt ngay, trả 200 với paymentUrl "" hoặc null.
+  const data = { ...raw, transactionCode: raw?.transactionCode ?? raw?.reference ?? null, paymentUrl: raw?.paymentUrl ?? '' }
   return data
 }
 

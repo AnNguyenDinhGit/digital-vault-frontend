@@ -72,7 +72,7 @@ export default function PaymentHistoryPanel() {
                     <td className="font-mono fs-12 text-break">{item.transactionCode}</td>
                     <td className="fw-semibold text-ink">{item.planName ?? '—'}</td>
                     <td className="text-nowrap">{formatVnd(item.amount)}</td>
-                    <td>{item.paymentMethod ?? 'VNPay'}</td>
+                    <td>{item.paymentMethod === 'Free' || Number(item.amount) === 0 ? 'Miễn phí' : (item.paymentMethod ?? 'VNPay')}</td>
                     <td>
                       <span className={`av-badge av-badge-${info.tone}`}>{info.text}</span>
                     </td>

@@ -1,7 +1,7 @@
 import { AlertTriangle, Building2, CalendarClock, CreditCard, HardDrive, Landmark, Lock, QrCode, ShieldCheck, Vault, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { Alert, Button, Form } from 'react-bootstrap'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createVnpayCheckout, getMySubscription, getPlans } from '../../callapi/paymentApi'
 import AdminResourceState from '../../components/admin/AdminResourceState'
 import { BackLink } from '../../components/beneficiary/BeneficiaryUi'
@@ -15,9 +15,11 @@ import {
   estimatedEndDate,
   formatDuration,
   formatPaymentDate,
+  formatPlanPrice,
   formatStorage,
   formatVnd,
   isFreePlan,
+  needsGatewayRedirect,
   PAYMENT_METHODS,
 } from '../../utils/payment'
 
@@ -82,6 +84,7 @@ function MethodOption({ method, checked, onChange }) {
 // Màn hình thanh toán một gói: tóm tắt đơn hàng, chọn phương thức, đồng ý điều khoản rồi chuyển sang VNPay hoặc quét mã QR
 export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_POLL_MS }) {
   const { planId } = useParams()
+  const navigate = useNavigate()
   const { data, error, loading, reload } = useAdminResource(loadCheckout)
   const [method, setMethod] = useState('VNPay')
   const [agreed, setAgreed] = useState(false)
@@ -103,20 +106,23 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
   if (!plan) {
     return <Unavailable title="Không tìm thấy gói dịch vụ" message="Gói dịch vụ này không tồn tại hoặc đã ngừng bán. Hãy chọn một gói khác." />
   }
-  if (isFreePlan(plan)) {
-    return <Unavailable title={plan.planName} message="Đây là gói mặc định miễn phí, không cần thanh toán." />
-  }
 
+  const free = isFreePlan(plan)
   const current = data.subscription?.hasActiveSubscription ? data.subscription.subscription : null
   const renewing = current?.plan?.planId === plan.planId
-  const canPay = agreed && method === 'VNPay' && paying === null
+  const canPay = agreed && (free || method === 'VNPay') && paying === null
 
-  // Tạo giao dịch VNPay; 'redirect' chuyển cả trình duyệt sang VNPay, 'qr' hiện mã QR chứa link thanh toán
+  // Gọi API checkout. BE trả paymentUrl rỗng khi đã kích hoạt gói ngay (gói 0đ): báo thành công và về trang Gói dịch vụ.
+  // Có paymentUrl thì 'redirect' chuyển cả trình duyệt sang VNPay, 'qr' hiện mã QR chứa link thanh toán.
   const startCheckout = async (mode) => {
     setPaying(mode)
     setPayError('')
     try {
       const checkout = await createVnpayCheckout(plan.planId)
+      if (!needsGatewayRedirect(checkout)) {
+        navigate('/owner/plans', { state: { notice: `Đã kích hoạt ${plan.planName} thành công.` } })
+        return
+      }
       if (mode === 'redirect') {
         // Giữ nút khóa cho tới khi trình duyệt rời trang để không tạo hai giao dịch
         redirectTo(checkout.paymentUrl)
@@ -187,12 +193,20 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
             <h2 id="checkout-method-title" className="mb-0 av-section-title">
               PHƯƠNG THỨC THANH TOÁN
             </h2>
-            <div className="d-flex flex-column gap-2" role="radiogroup" aria-labelledby="checkout-method-title">
-              {PAYMENT_METHODS.map((item) => (
-                <MethodOption key={item.value} method={item} checked={method === item.value} onChange={() => setMethod(item.value)} />
-              ))}
-            </div>
-            <p className="mb-0 fs-11 text-slate-500">Ví MoMo và chuyển khoản ngân hàng sẽ được hỗ trợ khi hệ thống mở thêm cổng thanh toán.</p>
+            {free ? (
+              <p className="mb-0 av-info-box fs-13 text-slate-600" style={{ padding: 14 }}>
+                Gói miễn phí không cần thanh toán. Gói sẽ được kích hoạt ngay khi bạn bấm &quot;Kích hoạt gói miễn phí&quot;.
+              </p>
+            ) : (
+              <>
+                <div className="d-flex flex-column gap-2" role="radiogroup" aria-labelledby="checkout-method-title">
+                  {PAYMENT_METHODS.map((item) => (
+                    <MethodOption key={item.value} method={item} checked={method === item.value} onChange={() => setMethod(item.value)} />
+                  ))}
+                </div>
+                <p className="mb-0 fs-11 text-slate-500">Ví MoMo và chuyển khoản ngân hàng sẽ được hỗ trợ khi hệ thống mở thêm cổng thanh toán.</p>
+              </>
+            )}
           </section>
 
           {current && (
@@ -201,7 +215,7 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
               <span>
                 {renewing
                   ? `Bạn đang dùng gói ${plan.planName} (hết hạn ${formatPaymentDate(current.endDate)}). Thanh toán lần này sẽ kích hoạt một kỳ mới thay cho kỳ hiện tại.`
-                  : `Bạn đang dùng gói ${current.plan?.planName ?? 'hiện tại'} (hết hạn ${formatPaymentDate(current.endDate)}). Khi thanh toán thành công, gói này sẽ hết hạn và gói ${plan.planName} có hiệu lực ngay.`}
+                  : `Bạn đang dùng gói ${current.plan?.planName ?? 'hiện tại'} (hết hạn ${formatPaymentDate(current.endDate)}). ${free ? 'Khi kích hoạt' : 'Khi thanh toán thành công'}, gói này sẽ hết hạn và gói ${plan.planName} có hiệu lực ngay.`}
               </span>
             </Alert>
           )}
@@ -216,7 +230,7 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
               <SummaryRow label="Gói dịch vụ">{plan.planName}</SummaryRow>
               <SummaryRow label="Thời hạn">{formatDuration(plan.durationDays)}</SummaryRow>
               <SummaryRow label="Hiệu lực dự kiến">{`đến ${formatPaymentDate(estimatedEndDate(plan.durationDays))}`}</SummaryRow>
-              <SummaryRow label="Đơn giá">{formatVnd(plan.price)}</SummaryRow>
+              <SummaryRow label="Đơn giá">{formatPlanPrice(plan)}</SummaryRow>
               <hr className="my-1" />
               <SummaryRow label="Tổng thanh toán" strong>
                 {formatVnd(plan.price)}
@@ -243,21 +257,31 @@ export default function OwnerCheckoutPage({ mockMode = MOCK_MODE, qrPollMs = QR_
 
                 <Button type="submit" variant="primary" className="av-btn av-btn-md w-100" disabled={!canPay}>
                   <Lock size={16} aria-hidden="true" />
-                  {paying === 'redirect' ? 'Đang chuyển tới VNPay...' : `Thanh toán ${formatVnd(plan.price)}`}
+                  {free
+                    ? paying === 'redirect'
+                      ? 'Đang kích hoạt...'
+                      : 'Kích hoạt gói miễn phí'
+                    : paying === 'redirect'
+                      ? 'Đang chuyển tới VNPay...'
+                      : `Thanh toán ${formatVnd(plan.price)}`}
                 </Button>
-                <Button type="button" variant="light" className="av-btn av-btn-md w-100 border" disabled={!canPay} onClick={() => startCheckout('qr')}>
-                  <QrCode size={16} aria-hidden="true" />
-                  {paying === 'qr' ? 'Đang tạo mã QR...' : 'Quét mã QR bằng điện thoại'}
-                </Button>
+                {!free && (
+                  <Button type="button" variant="light" className="av-btn av-btn-md w-100 border" disabled={!canPay} onClick={() => startCheckout('qr')}>
+                    <QrCode size={16} aria-hidden="true" />
+                    {paying === 'qr' ? 'Đang tạo mã QR...' : 'Quét mã QR bằng điện thoại'}
+                  </Button>
+                )}
               </>
             )}
 
             {payError && <Alert variant="danger" className="av-alert mb-0">{payError}</Alert>}
 
-            <p className="mb-0 d-flex align-items-center justify-content-center gap-2 fs-11 text-slate-500">
-              <ShieldCheck size={13} aria-hidden="true" className="text-brand" />
-              Giao dịch được mã hóa và xử lý bởi VNPay. Chúng tôi không lưu thông tin thẻ.
-            </p>
+            {!free && (
+              <p className="mb-0 d-flex align-items-center justify-content-center gap-2 fs-11 text-slate-500">
+                <ShieldCheck size={13} aria-hidden="true" className="text-brand" />
+                Giao dịch được mã hóa và xử lý bởi VNPay. Chúng tôi không lưu thông tin thẻ.
+              </p>
+            )}
           </section>
         </div>
       </form>

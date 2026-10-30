@@ -69,7 +69,7 @@ describe('OwnerPlansPage content', () => {
     renderPage()
     await waitForPage()
     await screen.findByRole('article', { name: 'Cơ bản' })
-    expect(screen.getAllByRole('article')).toHaveLength(3)
+    expect(screen.getAllByRole('article')).toHaveLength(4)
     const basic = plan('Cơ bản')
     expect(basic).toHaveTextContent('99.000 ₫')
     expect(basic).toHaveTextContent('1 tháng')
@@ -94,7 +94,7 @@ describe('OwnerPlansPage content', () => {
     expect(screen.getByRole('note')).toBeInTheDocument()
   })
 
-  it('render_FreePlan_ShowsFreeLabelAndNoCheckout', async () => {
+  it('render_FreePlan_ShowsFreeLabelAndOffersFreeSignUp', async () => {
     server.use(
       http.get('*/api/payments/plans', () =>
         HttpResponse.json([{ planId: 9, planName: 'Gói Miễn Phí', maxVaults: 1, maxStorageBytes: 1073741824, price: 0, durationDays: 30 }]),
@@ -103,7 +103,22 @@ describe('OwnerPlansPage content', () => {
     renderPage()
     await screen.findByRole('article', { name: 'Gói Miễn Phí' })
     expect(plan('Gói Miễn Phí')).toHaveTextContent('Miễn phí')
-    expect(within(plan('Gói Miễn Phí')).getByRole('button', { name: 'Gói mặc định' })).toBeDisabled()
+    expect(within(plan('Gói Miễn Phí')).getByRole('button', { name: 'Dùng miễn phí' })).toHaveAttribute('href', '/owner/plans/9/checkout')
+  })
+
+  it('render_FreePlanIsCurrent_ShowsInUseAndNoAction', async () => {
+    seedSubscription(4)
+    renderPage()
+    await screen.findByText('Đang dùng')
+    expect(within(plan('Miễn phí')).getByRole('button', { name: 'Đang sử dụng' })).toBeDisabled()
+    expect(within(plan('Cơ bản')).getByRole('button', { name: 'Mua gói' })).toBeInTheDocument()
+  })
+
+  it('render_NoticeFromCheckout_ShowsDismissibleSuccessAlert', async () => {
+    renderWithProviders(<OwnerPlansPage mockMode="off" />, { route: { pathname: '/', state: { notice: 'Đã kích hoạt Miễn phí thành công.' } } })
+    expect(screen.getByRole('alert')).toHaveTextContent('Đã kích hoạt Miễn phí thành công.')
+    await userEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: /close/i }))
+    expect(screen.queryByText('Đã kích hoạt Miễn phí thành công.')).not.toBeInTheDocument()
   })
 })
 

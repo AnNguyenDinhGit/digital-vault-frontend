@@ -46,7 +46,7 @@ const SUBSCRIPTION_STATUS_INFO = {
 }
 export const subscriptionStatusInfo = (status) => SUBSCRIPTION_STATUS_INFO[status] ?? { text: status || 'Không rõ', tone: 'muted' }
 
-// Gói giá 0 là gói mặc định: BE không tạo giao dịch VNPay cho gói này
+// Gói giá 0 là gói miễn phí: BE kích hoạt ngay, không tạo thanh toán VNPay
 export const isFreePlan = (plan) => !(Number(plan?.price) > 0)
 
 export const formatPlanPrice = (plan) => (isFreePlan(plan) ? 'Miễn phí' : formatVnd(plan.price))
@@ -130,15 +130,18 @@ export function returnErrorMessage(error) {
   }
 }
 
-// Nút hành động trên thẻ gói, tùy gói đang dùng: chưa có gói thì Mua, cùng gói thì Gia hạn, gói đắt hơn thì Nâng cấp, rẻ hơn thì Chuyển gói.
-// Gói miễn phí không mua được nên trả null.
+// Nút hành động trên thẻ gói, tùy gói đang dùng: chưa có gói thì Mua (gói 0đ là Dùng miễn phí), cùng gói thì Gia hạn,
+// gói đắt hơn thì Nâng cấp, rẻ hơn thì Chuyển gói. Đang dùng đúng gói miễn phí thì không cần thao tác nên trả null.
 export function planAction(plan, currentPlan) {
-  if (isFreePlan(plan)) return null
-  if (!currentPlan || isFreePlan(currentPlan)) return { label: 'Mua gói', primary: true }
-  if (currentPlan.planId === plan.planId) return { label: 'Gia hạn gói', primary: false }
+  const free = isFreePlan(plan)
+  if (currentPlan && currentPlan.planId === plan.planId) return free ? null : { label: 'Gia hạn gói', primary: false }
+  if (!currentPlan || isFreePlan(currentPlan)) return free ? { label: 'Dùng miễn phí', primary: true } : { label: 'Mua gói', primary: true }
   if (Number(plan.price) > Number(currentPlan.price)) return { label: 'Nâng cấp', primary: true }
   return { label: 'Chuyển gói', primary: false }
 }
+
+// BE kích hoạt gói 0đ ngay trong DB và trả paymentUrl rỗng: khi đó không chuyển sang VNPay mà coi như đã đăng ký thành công
+export const needsGatewayRedirect = (checkout) => typeof checkout?.paymentUrl === 'string' && checkout.paymentUrl.trim() !== ''
 
 // Phương thức thanh toán theo thiết kế. BE hiện chỉ có API VNPay (/payments/vnpay/*), các phương thức khác hiển thị nhưng chưa chọn được.
 export const PAYMENT_METHODS = [

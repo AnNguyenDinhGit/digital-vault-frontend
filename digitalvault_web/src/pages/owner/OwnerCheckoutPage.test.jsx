@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
+import { useLocation } from 'react-router-dom'
 import { login } from '../../callapi/authApi'
 import { DEMO_ACCOUNT, getDb, resetMockDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
@@ -29,7 +30,14 @@ const renderCheckout = (planId = 2, props = {}) =>
   renderWithProviders(<OwnerCheckoutPage mockMode="off" {...props} />, {
     route: `/owner/plans/${planId}/checkout`,
     path: '/owner/plans/:planId/checkout',
+    extraRoutes: [{ path: '/owner/plans', element: <PlansProbe /> }],
   })
+
+// Trang đích sau khi gói được kích hoạt ngay: hiện thông báo nhận được qua state
+function PlansProbe() {
+  const { state } = useLocation()
+  return <p data-testid="plans-notice">{state?.notice ?? ''}</p>
+}
 const waitForCheckout = () => screen.findByRole('heading', { level: 1, name: 'Thanh toán gói dịch vụ' })
 const payButton = () => screen.getByRole('button', { name: /Thanh toán 499\.000/ })
 
@@ -66,15 +74,13 @@ describe('OwnerCheckoutPage summary', () => {
     expect(screen.getByRole('button', { name: 'Xem các gói dịch vụ' })).toHaveAttribute('href', '/owner/plans')
   })
 
-  it('render_FreePlan_SaysNoPaymentNeeded', async () => {
-    server.use(
-      http.get('*/api/payments/plans', () =>
-        HttpResponse.json([{ planId: 9, planName: 'Gói Miễn Phí', maxVaults: 1, maxStorageBytes: 1073741824, price: 0, durationDays: 30 }]),
-      ),
-    )
-    renderCheckout(9)
-    expect(await screen.findByText('Đây là gói mặc định miễn phí, không cần thanh toán.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Thanh toán/ })).not.toBeInTheDocument()
+  it('render_FreePlan_ShowsActivateButtonWithoutGatewayOptions', async () => {
+    renderCheckout(4)
+    await waitForCheckout()
+    expect(screen.getByText(/Gói miễn phí không cần thanh toán/)).toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Quét mã QR bằng điện thoại' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kích hoạt gói miễn phí' })).toBeDisabled()
   })
 
   it('render_HasOtherActivePlan_WarnsCurrentPlanWillBeReplaced', async () => {
@@ -192,5 +198,63 @@ describe('OwnerCheckoutPage QR payment', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Hủy' }))
     expect(screen.queryByRole('figure', { name: 'Mã QR thanh toán' })).not.toBeInTheDocument()
     expect(qrButton()).toBeEnabled()
+  })
+})
+
+describe('OwnerCheckoutPage empty paymentUrl (plan activated by BE)', () => {
+  it('freePlan_Activate_DoesNotRedirectToVnpayAndReturnsToPlansWithNotice', async () => {
+    renderCheckout(4)
+    await waitForCheckout()
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: 'Kích hoạt gói miễn phí' }))
+    expect(await screen.findByTestId('plans-notice')).toHaveTextContent('Đã kích hoạt Miễn phí thành công.')
+    expect(redirectTo).not.toHaveBeenCalled()
+    expect(getDb().userSubscriptions).toEqual([expect.objectContaining({ planId: 4, status: 'Active', userId: demoUserId() })])
+  })
+
+  it('anyPlan_BackendReturnsEmptyUrl_TreatsAsActivatedInsteadOfRedirecting', async () => {
+    server.use(http.post('*/api/payments/vnpay/checkout', () => HttpResponse.json({ transactionCode: 'T0', amount: 0, paymentUrl: '' })))
+    renderCheckout()
+    await waitForCheckout()
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(payButton())
+    expect(await screen.findByTestId('plans-notice')).toHaveTextContent('Đã kích hoạt Nâng cao thành công.')
+    expect(redirectTo).not.toHaveBeenCalled()
+  })
+
+  it('qr_BackendReturnsEmptyUrl_AlsoReturnsToPlansWithoutQr', async () => {
+    server.use(http.post('*/api/payments/vnpay/checkout', () => HttpResponse.json({ transactionCode: 'T0', amount: 0, paymentUrl: '' })))
+    renderCheckout()
+    await waitForCheckout()
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: 'Quét mã QR bằng điện thoại' }))
+    expect(await screen.findByTestId('plans-notice')).toHaveTextContent('Đã kích hoạt')
+  })
+})
+
+describe('OwnerCheckoutPage response shape from BE free-plan doc', () => {
+  it('freePlan_ResponseWithReferenceAndNullUrl_IsTreatedAsActivated', async () => {
+    server.use(http.post('*/api/payments/vnpay/checkout', () => HttpResponse.json({ reference: '261030210000abc123', amount: 0, paymentUrl: null })))
+    renderCheckout(4)
+    await waitForCheckout()
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: 'Kích hoạt gói miễn phí' }))
+    expect(await screen.findByTestId('plans-notice')).toHaveTextContent('Đã kích hoạt Miễn phí thành công.')
+    expect(redirectTo).not.toHaveBeenCalled()
+  })
+
+  it('qr_ResponseUsingReferenceField_ShowsCodeAndPollsByIt', async () => {
+    server.use(
+      http.post('*/api/payments/vnpay/checkout', () => HttpResponse.json({ reference: 'REF-123', amount: 499000, paymentUrl: 'https://sandbox.vnpayment.vn/pay?x=1' })),
+      http.get('*/api/payments/me/transactions', () =>
+        HttpResponse.json({ page: 1, pageSize: 20, total: 1, items: [{ transactionId: 1, transactionCode: 'REF-123', amount: 499000, status: 'Success', createdAt: new Date().toISOString() }] }),
+      ),
+    )
+    renderCheckout(2, { qrPollMs: 40 })
+    await waitForCheckout()
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: 'Quét mã QR bằng điện thoại' }))
+    expect(await screen.findByText('Mã giao dịch: REF-123')).toBeInTheDocument()
+    expect(await screen.findByText('Thanh toán thành công')).toBeInTheDocument()
   })
 })

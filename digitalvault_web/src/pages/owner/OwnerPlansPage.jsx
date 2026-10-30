@@ -1,6 +1,7 @@
 import { CheckCircle2, CreditCard, HardDrive, RefreshCw, Vault } from 'lucide-react'
-import { Button } from 'react-bootstrap'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Alert, Button } from 'react-bootstrap'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getMySubscription, getPlans } from '../../callapi/paymentApi'
 import AdminResourceState from '../../components/admin/AdminResourceState'
 import MockNotice from '../../components/common/MockNotice'
@@ -53,7 +54,7 @@ function PlanCard({ plan, currentPlan }) {
         </Button>
       ) : (
         <Button type="button" variant="light" className="av-btn av-btn-md border" disabled>
-          Gói mặc định
+          Đang sử dụng
         </Button>
       )}
     </article>
@@ -62,9 +63,18 @@ function PlanCard({ plan, currentPlan }) {
 
 // Trang "Gói dịch vụ" của Owner: gói đang dùng, danh mục gói để chọn sang màn hình thanh toán, và lịch sử thanh toán
 export default function OwnerPlansPage({ mockMode = MOCK_MODE }) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  // Thông báo do trang thanh toán gửi sang (vd gói 0đ được BE kích hoạt ngay, không qua VNPay)
+  const [notice, setNotice] = useState(() => location.state?.notice ?? '')
   const { data: plans, error, loading, reload } = useAdminResource(getPlans)
   const subscription = useAdminResource(getMySubscription)
   const currentPlan = subscription.data?.hasActiveSubscription ? (subscription.data.subscription?.plan ?? null) : null
+
+  // Xoá state khỏi lịch sử để F5 không hiện lại thông báo cũ
+  useEffect(() => {
+    if (location.state?.notice) navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, location.pathname, navigate])
 
   const refresh = () => {
     reload()
@@ -92,6 +102,12 @@ export default function OwnerPlansPage({ mockMode = MOCK_MODE }) {
       </section>
 
       <MockNotice mode={mockMode === 'full' ? mockMode : 'off'} />
+
+      {notice && (
+        <Alert variant="success" className="av-alert mb-0" dismissible onClose={() => setNotice('')}>
+          {notice}
+        </Alert>
+      )}
 
       <CurrentSubscriptionPanel data={subscription.data} error={subscription.error} loading={subscription.loading} onRetry={subscription.reload} />
 
