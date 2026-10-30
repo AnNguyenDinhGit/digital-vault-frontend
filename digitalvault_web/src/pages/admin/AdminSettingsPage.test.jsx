@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -149,68 +149,5 @@ describe('AdminSettingsPage system config form', () => {
     renderWithProviders(<AdminSettingsPage mockMode="full" />)
     await waitForForm()
     expect(screen.getByRole('note')).toBeInTheDocument()
-  })
-})
-
-describe('AdminSettingsPage integrations tab', () => {
-  const openTab = async () => {
-    renderPage()
-    await waitForForm()
-    await userEvent.click(screen.getByRole('button', { name: 'Tích hợp bên thứ ba' }))
-  }
-
-  it('openTab_Click_ListsFiveServicesWithStatusAndEndpoint', async () => {
-    await openTab()
-    const list = await screen.findByRole('list', { name: 'Danh sách dịch vụ tích hợp' })
-    expect(within(list).getAllByRole('listitem')).toHaveLength(5)
-    const ekyc = within(list).getByRole('listitem', { name: /eKYC/ })
-    expect(ekyc).toHaveTextContent('VNPT AI')
-    expect(ekyc).toHaveTextContent('Đã kết nối')
-    expect(ekyc).toHaveTextContent('https://api.vnpt.vn/ekyc/v1')
-  })
-
-  it('openTab_ApiFails_ShowsErrorWithRetry', async () => {
-    server.use(http.get('*/api/admin/integrations', () => HttpResponse.json({ status: 500, detail: 'Máy chủ đang bận.' }, { status: 500 })))
-    await openTab()
-    expect(await screen.findByRole('alert')).toHaveTextContent('Máy chủ đang bận.')
-    server.resetHandlers()
-    await userEvent.click(screen.getByRole('button', { name: 'Thử lại' }))
-    expect(await screen.findByRole('list', { name: 'Danh sách dịch vụ tích hợp' })).toBeInTheDocument()
-  })
-
-  it('ping_Service_ShowsSuccessMessageAndLatency', async () => {
-    await openTab()
-    const card = await screen.findByRole('listitem', { name: /Chữ ký số/ })
-    await userEvent.click(within(card).getByRole('button', { name: 'Kiểm tra kết nối' }))
-    expect(await within(card).findByText(/thành công/)).toBeInTheDocument()
-    expect(within(card).getByText(/27 ms/)).toBeInTheDocument()
-  })
-
-  it('ping_ApiFails_ShowsErrorInsideThatCardOnly', async () => {
-    server.use(http.post('*/api/admin/integrations/ekyc-vnpt/ping', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
-    await openTab()
-    const card = await screen.findByRole('listitem', { name: /eKYC/ })
-    await userEvent.click(within(card).getByRole('button', { name: 'Kiểm tra kết nối' }))
-    expect(await within(card).findByRole('alert')).toHaveTextContent('Không tìm thấy dịch vụ')
-    expect(within(screen.getByRole('listitem', { name: /Chữ ký số/ })).queryByRole('alert')).not.toBeInTheDocument()
-  })
-
-  it('ping_FailedResultFromServer_ShowsFailureNotSuccess', async () => {
-    server.use(
-      http.post('*/api/admin/integrations/ca-vnpt/ping', () =>
-        HttpResponse.json({ serviceId: 'ca-vnpt', success: false, latencyMs: 0, message: 'Hết thời gian chờ.', testedAt: new Date().toISOString() }),
-      ),
-    )
-    await openTab()
-    const card = await screen.findByRole('listitem', { name: /Chữ ký số/ })
-    await userEvent.click(within(card).getByRole('button', { name: 'Kiểm tra kết nối' }))
-    expect(await within(card).findByRole('alert')).toHaveTextContent('Hết thời gian chờ.')
-  })
-
-  it('switchTabs_BackToConfig_ShowsForm', async () => {
-    await openTab()
-    await screen.findByRole('list', { name: 'Danh sách dịch vụ tích hợp' })
-    await userEvent.click(screen.getByRole('button', { name: 'Cấu hình hệ thống' }))
-    await waitFor(() => expect(screen.getByLabelText('Chu kỳ xoay khóa (ngày)')).toBeInTheDocument())
   })
 })

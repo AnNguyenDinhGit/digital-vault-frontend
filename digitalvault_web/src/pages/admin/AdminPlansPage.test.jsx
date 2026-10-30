@@ -139,7 +139,7 @@ describe('AdminPlansPage', () => {
     expect(getAdminPlans).toHaveBeenCalledTimes(2)
   })
 
-  it('edit_FreePlanWithZeroPrice_IsAllowedByForm', async () => {
+  it('edit_FreePlanWithZeroPrice_IsAcceptedAndSentAsZero', async () => {
     getAdminPlans.mockResolvedValue([plan(1, { planName: 'Gói Miễn Phí', price: 0 })])
     updateAdminPlan.mockResolvedValue(plan(1))
     render(<AdminPlansPage />)
@@ -149,13 +149,51 @@ describe('AdminPlansPage', () => {
     await waitFor(() => expect(updateAdminPlan).toHaveBeenCalledWith(1, expect.objectContaining({ price: 0 })))
   })
 
+  it('create_FreePlan_SendsPriceZero', async () => {
+    createAdminPlan.mockResolvedValue(plan(3, { price: 0 }))
+    render(<AdminPlansPage />)
+    await screen.findByRole('table', { name: 'Danh sách gói dịch vụ' })
+    fireEvent.click(screen.getByRole('button', { name: /Thêm gói/ }))
+    fill('Tên gói', 'Gói Miễn Phí')
+    fill('Số kho tối đa', '1')
+    fill('Dung lượng tối đa', '2')
+    fill('Giá', '0')
+    fill('Thời hạn', '30')
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo gói' }))
+    await waitFor(() => expect(createAdminPlan).toHaveBeenCalledWith(expect.objectContaining({ planName: 'Gói Miễn Phí', price: 0 })))
+  })
+
+  it('edit_PriceAtBackendBounds_IsAccepted', async () => {
+    updateAdminPlan.mockResolvedValue(plan(1))
+    render(<AdminPlansPage />)
+    await screen.findByRole('table', { name: 'Danh sách gói dịch vụ' })
+    fireEvent.click(screen.getByRole('button', { name: 'Sửa gói Gói 1' }))
+    fill('Giá', '0')
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+    await waitFor(() => expect(updateAdminPlan).toHaveBeenLastCalledWith(1, expect.objectContaining({ price: 0 })))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sửa gói Gói 1' }))
+    fill('Giá', '1000000000')
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+    await waitFor(() => expect(updateAdminPlan).toHaveBeenLastCalledWith(1, expect.objectContaining({ price: 1000000000 })))
+  })
+
+  it('edit_PriceOverBackendMaximum_IsBlocked', async () => {
+    render(<AdminPlansPage />)
+    await screen.findByRole('table', { name: 'Danh sách gói dịch vụ' })
+    fireEvent.click(screen.getByRole('button', { name: 'Sửa gói Gói 1' }))
+    fill('Giá', '1000000001')
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
+    expect(await screen.findByText('Giá phải từ 0 ₫ (gói miễn phí) đến 1.000.000.000 ₫.')).toBeInTheDocument()
+    expect(updateAdminPlan).not.toHaveBeenCalled()
+  })
+
   it('edit_NegativePrice_ShowsErrorAndDoesNotCallApi', async () => {
     render(<AdminPlansPage />)
     await screen.findByRole('table', { name: 'Danh sách gói dịch vụ' })
     fireEvent.click(screen.getByRole('button', { name: 'Sửa gói Gói 1' }))
     fill('Giá', '-5')
     fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
-    expect(await screen.findByText(/Giá phải từ 0/)).toBeInTheDocument()
+    expect(await screen.findByText('Giá phải từ 0 ₫ (gói miễn phí) đến 1.000.000.000 ₫.')).toBeInTheDocument()
     expect(updateAdminPlan).not.toHaveBeenCalled()
   })
 
@@ -186,7 +224,7 @@ describe('AdminPlansPage', () => {
     fill('Tên gói', 'Gói 1')
     fill('Số kho tối đa', '1')
     fill('Dung lượng tối đa', '1')
-    fill('Giá', '1000')
+    fill('Giá', '50000')
     fill('Thời hạn', '30')
     fireEvent.click(screen.getByRole('button', { name: 'Tạo gói' }))
     expect(await screen.findByText(/Tên gói đã tồn tại/)).toBeInTheDocument()

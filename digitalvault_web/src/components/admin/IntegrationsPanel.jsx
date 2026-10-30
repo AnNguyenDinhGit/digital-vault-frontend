@@ -35,12 +35,9 @@ export default function IntegrationsPanel() {
   return (
     <section className="av-panel d-flex flex-column gap-3" aria-label="Tích hợp bên thứ ba">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <div>
-          <h2 className="mb-1 fw-bold text-ink" style={{ fontSize: 17 }}>
-            Dịch vụ tích hợp
-          </h2>
-          <p className="mb-0 fs-12 text-slate-500">Trạng thái kết nối tới các dịch vụ bên thứ ba mà hệ thống sử dụng.</p>
-        </div>
+        <p className="mb-0 fs-13 text-slate-600" role="status">
+          {services ? `${services.filter((service) => service.status === 'Connected').length}/${services.length} dịch vụ đang kết nối` : 'Đang tải trạng thái các dịch vụ...'}
+        </p>
         <Button type="button" variant="light" className="av-btn av-btn-sm border" disabled={loading} onClick={reload}>
           <RefreshCw size={16} aria-hidden="true" />
           Làm mới

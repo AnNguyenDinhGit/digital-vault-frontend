@@ -19,6 +19,7 @@ import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminEncryptionPage from './pages/admin/AdminEncryptionPage'
 import AdminHandoversPage from './pages/admin/AdminHandoversPage'
+import AdminIntegrationsPage from './pages/admin/AdminIntegrationsPage'
 import AdminPlansPage from './pages/admin/AdminPlansPage'
 import MockVnpayGatewayPage from './pages/payment/MockVnpayGatewayPage'
 import OwnerPlansPage from './pages/owner/OwnerPlansPage'
@@ -215,6 +216,7 @@ function App() {
               <Route path="handovers" element={<AdminHandoversPage />} />
               <Route path="plans" element={<AdminPlansPage />} />
               <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+              <Route path="integrations" element={<AdminIntegrationsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
           </Route>

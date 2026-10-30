@@ -7,6 +7,7 @@ import CreateUserModal from '../../components/admin/CreateUserModal'
 import EditUserModal from '../../components/admin/EditUserModal'
 import EditUserProfileModal from '../../components/admin/EditUserProfileModal'
 import ResetPasswordModal from '../../components/admin/ResetPasswordModal'
+import UserStatusModal from '../../components/admin/UserStatusModal'
 import AppToast from '../../components/common/AppToast'
 import MockNotice from '../../components/common/MockNotice'
 import { useAdminList } from '../../hooks/useAdminList'
@@ -53,7 +54,7 @@ export default function AdminUsersPage({ mockMode = MOCK_MODE }) {
             <h1 className="mb-1 fw-bold text-ink" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>
               Quản lý người dùng
             </h1>
-            <p className="mb-0 fs-12 text-slate-500">Tạo tài khoản, phân quyền và khóa hoặc vô hiệu hóa người dùng hệ thống.</p>
+            <p className="mb-0 fs-12 text-slate-500">Tạo tài khoản, phân quyền, cập nhật trạng thái (hoạt động, vô hiệu hóa, khóa) và đặt lại mật khẩu cho người dùng hệ thống.</p>
           </div>
         </div>
         <Button type="button" variant="primary" className="av-btn av-btn-sm" onClick={() => setModal({ type: 'create' })}>
@@ -161,6 +162,14 @@ export default function AdminUsersPage({ mockMode = MOCK_MODE }) {
                           <button
                             type="button"
                             className="av-ghost-btn is-brand"
+                            aria-label={`Cập nhật trạng thái ${user.fullName}`}
+                            onClick={() => setModal({ type: 'status', user })}
+                          >
+                            Trạng thái
+                          </button>
+                          <button
+                            type="button"
+                            className="av-ghost-btn is-brand"
                             aria-label={`Đặt lại mật khẩu ${user.fullName}`}
                             onClick={() => setModal({ type: 'reset', user })}
                           >
@@ -199,6 +208,15 @@ export default function AdminUsersPage({ mockMode = MOCK_MODE }) {
           isSelf={modal.user.email === currentUser?.email}
           onClose={closeModal}
           onSaved={() => finish('Đã cập nhật người dùng', modal.user.fullName)}
+        />
+      )}
+
+      {modal?.type === 'status' && (
+        <UserStatusModal
+          user={modal.user}
+          isSelf={modal.user.email === currentUser?.email}
+          onClose={closeModal}
+          onSaved={(status) => finish('Đã cập nhật trạng thái tài khoản', `${modal.user.fullName}: ${userStatusInfo(status).text}`)}
         />
       )}
 

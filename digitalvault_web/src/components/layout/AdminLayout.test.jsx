@@ -45,6 +45,7 @@ describe('AdminLayout', () => {
       'Quy trình bàn giao': '/admin/handovers',
       'Gói dịch vụ & Thanh toán': '/admin/plans',
       'Nhật ký kiểm toán hệ thống': '/admin/audit-logs',
+      'Trạng thái tích hợp dịch vụ': '/admin/integrations',
       'Cấu hình tham số': '/admin/settings',
     }
     for (const [name, href] of Object.entries(expected)) {

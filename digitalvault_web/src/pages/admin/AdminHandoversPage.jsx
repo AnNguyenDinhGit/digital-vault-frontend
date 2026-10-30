@@ -5,6 +5,7 @@ import { getHandoverOverview } from '../../callapi/adminApi'
 import AdminPager from '../../components/admin/AdminPager'
 import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import { useAdminList } from '../../hooks/useAdminList'
+import { vaultLabel } from '../../utils/executor'
 import { handoverCode, handoverStatusInfo } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
@@ -133,10 +134,7 @@ export default function AdminHandoversPage() {
                 {handovers.map((item) => (
                   <tr key={item.requestId}>
                     <td className="fw-semibold text-ink text-nowrap">{handoverCode(item)}</td>
-                    <td>
-                      <span className="d-block">{`Kho #${item.vaultId}`}</span>
-                      {item.vaultName && <span className="d-block fs-12 text-slate-500">{item.vaultName}</span>}
-                    </td>
+                    <td>{vaultLabel(item.vaultId, item.vaultName)}</td>
                     <td>{item.owner?.fullName ?? '—'}</td>
                     <td>{item.executorName ?? (item.executorId ? `Executor #${item.executorId}` : '—')}</td>
                     <td>

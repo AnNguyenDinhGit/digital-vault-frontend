@@ -1,18 +1,16 @@
 import { ShieldCheck, X } from 'lucide-react'
 import { useState } from 'react'
 import { Alert, Button, Form, Modal } from 'react-bootstrap'
-import { updateUserRoles, updateUserStatus } from '../../callapi/adminApi'
-import { adminErrorMessage, ALL_ROLES, roleLabel, USER_STATUSES, userStatusInfo } from '../../utils/admin'
+import { updateUserRoles } from '../../callapi/adminApi'
+import { adminErrorMessage, ALL_ROLES, roleLabel } from '../../utils/admin'
 
-// Hộp thoại Admin đổi vai trò và trạng thái của một người dùng; chỉ gọi API cho phần có thay đổi
+// Hộp thoại Admin đổi vai trò của một người dùng (trạng thái tài khoản có hộp thoại riêng: UserStatusModal)
 export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
   const [roles, setRoles] = useState(user.roles)
-  const [status, setStatus] = useState(user.status)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   const rolesChanged = roles.length !== user.roles.length || roles.some((role) => !user.roles.includes(role))
-  const statusChanged = status !== user.status
 
   const toggleRole = (role) => setRoles((prev) => (prev.includes(role) ? prev.filter((item) => item !== role) : [...prev, role]))
 
@@ -26,11 +24,11 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
       setError('Chọn ít nhất một vai trò.')
       return
     }
+    if (!rolesChanged) return
     setBusy(true)
     setError('')
     try {
-      if (rolesChanged) await updateUserRoles(user.userId, roles)
-      if (statusChanged) await updateUserStatus(user.userId, status)
+      await updateUserRoles(user.userId, roles)
       onSaved()
     } catch (caught) {
       setBusy(false)
@@ -61,7 +59,7 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
         <div className="av-modal-body d-flex flex-column gap-4">
           {isSelf && (
             <Alert variant="warning" className="av-alert mb-0">
-              Đây là tài khoản của bạn. Bỏ vai trò Quản trị viên hoặc khóa tài khoản sẽ khiến bạn mất quyền truy cập trang này.
+              Đây là tài khoản của bạn. Bỏ vai trò Quản trị viên sẽ khiến bạn mất quyền truy cập trang này.
             </Alert>
           )}
           <fieldset>
@@ -79,18 +77,6 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
               ))}
             </div>
           </fieldset>
-          <div>
-            <label htmlFor="edit-user-status" className="av-label mb-2">
-              Trạng thái tài khoản
-            </label>
-            <Form.Select id="edit-user-status" value={status} onChange={(event) => setStatus(event.target.value)}>
-              {USER_STATUSES.map((value) => (
-                <option key={value} value={value}>
-                  {userStatusInfo(value).text}
-                </option>
-              ))}
-            </Form.Select>
-          </div>
           {error && <Alert variant="danger" className="av-alert mb-0">{error}</Alert>}
         </div>
 
@@ -98,7 +84,7 @@ export default function EditUserModal({ user, isSelf, onClose, onSaved }) {
           <Button type="button" variant="light" onClick={handleClose} disabled={busy} className="av-btn av-btn-md border">
             Hủy
           </Button>
-          <Button type="submit" variant="primary" disabled={busy || (!rolesChanged && !statusChanged)} className="av-btn av-btn-md">
+          <Button type="submit" variant="primary" disabled={busy || !rolesChanged} className="av-btn av-btn-md">
             {busy ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>
         </div>

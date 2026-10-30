@@ -66,7 +66,7 @@ export default function PlanFormModal({ plan = null, onClose, onSaved }) {
           <div className="row g-3">
             <TextField id="plan-vaults" name="maxVaults" type="number" min="1" label="Số kho tối đa" required className="col-12 col-md-6" value={form.maxVaults} onChange={handleChange} error={errors.maxVaults} disabled={busy} />
             <TextField id="plan-storage" name="storageGb" type="number" min="0" step="any" label="Dung lượng tối đa (GB)" required className="col-12 col-md-6" value={form.storageGb} onChange={handleChange} error={errors.storageGb} disabled={busy} />
-            <TextField id="plan-price" name="price" type="number" min="0" label="Giá (₫)" required className="col-12 col-md-6" value={form.price} onChange={handleChange} error={errors.price} disabled={busy} />
+            <TextField id="plan-price" name="price" type="number" min="0" max="1000000000" step="1000" label="Giá (₫)" required className="col-12 col-md-6" value={form.price} onChange={handleChange} error={errors.price} disabled={busy} />
             <TextField id="plan-duration" name="durationDays" type="number" min="1" label="Thời hạn (ngày)" required className="col-12 col-md-6" value={form.durationDays} onChange={handleChange} error={errors.durationDays} disabled={busy} />
           </div>
           <Form.Check
