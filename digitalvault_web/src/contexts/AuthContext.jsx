@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as authApi from '../callapi/authApi'
 import { setUnauthorizedHandler } from '../callapi/axiosClient'
+import * as googleAuthApi from '../callapi/googleAuthApi'
 import { clearPortalPreference } from '../utils/portalPreference'
 import { AuthContext, USER_STORAGE_KEY } from './authContextInstance'
 
@@ -89,9 +90,31 @@ export function AuthProvider({ children }) {
     [finishLogin],
   )
 
+  // Đăng nhập Google không có ô nhập email nên khi chưa biết email thì hỏi BE (GET /auth/me); lỗi thì để trống chứ không chặn đăng nhập
+  const emailFromServer = useCallback(async () => (await authApi.checkSession().catch(() => null))?.email ?? '', [])
+
   const verifyTwoFactor = useCallback(
-    async (challengeId, code, email) => finishLogin(await authApi.verifyTwoFactor(challengeId, code), email),
-    [finishLogin],
+    async (challengeId, code, email) => {
+      const result = await authApi.verifyTwoFactor(challengeId, code)
+      return finishLogin(result, email || (await emailFromServer()))
+    },
+    [finishLogin, emailFromServer],
+  )
+
+  // Hai bước kết thúc đăng nhập Google: trả user khi xong, hoặc thông tin challenge (requiresTwoFactor) khi cần nhập mã hai lớp
+  const finishGoogleLogin = useCallback(
+    async (result) => (result.requiresTwoFactor ? result : finishLogin(result, await emailFromServer())),
+    [finishLogin, emailFromServer],
+  )
+
+  const completeGoogleLogin = useCallback(
+    async (challengeId) => finishGoogleLogin(await googleAuthApi.completeGoogleLogin(challengeId)),
+    [finishGoogleLogin],
+  )
+
+  const verifyGoogleOtp = useCallback(
+    async (challengeId, code) => finishGoogleLogin(await googleAuthApi.verifyGoogleOtp(challengeId, code)),
+    [finishGoogleLogin],
   )
 
   const resendTwoFactor = useCallback((challengeId) => authApi.resendTwoFactor(challengeId), [])
@@ -111,8 +134,8 @@ export function AuthProvider({ children }) {
   const hasRole = useCallback((role) => Boolean(user?.roles?.includes(role)), [user])
 
   const value = useMemo(
-    () => ({ user, isChecking, login, verifyTwoFactor, resendTwoFactor, logout, hasRole }),
-    [user, isChecking, login, verifyTwoFactor, resendTwoFactor, logout, hasRole],
+    () => ({ user, isChecking, login, verifyTwoFactor, resendTwoFactor, completeGoogleLogin, verifyGoogleOtp, logout, hasRole }),
+    [user, isChecking, login, verifyTwoFactor, resendTwoFactor, completeGoogleLogin, verifyGoogleOtp, logout, hasRole],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

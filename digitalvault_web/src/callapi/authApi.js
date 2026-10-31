@@ -12,16 +12,22 @@ function storeSession({ userId, roles, accessToken, refreshToken, refreshTokenEx
   return { userId, roles }
 }
 
-// Đăng nhập: 200 là TokenDto; 202 là cần xác thực hai lớp (chưa có token, trả về thông tin challenge để nhập mã).
-export async function login(email, password) {
-  // Bỏ token cũ trước để không gửi kèm token hỏng/của tài khoản khác
-  clearTokens()
-  const { data } = await axiosClient.post('/auth/login', { email, password }, AUTH_CONFIG)
+// Kết quả bước đăng nhập chính của BE (mật khẩu hoặc Google): 202 là cần xác thực hai lớp (chưa có token, trả challenge để nhập mã),
+// còn lại là TokenDto được lưu thành phiên.
+export function loginResultFromResponse(data) {
   if (data.requiresTwoFactor) {
     const { challengeId, method, expiresAt, mockCode } = data
     return { requiresTwoFactor: true, challengeId, method, expiresAt, ...(mockCode ? { mockCode } : {}) }
   }
   return storeSession(data)
+}
+
+// Đăng nhập: 200 là TokenDto; 202 là cần xác thực hai lớp (chưa có token, trả về thông tin challenge để nhập mã).
+export async function login(email, password) {
+  // Bỏ token cũ trước để không gửi kèm token hỏng/của tài khoản khác
+  clearTokens()
+  const { data } = await axiosClient.post('/auth/login', { email, password }, AUTH_CONFIG)
+  return loginResultFromResponse(data)
 }
 
 // Bước 2 khi có xác thực hai lớp: mã 6 số gửi qua email hoặc từ ứng dụng TOTP
