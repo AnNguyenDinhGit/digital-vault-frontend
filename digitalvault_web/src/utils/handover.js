@@ -1,3 +1,7 @@
+import { parseQuotaError, quotaMessage } from './quota'
+
+import { parseServerDate } from './beneficiary'
+
 // Trạng thái hồ sơ bàn giao (HANDOVER_REQUESTS của BE) và tông màu hiển thị
 const STATUS_INFO = {
   Pending_Executor: { text: 'Chờ Executor tiếp nhận', tone: 'info' },
@@ -12,8 +16,22 @@ const STATUS_INFO = {
   Completed: { text: 'Hoàn tất', tone: 'ok' },
 }
 
+// Mã hồ sơ hiển thị: HS-<năm tạo>-<số hồ sơ 4 chữ số>, ví dụ HS-2026-0007. BE chưa có trường mã hồ sơ nên FE ghép từ requestId và năm của initiatedAt
+// (không có ngày tạo thì chỉ có HS-0007). Số hồ sơ vượt 4 chữ số vẫn giữ nguyên, không bị cắt.
+export function handoverCode({ requestId, initiatedAt }) {
+  const number = String(requestId).padStart(4, '0')
+  const year = initiatedAt ? parseServerDate(initiatedAt).getFullYear() : Number.NaN
+  return Number.isFinite(year) ? `HS-${year}-${number}` : `HS-${number}`
+}
+
 export function handoverStatusInfo(status) {
   return STATUS_INFO[status] ?? { text: status, tone: 'muted' }
+}
+
+// Trạng thái một lần thẩm định (LegalHistoryDto.status): Pending là đã gửi và chưa có kết quả, còn lại trùng trạng thái hồ sơ
+export function verificationStatusInfo(status) {
+  if (status === 'Pending') return { text: 'Đang chờ thẩm định', tone: 'info' }
+  return handoverStatusInfo(status)
 }
 
 // Owner chỉ hủy được hồ sơ đang chờ Executor tiếp nhận, bản nháp hoặc bị từ chối (BE trả 409 với các trạng thái khác)
@@ -82,7 +100,11 @@ export function handoverActionErrorMessage(error, action) {
   if (status === 413) return 'File quá lớn. Mỗi file tối đa 10 MB.'
   if (action === 'upload') {
     if (status === 400) return `Tệp hoặc chữ ký không hợp lệ.${SERVER_DETAIL(error)}`
-    if (status === 409) return 'Hồ sơ không còn ở trạng thái cho phép nộp thêm giấy tờ.'
+    if (status === 409) {
+      // Giấy tờ nộp cho hồ sơ tính vào dung lượng gói của chủ kho nên có thể bị chặn vì hạn mức
+      const quota = parseQuotaError(error?.message)
+      return quota ? quotaMessage(quota, { forOwner: false }) : 'Hồ sơ không còn ở trạng thái cho phép nộp thêm giấy tờ.'
+    }
   }
   if (action === 'legal') {
     if (status === 400) {

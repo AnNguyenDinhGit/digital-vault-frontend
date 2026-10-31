@@ -164,17 +164,15 @@ describe('AdminUsersPage edit user', () => {
     expect(within(dialog).getByRole('button', { name: 'Lưu thay đổi' })).toBeDisabled()
   })
 
-  it('edit_ChangeRolesAndStatus_SavesAndRefreshesList', async () => {
+  it('edit_ChangeRoles_SavesAndRefreshesList', async () => {
     renderPage()
     await waitForPage()
     const dialog = await openEdit('Lê Minh Quân')
     await userEvent.click(within(dialog).getByLabelText('Người thi hành'))
-    await userEvent.selectOptions(within(dialog).getByLabelText('Trạng thái tài khoản'), 'Locked')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thay đổi' }))
     expect(await screen.findByText('Đã cập nhật người dùng')).toBeInTheDocument()
     const row = dataRows().find((item) => within(item).queryByText('quan.le@example.com'))
-    expect(await within(row).findByText('Bị khóa')).toBeInTheDocument()
-    expect(within(row).getByText('Người thi hành')).toBeInTheDocument()
+    expect(await within(row).findByText('Người thi hành')).toBeInTheDocument()
   })
 
   it('edit_RemoveAllRoles_ShowsRequiredRoleError', async () => {
@@ -187,11 +185,11 @@ describe('AdminUsersPage edit user', () => {
   })
 
   it('edit_ApiFails_ShowsErrorAndKeepsDialogOpen', async () => {
-    server.use(http.put('*/api/admin/users/:userId/status', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+    server.use(http.put('*/api/admin/users/:userId/roles', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
     renderPage()
     await waitForPage()
     const dialog = await openEdit('Lê Minh Quân')
-    await userEvent.selectOptions(within(dialog).getByLabelText('Trạng thái tài khoản'), 'Disabled')
+    await userEvent.click(within(dialog).getByLabelText('Người thi hành'))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Lưu thay đổi' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không tìm thấy người dùng.')
   })
@@ -202,6 +200,67 @@ describe('AdminUsersPage edit user', () => {
     const dialog = await openEdit('Lê Minh Quân')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('AdminUsersPage update account status', () => {
+  const openStatus = async (fullName) => {
+    await userEvent.click(screen.getByRole('button', { name: `Cập nhật trạng thái ${fullName}` }))
+    return screen.getByRole('dialog', { name: 'Cập Nhật Trạng Thái Tài Khoản' })
+  }
+
+  it('status_Open_ShowsThreeStatusesWithCurrentOneSelectedAndSaveDisabled', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openStatus('Lê Minh Quân')
+    expect(within(dialog).getAllByRole('radio')).toHaveLength(3)
+    expect(within(dialog).getByRole('radio', { name: 'Hoạt động' })).toBeChecked()
+    expect(within(dialog).getByRole('radio', { name: 'Vô hiệu hóa' })).not.toBeChecked()
+    expect(within(dialog).getByRole('radio', { name: 'Bị khóa' })).not.toBeChecked()
+    expect(within(dialog).getByText('Hiện tại')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Cập nhật trạng thái' })).toBeDisabled()
+  })
+
+  it('status_ChooseLockedAndSave_UpdatesRowAndShowsToast', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openStatus('Lê Minh Quân')
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Bị khóa' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật trạng thái' }))
+    expect(await screen.findByText('Đã cập nhật trạng thái tài khoản')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const row = dataRows().find((item) => within(item).queryByText('quan.le@example.com'))
+    expect(await within(row).findByText('Bị khóa')).toBeInTheDocument()
+  })
+
+  it('status_ChooseDisabledAndSave_SendsDisabledToApi', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openStatus('Lê Minh Quân')
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Vô hiệu hóa' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật trạng thái' }))
+    const row = dataRows().find((item) => within(item).queryByText('quan.le@example.com'))
+    expect(await within(row).findByText('Vô hiệu hóa')).toBeInTheDocument()
+  })
+
+  it('status_ApiFails_ShowsErrorAndKeepsDialogOpen', async () => {
+    server.use(http.put('*/api/admin/users/:userId/status', () => HttpResponse.json({ status: 404, detail: 'x' }, { status: 404 })))
+    renderPage()
+    await waitForPage()
+    const dialog = await openStatus('Lê Minh Quân')
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Bị khóa' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật trạng thái' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không tìm thấy người dùng.')
+  })
+
+  it('status_Cancel_ClosesDialogWithoutCallingApi', async () => {
+    renderPage()
+    await waitForPage()
+    const dialog = await openStatus('Lê Minh Quân')
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Bị khóa' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(within(dataRows().find((item) => within(item).queryByText('quan.le@example.com'))).getByText('Hoạt động')).toBeInTheDocument()
   })
 })
 

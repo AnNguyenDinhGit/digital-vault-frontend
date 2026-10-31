@@ -18,6 +18,14 @@ import ExecutorOrdersPage from './pages/executor/ExecutorOrdersPage'
 import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminEncryptionPage from './pages/admin/AdminEncryptionPage'
+import AdminHandoversPage from './pages/admin/AdminHandoversPage'
+import AdminIntegrationsPage from './pages/admin/AdminIntegrationsPage'
+import AdminPlansPage from './pages/admin/AdminPlansPage'
+import MockVnpayGatewayPage from './pages/payment/MockVnpayGatewayPage'
+import OwnerPlansPage from './pages/owner/OwnerPlansPage'
+import OwnerCheckoutPage from './pages/owner/OwnerCheckoutPage'
+import VnpayReturnPage from './pages/payment/VnpayReturnPage'
+import { MOCK_MODE } from './mocks/mode'
 import AdminRolesPage from './pages/admin/AdminRolesPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
@@ -37,6 +45,7 @@ import BeneficiaryReceiptsPage from './pages/beneficiary/BeneficiaryReceiptsPage
 import BeneficiaryNotificationsPage from './pages/beneficiary/BeneficiaryNotificationsPage'
 import LegalHandoverListPage from './pages/legal/LegalHandoverListPage'
 import LegalHandoverDetailPage from './pages/legal/LegalHandoverDetailPage'
+import LegalNotificationsPage from './pages/legal/LegalNotificationsPage'
 
 // Component gốc: khai báo provider và các route theo từng vai trò của hệ thống
 function App() {
@@ -45,6 +54,10 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+
+          {/* Công khai: VNPay đưa khách về đây sau khi thanh toán, nên không bắt đăng nhập */}
+          <Route path="/payment/vnpay-return" element={<VnpayReturnPage />} />
+          {MOCK_MODE !== 'off' && <Route path="/payment/mock-vnpay" element={<MockVnpayGatewayPage />} />}
 
           {/* 1. Khu vực Vault Owner */}
           <Route element={<ProtectedRoute role="Owner" />}>
@@ -59,6 +72,8 @@ function App() {
               <Route path="handovers" element={<OwnerHandoversPage />} />
               <Route path="handovers/:requestId" element={<OwnerHandoverDetailPage />} />
               <Route path="notifications" element={<OwnerNotificationsPage />} />
+              <Route path="plans" element={<OwnerPlansPage />} />
+              <Route path="plans/:planId/checkout" element={<OwnerCheckoutPage />} />
               <Route path="proof-of-life" element={<ProofOfLifePage />} />
               <Route path="activity-log" element={<ActivityLogPage />} />
               <Route path="security" element={<SecuritySettingsPage />} />
@@ -158,11 +173,19 @@ function App() {
                   />
                 }
               />
+              <Route
+                path="rejected"
+                element={
+                  <LegalHandoverListPage
+                    title="Hồ sơ bị từ chối"
+                    description="Danh sách các hồ sơ bàn giao đã bị người thẩm định từ chối."
+                    status="Rejected"
+                    emptyMessage="Chưa có hồ sơ nào bị từ chối."
+                  />
+                }
+              />
               <Route path="handovers/:requestId" element={<LegalHandoverDetailPage />} />
-              <Route path="ledger" element={<RolePlaceholderPage title="Sổ cái chứng thực RFC 3161" />} />
-              <Route path="vneid" element={<RolePlaceholderPage title="Tra cứu VNeID & CSDL Hộ tịch" />} />
-              <Route path="smartca" element={<RolePlaceholderPage title="Chứng thư số SmartCA HSM L4" />} />
-              <Route path="shamir" element={<RolePlaceholderPage title="Khóa niêm phong Shamir MPC" />} />
+              <Route path="notifications" element={<LegalNotificationsPage />} />
             </Route>
           </Route>
 
@@ -192,9 +215,10 @@ function App() {
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="roles" element={<AdminRolesPage />} />
               <Route path="hsm" element={<AdminEncryptionPage />} />
-              <Route path="handovers" element={<RolePlaceholderPage title="Giám sát quy trình bàn giao (Handover)" />} />
-              <Route path="plans" element={<RolePlaceholderPage title="Gói dịch vụ & Giao dịch thanh toán" />} />
+              <Route path="handovers" element={<AdminHandoversPage />} />
+              <Route path="plans" element={<AdminPlansPage />} />
               <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+              <Route path="integrations" element={<AdminIntegrationsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
           </Route>

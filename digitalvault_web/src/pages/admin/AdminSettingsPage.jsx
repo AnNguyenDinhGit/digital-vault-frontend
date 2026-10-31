@@ -2,7 +2,6 @@ import { SlidersHorizontal } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { getSystemConfig } from '../../callapi/adminApi'
 import AdminResourceState from '../../components/admin/AdminResourceState'
-import IntegrationsPanel from '../../components/admin/IntegrationsPanel'
 import SystemConfigForm from '../../components/admin/SystemConfigForm'
 import AppToast from '../../components/common/AppToast'
 import MockNotice from '../../components/common/MockNotice'
@@ -29,9 +28,8 @@ function SystemConfigTab({ onSaved }) {
   )
 }
 
-// Trang "Cấu hình tham số" của Admin: tham số hệ thống và dịch vụ tích hợp bên thứ ba
+// Trang "Cấu hình tham số" của Admin: chính sách mã hóa, điểm danh, lưu trữ và sao lưu (trạng thái dịch vụ tích hợp ở trang riêng)
 export default function AdminSettingsPage({ mockMode = MOCK_MODE }) {
-  const [tab, setTab] = useState('config')
   const [toast, setToast] = useState(null)
   const closeToast = useCallback(() => setToast(null), [])
 
@@ -46,22 +44,14 @@ export default function AdminSettingsPage({ mockMode = MOCK_MODE }) {
             <h1 className="mb-1 fw-bold text-ink" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>
               Cấu hình tham số hệ thống
             </h1>
-            <p className="mb-0 fs-12 text-slate-500">Chính sách mã hóa, điểm danh, lưu trữ, sao lưu và kết nối tới dịch vụ bên thứ ba.</p>
+            <p className="mb-0 fs-12 text-slate-500">Chính sách mã hóa, điểm danh, lưu trữ và sao lưu của hệ thống.</p>
           </div>
-        </div>
-        <div role="group" aria-label="Nhóm cấu hình" className="av-tabs">
-          <button type="button" className="av-tab" aria-pressed={tab === 'config'} onClick={() => setTab('config')}>
-            Cấu hình hệ thống
-          </button>
-          <button type="button" className="av-tab" aria-pressed={tab === 'integrations'} onClick={() => setTab('integrations')}>
-            Tích hợp bên thứ ba
-          </button>
         </div>
       </section>
 
       <MockNotice mode={mockMode === 'full' ? mockMode : 'off'} />
 
-      {tab === 'config' ? <SystemConfigTab onSaved={() => setToast({ title: 'Đã lưu cấu hình hệ thống' })} /> : <IntegrationsPanel />}
+      <SystemConfigTab onSaved={() => setToast({ title: 'Đã lưu cấu hình hệ thống' })} />
 
       <AppToast show={Boolean(toast)} onClose={closeToast} title={toast?.title} />
     </div>

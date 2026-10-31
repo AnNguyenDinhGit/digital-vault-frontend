@@ -32,3 +32,43 @@ export function formatUnreadCount(count) {
   if (!count) return ''
   return count > 99 ? '99+' : String(count)
 }
+
+// Thông báo BE gửi cho người thẩm định pháp lý (tiêu đề tiếng Anh): dịch theo từ khóa trong tiêu đề hoặc nội dung. Chưa nhận ra thì giữ nguyên chữ của BE
+const LEGAL_RULES = [
+  {
+    test: /legal verification|verification (request|assign)|assigned.*(verif|review)|needs? (your )?review|pending legal/i,
+    title: 'Có hồ sơ mới cần thẩm định pháp lý',
+    body: (id) => (id ? `Hồ sơ #${id} đã được gửi đến bạn để thẩm định.` : 'Một hồ sơ bàn giao đã được gửi đến bạn để thẩm định.'),
+    tone: 'info',
+  },
+  {
+    test: /additional (information|info|documents?)|resubmit|re-?submitted|supplement/i,
+    title: 'Người thi hành đã bổ sung hồ sơ',
+    body: (id) => (id ? `Hồ sơ #${id} đã được bổ sung và đang chờ bạn thẩm định lại.` : 'Một hồ sơ đã được bổ sung và đang chờ bạn thẩm định lại.'),
+    tone: 'info',
+  },
+  {
+    test: /death certificate|certificate (uploaded|submitted)/i,
+    title: 'Giấy chứng tử đã được nộp',
+    body: (id) => (id ? `Giấy chứng tử của hồ sơ #${id} đã được nộp.` : 'Một giấy chứng tử mới đã được nộp.'),
+    tone: 'info',
+  },
+  {
+    test: /(handover|request).*(cancel)|cancel.*(handover|request)/i,
+    title: 'Hồ sơ bàn giao đã bị hủy',
+    body: (id) => (id ? `Hồ sơ #${id} đã bị hủy nên không cần thẩm định nữa.` : 'Một hồ sơ bàn giao đã bị hủy.'),
+    tone: 'warn',
+  },
+]
+
+// Chuẩn hóa một thông báo của người thẩm định: tiêu đề và nội dung tiếng Việt, tông màu, mã hồ sơ liên quan (nếu có) để tạo liên kết.
+// Nội dung chưa dịch được vẫn được "Việt hóa" phần mã hồ sơ ("Handover #12" thành "Hồ sơ #12").
+export function describeLegalNotification(notification) {
+  const rawTitle = notification.title ?? ''
+  const message = notification.message ?? ''
+  const found = HANDOVER_NUMBER.exec(message) ?? HANDOVER_NUMBER.exec(rawTitle)
+  const requestId = found ? Number(found[1]) : null
+  const rule = LEGAL_RULES.find((item) => item.test.test(`${rawTitle} ${message}`))
+  if (rule) return { title: rule.title, body: rule.body(requestId), tone: rule.tone, requestId }
+  return { title: rawTitle || 'Thông báo hệ thống', body: message.replace(/Handover #(\d+)/gi, 'Hồ sơ #$1'), tone: 'info', requestId }
+}

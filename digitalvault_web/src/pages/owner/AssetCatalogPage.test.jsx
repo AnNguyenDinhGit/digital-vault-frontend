@@ -443,3 +443,22 @@ describe('AssetCatalogPage assets per vault', () => {
     expect(screen.queryByText('Tài sản của kho một')).not.toBeInTheDocument()
   })
 })
+
+describe('AssetCatalogPage plan limits', () => {
+  it('createVault_PlanVaultLimitReached_ExplainsLimitInsideModal', async () => {
+    server.use(
+      http.post('*/api/owner/vaults', () =>
+        HttpResponse.json({ status: 409, detail: 'Vault limit reached (1). Upgrade your plan or close an active vault.' }, { status: 409 }),
+      ),
+    )
+    renderPage()
+    await waitForCatalog()
+    await userEvent.click(screen.getByRole('button', { name: 'Tạo kho mới' }))
+    const dialog = screen.getByRole('dialog')
+    await userEvent.type(within(dialog).getByLabelText(/^Tên kho/), 'Kho thêm')
+    await userEvent.click(within(dialog).getByRole('button', { name: /Tạo kho/ }))
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent('hết số kho của gói hiện tại')
+    expect(alert).toHaveTextContent('Gói dịch vụ')
+  })
+})

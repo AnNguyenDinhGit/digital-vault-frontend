@@ -1,4 +1,4 @@
-import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverStatusInfo, declineReasonFromNotifications, handoverActionErrorMessage, isCancellableStatus, isEditableStatus, isVaultLockedByHandover, ownerCreateHandoverErrorMessage } from './handover'
+import { HANDOVER_GROUPS, createHandoverErrorMessage, filterHandovers, handoverCode, handoverStatusInfo, declineReasonFromNotifications, handoverActionErrorMessage, isCancellableStatus, isEditableStatus, isVaultLockedByHandover, ownerCreateHandoverErrorMessage } from './handover'
 
 describe('handoverStatusInfo', () => {
   it.each([
@@ -194,5 +194,39 @@ describe('isVaultLockedByHandover', () => {
     expect(isVaultLockedByHandover(handovers, 9)).toBe(false)
     expect(isVaultLockedByHandover([], 1)).toBe(false)
     expect(isVaultLockedByHandover(undefined, 1)).toBe(false)
+  })
+})
+
+describe('handoverActionErrorMessage for plan storage limit', () => {
+  it('handoverActionErrorMessage_UploadHitsOwnerStorageLimit_TellsExecutorToAskOwnerToUpgrade', () => {
+    const message = handoverActionErrorMessage({ status: 409, message: 'Storage limit exceeded. Used 1048576000 bytes; limit is 1073741824 bytes.' }, 'upload')
+    expect(message).toContain('chủ kho')
+    expect(message).toContain('nâng cấp gói')
+  })
+
+  it('handoverActionErrorMessage_UploadOtherConflict_KeepsStatusMessage', () => {
+    expect(handoverActionErrorMessage({ status: 409, message: 'x' }, 'upload')).toBe('Hồ sơ không còn ở trạng thái cho phép nộp thêm giấy tờ.')
+  })
+})
+
+describe('handoverCode', () => {
+  it('code_WithCreatedDate_IsPrefixYearAndPaddedNumber', () => {
+    expect(handoverCode({ requestId: 7, initiatedAt: '2026-10-24T02:50:00Z' })).toBe('HS-2026-0007')
+    expect(handoverCode({ requestId: 12, initiatedAt: '2026-01-05T12:00:00Z' })).toBe('HS-2026-0012')
+  })
+
+  it('code_NumberOverFourDigits_IsNotTruncated', () => {
+    expect(handoverCode({ requestId: 1002, initiatedAt: '2026-10-29T14:29:00Z' })).toBe('HS-2026-1002')
+    expect(handoverCode({ requestId: 123456, initiatedAt: '2026-10-29T14:29:00Z' })).toBe('HS-2026-123456')
+  })
+
+  it('code_NoCreatedDateOrInvalid_OmitsYear', () => {
+    expect(handoverCode({ requestId: 7 })).toBe('HS-0007')
+    expect(handoverCode({ requestId: 7, initiatedAt: 'không phải ngày' })).toBe('HS-0007')
+  })
+
+  it('code_DateWithoutTimezone_IsReadAsUtcLikeTheRestOfTheApp', () => {
+    // 31/12 23:30 UTC đã sang năm mới ở Việt Nam (UTC+7) nhưng vẫn là cùng một mốc với chuỗi có Z
+    expect(handoverCode({ requestId: 3, initiatedAt: '2026-12-31T23:30:00' })).toBe(handoverCode({ requestId: 3, initiatedAt: '2026-12-31T23:30:00Z' }))
   })
 })

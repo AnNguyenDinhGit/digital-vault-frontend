@@ -26,7 +26,7 @@ const renderPage = (requestId) =>
     path: '/owner/handovers/:requestId',
     extraRoutes: [{ path: '/owner/handovers', element: <p>handover-list-page</p> }],
   })
-const waitForPage = () => screen.findByRole('heading', { level: 1, name: /^Hồ sơ #/ })
+const waitForPage = () => screen.findByRole('heading', { level: 1, name: /^HS-/ })
 
 // Executor tạo hồ sơ cho kho 1 rồi đăng nhập lại là Owner
 async function seedHandover({ status = 'Draft', documents = [] } = {}) {
@@ -70,7 +70,7 @@ describe('OwnerHandoverDetailPage content', () => {
     const id = await seedHandover()
     renderPage(id)
     await waitForPage()
-    expect(screen.getByRole('heading', { level: 1, name: `Hồ sơ #${id}` })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: new RegExp(`^HS-\\d{4}-${String(id).padStart(4, "0")}$`) })).toBeInTheDocument()
     expect(screen.getByText('Bản nháp')).toBeInTheDocument()
     const table = screen.getByRole('table', { name: 'Tài sản trong hồ sơ' })
     // Kho demo có phân bổ Active cho nhiều tài sản; mỗi phân bổ là một dòng, tên lấy từ danh sách tài sản của Owner

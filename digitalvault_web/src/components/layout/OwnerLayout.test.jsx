@@ -80,7 +80,7 @@ describe('OwnerLayout', () => {
     renderLayout()
     const nav = screen.getByRole('navigation', { name: 'Điều hướng Vault Owner' })
     expect(within(nav).queryAllByRole('button')).toHaveLength(0)
-    expect(within(nav).getAllByRole('link')).toHaveLength(8)
+    expect(within(nav).getAllByRole('link')).toHaveLength(9)
   })
 
   it('render_LoggedInUser_ShowsEmailAndInitials', () => {
@@ -94,6 +94,18 @@ describe('OwnerLayout', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }))
     expect(logout).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('landing-page')).toBeInTheDocument()
+  })
+})
+
+describe('OwnerLayout plans entry', () => {
+  beforeEach(() => {
+    logout.mockReset().mockResolvedValue()
+    useUnreadNotifications.mockReset().mockReturnValue(0)
+  })
+
+  it('nav_Plans_LinksToPlansPage', () => {
+    renderLayout()
+    expect(screen.getByRole('link', { name: 'Gói dịch vụ' })).toHaveAttribute('href', '/owner/plans')
   })
 })
 

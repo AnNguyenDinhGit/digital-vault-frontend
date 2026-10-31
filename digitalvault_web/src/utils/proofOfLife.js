@@ -1,3 +1,5 @@
+import { parseServerDate } from './beneficiary'
+
 const DAY = 24 * 60 * 60 * 1000
 
 export const PROOF_OF_LIFE_DEFAULTS = { frequencyDays: 30, gracePeriodDays: 7 }
@@ -13,7 +15,7 @@ export function proofOfLifeStatusLabel(status) {
 
 // Trạng thái suy ra từ thời gian: trong hạn là Active, quá hạn nhưng còn ân hạn là Warning, hết ân hạn là Triggered
 export function computeProofOfLife({ frequencyDays, gracePeriodDays, lastPingAt }, now = new Date()) {
-  const nextPingDue = new Date(new Date(lastPingAt).getTime() + frequencyDays * DAY)
+  const nextPingDue = new Date(parseServerDate(lastPingAt).getTime() + frequencyDays * DAY)
   const graceEndsAt = new Date(nextPingDue.getTime() + gracePeriodDays * DAY)
   let status = 'Active'
   if (now > graceEndsAt) status = 'Triggered'
@@ -29,7 +31,7 @@ export function computeProofOfLife({ frequencyDays, gracePeriodDays, lastPingAt 
 
 // Số ngày còn lại (làm tròn lên) tính từ bây giờ đến một mốc; âm nghĩa là đã qua mốc
 export function daysFromNow(iso, now = new Date()) {
-  return Math.ceil((new Date(iso) - now) / DAY)
+  return Math.ceil((parseServerDate(iso) - now) / DAY)
 }
 
 const INVALID_MESSAGE = 'Chu kỳ hoặc thời gian ân hạn phải là số nguyên dương từ 1 ngày trở lên.'
@@ -59,14 +61,14 @@ export function describeCycle(frequencyDays, gracePeriodDays) {
 
 const pad = (value) => String(value).padStart(2, '0')
 
-// Định dạng theo giờ địa phương: 13/10/2026
+// Định dạng theo giờ địa phương: 13/10/2026. BE trả giờ UTC có thể không kèm múi giờ nên đọc qua parseServerDate để không lệch 7 giờ
 export function formatDate(iso) {
-  const date = new Date(iso)
+  const date = parseServerDate(iso)
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
 }
 
 // 13/10/2026 09:05
 export function formatDateTime(iso) {
-  const date = new Date(iso)
+  const date = parseServerDate(iso)
   return `${formatDate(iso)} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
