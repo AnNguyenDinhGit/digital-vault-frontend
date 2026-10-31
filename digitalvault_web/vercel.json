@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://vault-owner-be.huydevops.id.vn/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
