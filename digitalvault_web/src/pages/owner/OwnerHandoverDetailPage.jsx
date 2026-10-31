@@ -8,7 +8,7 @@ import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import CancelHandoverModal from '../../components/owner/CancelHandoverModal'
 import { useOwnerHandoverDetail } from '../../hooks/useOwnerHandoverDetail'
 import { MOCK_MODE } from '../../mocks/mode'
-import { isCancellableStatus } from '../../utils/handover'
+import { handoverCode, isCancellableStatus } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
 const CASE_STATUS_LABELS = { Pending: 'Chờ bàn giao', In_Progress: 'Đang chuyển giao', Completed: 'Đã bàn giao', Received: 'Đã nhận', Cancelled: 'Đã hủy' }
@@ -72,7 +72,7 @@ export default function OwnerHandoverDetailPage({ mockMode = MOCK_MODE }) {
           </span>
           <div>
             <h1 className="mb-1 fw-bold text-ink" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>
-              {`Hồ sơ #${handover.requestId}`}
+              {handoverCode(handover)}
             </h1>
             <p className="mb-0 fs-12 text-slate-500">{`Kho #${handover.vaultId} · Tạo lúc ${formatDateTime(handover.initiatedAt)}`}</p>
             {handover.executorId && (

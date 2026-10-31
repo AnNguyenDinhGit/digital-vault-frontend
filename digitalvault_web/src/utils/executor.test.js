@@ -1,4 +1,13 @@
-import { executorBadgeClass, executorErrorMessage, executorStatusLabel, revokeExecutorErrorMessage } from './executor'
+import {
+  assetNamesOf,
+  executorBadgeClass,
+  executorErrorMessage,
+  executorStatusLabel,
+  handoverOwnerName,
+  revokeExecutorErrorMessage,
+  vaultLabel,
+  vaultNamesOf,
+} from './executor'
 
 describe('executorStatusLabel', () => {
   it.each([
@@ -35,5 +44,30 @@ describe('revokeExecutorErrorMessage', () => {
 
   it('revokeExecutorErrorMessage_Other_FallsBackToGenericExecutorMessage', () => {
     expect(revokeExecutorErrorMessage({ status: 403 })).toBe(executorErrorMessage({ status: 403 }))
+  })
+})
+
+describe('tên hiển thị của hồ sơ (kho, chủ kho, tài sản)', () => {
+  it('handoverOwnerName_PrefersOwnerNameThenOwnerFullName', () => {
+    expect(handoverOwnerName({ ownerName: 'A', owner: { fullName: 'B' } })).toBe('A')
+    expect(handoverOwnerName({ owner: { fullName: 'B' } })).toBe('B')
+    expect(handoverOwnerName({})).toBeNull()
+    expect(handoverOwnerName(null)).toBeNull()
+  })
+
+  it('vaultLabel_WithAndWithoutName', () => {
+    expect(vaultLabel(17, 'Kho gia đình')).toBe('Kho gia đình')
+    expect(vaultLabel(17, null)).toBe('Kho #17')
+  })
+
+  it('vaultNamesOf_MapsOnlyAssignmentsThatHaveAName', () => {
+    const names = vaultNamesOf([{ vaultId: 1, vaultName: 'A' }, { vaultId: 2, vaultName: null }, { vaultId: 3 }])
+    expect([...names.entries()]).toEqual([[1, 'A']])
+    expect(vaultNamesOf(undefined).size).toBe(0)
+  })
+
+  it('assetNamesOf_DedupesAndSkipsEmpty', () => {
+    expect(assetNamesOf([{ assetName: 'Ví' }, { assetName: 'Ví' }, { assetName: null }, { assetName: 'Sổ' }])).toEqual(['Ví', 'Sổ'])
+    expect(assetNamesOf(undefined)).toEqual([])
   })
 })

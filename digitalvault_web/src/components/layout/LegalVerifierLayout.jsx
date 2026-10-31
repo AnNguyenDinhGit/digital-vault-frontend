@@ -1,6 +1,8 @@
-import { AlertCircle, BookOpen, FileCheck2, KeyRound, Lock, LogOut, Search, ShieldCheck } from 'lucide-react'
+import { AlertCircle, Bell, FileCheck2, LogOut, ShieldCheck, XCircle } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
+import { formatUnreadCount } from '../../utils/notifications'
 import BrandLogo from '../common/BrandLogo'
 import PortalSwitcher from './PortalSwitcher'
 
@@ -8,25 +10,33 @@ const VERIFIER_ITEMS = [
   { label: 'Hồ sơ chờ thẩm định', icon: FileCheck2, to: '/verifier/pending' },
   { label: 'Đã duyệt & Ký số', icon: ShieldCheck, to: '/verifier/approved' },
   { label: 'Yêu cầu bổ sung', icon: AlertCircle, to: '/verifier/additional-requests' },
-  { label: 'Sổ cái chứng thực RFC 3161', icon: BookOpen, to: '/verifier/ledger' },
+  { label: 'Hồ sơ bị từ chối', icon: XCircle, to: '/verifier/rejected' },
 ]
 
-const LEGAL_TOOLS = [
-  { label: 'Tra cứu VNeID & Hộ tịch', icon: Search, to: '/verifier/vneid' },
-  { label: 'Chứng thư số SmartCA', icon: KeyRound, to: '/verifier/smartca' },
-  { label: 'Khóa niêm phong Shamir MPC', icon: Lock, to: '/verifier/shamir' },
-]
+const NOTIFICATION_ITEMS = [{ label: 'Thông báo', icon: Bell, to: '/verifier/notifications', unreadBadge: true }]
 
 function initialsFromEmail(email = '') {
   const name = email.split('@')[0].replace(/[^a-zA-Z]/g, '')
   return (name.slice(0, 2) || 'LV').toUpperCase()
 }
 
-function SidebarItem({ label, icon: Icon, to }) {
+// Huy hiệu số thông báo chưa đọc cạnh mục Thông báo
+function UnreadBadge() {
+  const count = useUnreadNotifications()
+  if (!count) return null
+  return (
+    <span className="av-badge av-badge-warn" aria-label={`${count} thông báo chưa đọc`}>
+      {formatUnreadCount(count)}
+    </span>
+  )
+}
+
+function SidebarItem({ label, icon: Icon, to, unreadBadge }) {
   return (
     <NavLink to={to} className="av-nav-item">
       <Icon size={16} aria-hidden="true" />
       <span className="flex-grow-1 text-truncate" style={{ minWidth: 0 }}>{label}</span>
+      {unreadBadge && <UnreadBadge />}
     </NavLink>
   )
 }
@@ -62,7 +72,7 @@ export default function LegalVerifierLayout() {
 
         <nav aria-label="Điều hướng Thẩm Định Pháp Lý" className="av-sidebar-nav d-flex flex-column gap-4">
           <SidebarSection title="THẨM ĐỊNH TƯ PHÁP" items={VERIFIER_ITEMS} />
-          <SidebarSection title="CÔNG CỤ PHÁP LÝ" items={LEGAL_TOOLS} />
+          <SidebarSection title="THEO DÕI" items={NOTIFICATION_ITEMS} />
         </nav>
 
         <div className="d-flex flex-column gap-3 p-3" style={{ borderTop: '1px solid var(--av-slate-100)' }}>
@@ -72,7 +82,7 @@ export default function LegalVerifierLayout() {
               Cơ Quan Tư Pháp &amp; Công Chứng
             </p>
             <p className="mt-1 mb-0 fs-11 text-slate-500" style={{ lineHeight: 1.6 }}>
-              Thẩm định hồ sơ nhân thân, kiểm tra trích lục và cấp dấu niêm phong số RFC 3161.
+              Thẩm định hồ sơ nhân thân và tài liệu pháp lý trước khi bàn giao di sản số.
             </p>
           </div>
 

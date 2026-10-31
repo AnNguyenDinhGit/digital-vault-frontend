@@ -43,6 +43,16 @@ export async function updateAdminUser(userId, { fullName, phone, identityNumber 
   return data
 }
 
+// Hồ sơ bàn giao toàn hệ thống (GET /admin/handovers, PageDto { page, pageSize, items } gồm HandoverOverviewDto); status/ownerId rỗng thì không lọc.
+// BE chưa có endpoint này (swagger hiện chưa liệt kê); trang Admin sẽ báo rõ cho tới khi BE bổ sung, rồi tự hiển thị.
+export async function getHandoverOverview({ page = 1, pageSize = 20, status = '', ownerId = '' } = {}) {
+  const params = { page, pageSize }
+  if (status) params.status = status
+  if (ownerId) params.ownerId = ownerId
+  const { data } = await axiosClient.get('/admin/handovers', { params })
+  return data
+}
+
 // Admin đặt lại mật khẩu cho người dùng (BE mở khóa đăng nhập sai và trả { message })
 export async function resetUserPassword(userId, newPassword) {
   const { data } = await axiosClient.post(`/admin/users/${userId}/reset-password`, { newPassword })
@@ -91,5 +101,42 @@ export async function getIntegrations() {
 // Kiểm tra kết nối thời gian thực tới một dịch vụ tích hợp (404 nếu mã dịch vụ không tồn tại)
 export async function pingIntegration(serviceId) {
   const { data } = await axiosClient.post(`/admin/integrations/${serviceId}/ping`)
+  return data
+}
+
+// ----- Gói dịch vụ & thanh toán (AdminPayments) -----
+
+// Toàn bộ gói, kể cả gói ngừng bán (mảng thuần)
+export async function getAdminPlans() {
+  const { data } = await axiosClient.get('/admin/subscription-plans')
+  return Array.isArray(data) ? data : (data?.items ?? [])
+}
+
+// input: { planName, maxVaults, maxStorageBytes, price, durationDays, isActive }; trả gói sau khi lưu
+export async function createAdminPlan(input) {
+  const { data } = await axiosClient.post('/admin/subscription-plans', input)
+  return data
+}
+
+export async function updateAdminPlan(planId, input) {
+  const { data } = await axiosClient.put(`/admin/subscription-plans/${planId}`, input)
+  return data
+}
+
+export async function deleteAdminPlan(planId) {
+  await axiosClient.delete(`/admin/subscription-plans/${planId}`)
+}
+
+// Giao dịch thanh toán của mọi người dùng (PageDto { page, pageSize, total, items }); status/userId rỗng thì không lọc
+export async function getPaymentTransactions({ page = 1, pageSize = 20, status = '', userId = '' } = {}) {
+  const params = { page, pageSize }
+  if (status) params.status = status
+  if (userId) params.userId = userId
+  const { data } = await axiosClient.get('/admin/payment-transactions', { params })
+  return data
+}
+
+export async function getPaymentTransaction(transactionId) {
+  const { data } = await axiosClient.get(`/admin/payment-transactions/${transactionId}`)
   return data
 }

@@ -75,7 +75,7 @@ describe('LegalHandoverListPage', () => {
       },
     )
 
-    expect(await screen.findByText('#REQ-1')).toBeInTheDocument()
+    expect(await screen.findByText(/^HS-\d{4}-0001$/)).toBeInTheDocument()
     expect(screen.getByText('Kho #1')).toBeInTheDocument()
 
     const viewLink = screen.getByRole('link', { name: /Xem/i })
@@ -100,7 +100,7 @@ describe('LegalHandoverDetailPage', () => {
     const item = seedHandover('Pending_Legal')
     renderDetail(item.requestId)
 
-    expect(await screen.findByRole('heading', { level: 1, name: `Hồ sơ thẩm định #${item.requestId}` })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: new RegExp(`^HS-\\d{4}-${String(item.requestId).padStart(4, "0")}( · |$)`) })).toBeInTheDocument()
     expect(screen.getByText('Giay_Chung_Tu.pdf')).toBeInTheDocument()
     expect(screen.getByText('So_Do_Dat.pdf')).toBeInTheDocument()
 
@@ -118,7 +118,7 @@ describe('LegalHandoverDetailPage', () => {
     const item = seedHandover('Draft')
     renderDetail(item.requestId)
 
-    expect(await screen.findByRole('heading', { level: 1, name: `Hồ sơ thẩm định #${item.requestId}` })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: new RegExp(`^HS-\\d{4}-${String(item.requestId).padStart(4, "0")}( · |$)`) })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Duyệt hồ sơ/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /Từ chối/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /Yêu cầu bổ sung thông tin/i })).toBeDisabled()
@@ -129,7 +129,7 @@ describe('LegalHandoverDetailPage', () => {
     const item = seedHandover('Approved')
     renderDetail(item.requestId)
 
-    expect(await screen.findByRole('heading', { level: 1, name: `Hồ sơ thẩm định #${item.requestId}` })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: new RegExp(`^HS-\\d{4}-${String(item.requestId).padStart(4, "0")}( · |$)`) })).toBeInTheDocument()
     expect(screen.getByText('Kết quả thẩm định:')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Duyệt hồ sơ/i })).not.toBeInTheDocument()
   })
@@ -138,7 +138,7 @@ describe('LegalHandoverDetailPage', () => {
     const item = seedHandover('Pending_Legal')
     renderDetail(item.requestId)
 
-    await screen.findByRole('heading', { level: 1, name: `Hồ sơ thẩm định #${item.requestId}` })
+    await screen.findByRole('heading', { level: 1, name: new RegExp(`^HS-\\d{4}-${String(item.requestId).padStart(4, "0")}( · |$)`) })
     const approveBtn = screen.getByRole('button', { name: /Duyệt hồ sơ/i })
     await userEvent.click(approveBtn)
 

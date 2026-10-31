@@ -1,6 +1,7 @@
 import {
   PROOF_OF_LIFE_DEFAULTS,
   computeProofOfLife,
+  daysFromNow,
   describeCycle,
   formatDate,
   formatDateTime,
@@ -107,5 +108,30 @@ describe('date formatting', () => {
 describe('PROOF_OF_LIFE_DEFAULTS', () => {
   it('defaults_Constants_Are30And7', () => {
     expect(PROOF_OF_LIFE_DEFAULTS).toEqual({ frequencyDays: 30, gracePeriodDays: 7 })
+  })
+})
+
+describe('thời gian của BE không kèm múi giờ', () => {
+  // BE trả giờ UTC dạng 2026-10-23T14:26:00 (không có Z): phải hiểu là UTC rồi đổi sang giờ địa phương
+  const utc = '2026-10-23T14:26:00'
+  const local = new Date(Date.UTC(2026, 9, 23, 14, 26, 0))
+  const pad = (n) => String(n).padStart(2, '0')
+
+  it('formatDateTime_NoTimezoneString_IsReadAsUtcAndShownInLocalTime', () => {
+    const expected = `${pad(local.getDate())}/${pad(local.getMonth() + 1)}/${local.getFullYear()} ${pad(local.getHours())}:${pad(local.getMinutes())}`
+    expect(formatDateTime(utc)).toBe(expected)
+  })
+
+  it('formatDateTime_NoTimezoneAndZStringsOfSameInstant_ShowTheSameTime', () => {
+    expect(formatDateTime('2026-10-23T14:26:00')).toBe(formatDateTime('2026-10-23T14:26:00Z'))
+    expect(formatDateTime('2026-10-23T14:26:00.1234567')).toBe(formatDateTime('2026-10-23T21:26:00.1234567+07:00'))
+  })
+
+  it('formatDate_NoTimezoneString_FollowsTheUtcInstant', () => {
+    expect(formatDate('2026-10-23T23:30:00')).toBe(formatDate('2026-10-23T23:30:00Z'))
+  })
+
+  it('daysFromNow_NoTimezoneString_UsesUtcInstant', () => {
+    expect(daysFromNow('2026-10-23T14:00:00', new Date('2026-10-22T14:00:00Z'))).toBe(1)
   })
 })

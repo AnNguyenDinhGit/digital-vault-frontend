@@ -74,7 +74,7 @@ describe('OwnerHandoversPage list', () => {
     const id = await seedHandover('Draft')
     renderPage()
     const table = await screen.findByRole('table', { name: 'Danh sách hồ sơ bàn giao' })
-    const row = within(table).getByRole('row', { name: new RegExp(`Hồ sơ #${id}`) })
+    const row = within(table).getByRole('row', { name: new RegExp(`HS-\\d{4}-${String(id).padStart(4, "0")}`) })
     expect(row).toHaveTextContent('Kho #1')
     expect(row).toHaveTextContent('Bản nháp')
     expect(row).toHaveTextContent('4 tài sản')
@@ -106,7 +106,7 @@ describe('OwnerHandoversPage cancel flow', () => {
 
   it('confirm_Opened_ExplainsConsequence', async () => {
     const { id, dialog } = await openConfirm()
-    expect(dialog).toHaveTextContent(`Hồ sơ #${id}`)
+    expect(dialog).toHaveTextContent(`-${String(id).padStart(4, "0")}`)
     expect(dialog).toHaveTextContent('chỉnh sửa tài sản')
   })
 
@@ -211,7 +211,7 @@ describe('OwnerHandoversPage detail link', () => {
     const id = await seedHandover()
     renderPage()
     await waitForPage()
-    expect(screen.getByRole('link', { name: `Hồ sơ #${id}` })).toHaveAttribute('href', `/owner/handovers/${id}`)
+    expect(screen.getByRole('link', { name: new RegExp(`^HS-\\d{4}-${String(id).padStart(4, "0")}$`) })).toHaveAttribute('href', `/owner/handovers/${id}`)
   })
 })
 

@@ -19,9 +19,11 @@ import HandoverIntakePanel from '../../components/executor/HandoverIntakePanel'
 import HandoverStatusBadge from '../../components/executor/HandoverStatusBadge'
 import LegalVerificationForm from '../../components/executor/LegalVerificationForm'
 import { useHandover } from '../../hooks/useHandover'
+import { useVaultName } from '../../hooks/useVaultName'
 import { MOCK_MODE } from '../../mocks/mode'
 import { downloadBlob } from '../../utils/download'
-import { handoverActionErrorMessage, isEditableStatus } from '../../utils/handover'
+import { handoverOwnerName, vaultLabel } from '../../utils/executor'
+import { handoverActionErrorMessage, handoverCode, isEditableStatus } from '../../utils/handover'
 import { formatDateTime } from '../../utils/proofOfLife'
 
 const CASE_STATUS_LABELS = { Pending: 'Chờ bàn giao', In_Progress: 'Đang chuyển giao', Completed: 'Đã bàn giao', Received: 'Đã nhận' }
@@ -44,6 +46,7 @@ const toActionError = (action) => (error) => {
 export default function ExecutorHandoverDetailPage({ mockMode = MOCK_MODE }) {
   const { requestId } = useParams()
   const { status, error, handover, refresh } = useHandover(requestId)
+  const vaultName = useVaultName(handover?.vaultId)
   const [toast, setToast] = useState(null)
   const closeToast = useCallback(() => setToast(null), [])
   const [actionBusy, setActionBusy] = useState(false)
@@ -138,12 +141,18 @@ export default function ExecutorHandoverDetailPage({ mockMode = MOCK_MODE }) {
         <div>
           <div className="d-flex flex-wrap align-items-center gap-2">
             <h1 className="mb-0 fw-bold text-ink" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>
-              {`Hồ sơ #${handover.requestId}`}
+              {handoverCode(handover)}
             </h1>
             <HandoverStatusBadge status={handover.status} />
           </div>
           <p className="mt-2 mb-0 fs-12 text-slate-500 d-flex flex-wrap gap-2">
-            <span>{`Kho #${handover.vaultId}`}</span>
+            <span>{vaultLabel(handover.vaultId, vaultName)}</span>
+            {handoverOwnerName(handover) && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span>{`Chủ kho: ${handoverOwnerName(handover)}`}</span>
+              </>
+            )}
             <span aria-hidden="true">·</span>
             <span>{`Tạo lúc ${formatDateTime(handover.initiatedAt)}`}</span>
           </p>
@@ -178,7 +187,7 @@ export default function ExecutorHandoverDetailPage({ mockMode = MOCK_MODE }) {
                   <tbody>
                     {handover.cases.map((item) => (
                       <tr key={item.handoverId}>
-                        <td>{`Tài sản #${item.assetId}`}</td>
+                        <td>{item.assetName ?? `Tài sản #${item.assetId}`}</td>
                         <td>{`Người thụ hưởng #${item.beneficiaryId}`}</td>
                         <td>{CASE_STATUS_LABELS[item.status] ?? item.status}</td>
                       </tr>

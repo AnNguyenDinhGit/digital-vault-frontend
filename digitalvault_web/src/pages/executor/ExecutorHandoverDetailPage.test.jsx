@@ -26,7 +26,7 @@ const renderDetail = (requestId, props = {}) =>
     path: '/executor/handovers/:requestId',
     extraRoutes: [{ path: '/executor/orders', element: <p>orders-page</p> }],
   })
-const waitForDetail = () => screen.findByRole('heading', { level: 1, name: /^Hồ sơ #/ })
+const waitForDetail = () => screen.findByRole('heading', { level: 1, name: /^HS-/ })
 
 async function createWithStatus(status) {
   const request = await createHandover(1)
@@ -60,7 +60,7 @@ describe('ExecutorHandoverDetailPage content', () => {
   it('header_Handover_ShowsIdVaultAndStatus', async () => {
     const id = await createWithStatus('Draft')
     renderDetail(id)
-    expect(await waitForDetail()).toHaveTextContent(`Hồ sơ #${id}`)
+    expect(await waitForDetail()).toHaveTextContent(`-${String(id).padStart(4, "0")}`)
     expect(screen.getByText('Kho #1')).toBeInTheDocument()
     expect(screen.getByText('Bản nháp')).toBeInTheDocument()
   })
