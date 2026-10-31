@@ -8,6 +8,7 @@ import { getPortalPreference } from '../../utils/portalPreference'
 import { getDefaultRouteForRoles } from '../../utils/roleRoutes'
 import TextField from '../common/TextField'
 import ForgotPasswordModal from './ForgotPasswordModal'
+import GoogleLoginButton from './GoogleLoginButton'
 import TwoFactorModal from './TwoFactorModal'
 
 const COMING_SOON = 'Sắp ra mắt'
@@ -168,6 +169,15 @@ export default function LoginForm({ onOpenRegister, initialEmail = '', notice = 
           {!isSubmitting && <ArrowRight size={16} aria-hidden="true" />}
         </Button>
       </form>
+
+      <div className="d-flex align-items-center gap-3 mt-4" aria-hidden="true">
+        <hr className="flex-grow-1 m-0" />
+        <span className="fs-12 text-slate-400">hoặc</span>
+        <hr className="flex-grow-1 m-0" />
+      </div>
+      <div className="mt-4">
+        <GoogleLoginButton disabled={isSubmitting} />
+      </div>
 
       <div className="av-info-box mt-4">
         <p className="d-flex align-items-center gap-2 mb-0 fs-10 av-mono-tag">

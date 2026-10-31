@@ -8,6 +8,7 @@ import ProtectedRoute from './components/routing/ProtectedRoute'
 import { HANDOVER_GROUPS } from './utils/handover'
 import { AuthProvider } from './contexts/AuthContext'
 import LandingPage from './pages/LandingPage'
+import GoogleCallbackPage from './pages/auth/GoogleCallbackPage'
 import RolePlaceholderPage from './pages/common/RolePlaceholderPage'
 import AssetCatalogPage from './pages/owner/AssetCatalogPage'
 import AssetDetailPage from './pages/owner/AssetDetailPage'
@@ -57,6 +58,8 @@ function App() {
 
           {/* Công khai: VNPay đưa khách về đây sau khi thanh toán, nên không bắt đăng nhập */}
           <Route path="/payment/vnpay-return" element={<VnpayReturnPage />} />
+          {/* Công khai: BE chuyển trình duyệt về đây sau khi Google xác thực xong (Google:FrontendCallbackUrl) */}
+          <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
           {MOCK_MODE !== 'off' && <Route path="/payment/mock-vnpay" element={<MockVnpayGatewayPage />} />}
 
           {/* 1. Khu vực Vault Owner */}
