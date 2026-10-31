@@ -48,12 +48,12 @@ describe('AdminPlansPage', () => {
     renderPage()
     const table = await waitForTable()
     const rows = within(table).getAllByRole('row').slice(1)
-    expect(rows).toHaveLength(3)
-    expect(rows[0]).toHaveTextContent('Cơ bản')
-    expect(rows[0]).toHaveTextContent('1 kho')
-    expect(rows[0]).toHaveTextContent('1 GB')
-    expect(rows[0]).toHaveTextContent('99.000 ₫')
-    expect(rows[0]).toHaveTextContent('1 tháng')
+    expect(rows).toHaveLength(4)
+    expect(rows[1]).toHaveTextContent('Cơ bản')
+    expect(rows[1]).toHaveTextContent('1 kho')
+    expect(rows[1]).toHaveTextContent('1 GB')
+    expect(rows[1]).toHaveTextContent('99.000 ₫')
+    expect(rows[1]).toHaveTextContent('1 tháng')
   })
 
   it('render_Page_ExplainsTransactionsHaveNoApiYetAndIsReadOnly', async () => {

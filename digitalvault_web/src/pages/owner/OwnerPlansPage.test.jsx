@@ -6,31 +6,46 @@ import { login } from '../../callapi/authApi'
 import { DEMO_ACCOUNT, getDb, resetMockDb } from '../../mocks/db'
 import { handlers } from '../../mocks/handlers'
 import { renderWithProviders } from '../../test/renderWithProviders'
-import { redirectTo } from '../../utils/navigation'
 import OwnerPlansPage from './OwnerPlansPage'
-
-vi.mock('../../utils/navigation', () => ({ redirectTo: vi.fn() }))
 
 const server = setupServer(...handlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 beforeEach(async () => {
   resetMockDb()
-  redirectTo.mockReset()
   await login(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password)
 })
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
-const renderPage = (props = {}) => renderWithProviders(<OwnerPlansPage mockMode="off" {...props} />)
+const demoUserId = () => getDb().users.find((user) => user.email === DEMO_ACCOUNT.email).userId
+const DAY = 24 * 60 * 60 * 1000
+
+const seedSubscription = (planId = 2) => {
+  getDb().userSubscriptions = [
+    { subscriptionId: 1, userId: demoUserId(), planId, status: 'Active', startDate: new Date(Date.now() - 10 * DAY).toISOString(), endDate: new Date(Date.now() + 20 * DAY).toISOString() },
+  ]
+}
+
+const seedTransactions = () => {
+  getDb().paymentTransactions = [
+    { transactionId: 1, transactionCode: 'TXN-OK', userId: demoUserId(), planId: 2, planName: 'Nâng cao', amount: 499000, paymentMethod: 'VNPay', status: 'Success', createdAt: new Date(Date.now() - 2 * DAY).toISOString() },
+    { transactionId: 2, transactionCode: 'TXN-FAIL', userId: demoUserId(), planId: 1, planName: 'Cơ bản', amount: 99000, paymentMethod: 'VNPay', status: 'Failed', createdAt: new Date(Date.now() - DAY).toISOString() },
+  ]
+}
+
+const renderPage = (props = {}) =>
+  renderWithProviders(<OwnerPlansPage mockMode="off" {...props} />, {
+    extraRoutes: [{ path: '/owner/plans/:planId/checkout', element: <p>Màn hình thanh toán</p> }],
+  })
 const waitForPage = () => screen.findByRole('heading', { level: 1, name: 'Gói dịch vụ' })
 const plan = (name) => screen.getByRole('article', { name })
 
 describe('OwnerPlansPage loading and error', () => {
   it('render_WhileFetching_ShowsLoadingStatus', async () => {
     renderPage()
-    expect(screen.getByRole('status')).toHaveTextContent('Đang tải các gói dịch vụ')
-    await waitForPage()
+    expect(screen.getByText('Đang tải các gói dịch vụ...')).toBeInTheDocument()
+    await screen.findByRole('article', { name: 'Cơ bản' })
   })
 
   it('render_ApiFails_ShowsErrorWithRetry', async () => {
@@ -54,7 +69,7 @@ describe('OwnerPlansPage content', () => {
     renderPage()
     await waitForPage()
     await screen.findByRole('article', { name: 'Cơ bản' })
-    expect(screen.getAllByRole('article')).toHaveLength(3)
+    expect(screen.getAllByRole('article')).toHaveLength(4)
     const basic = plan('Cơ bản')
     expect(basic).toHaveTextContent('99.000 ₫')
     expect(basic).toHaveTextContent('1 tháng')
@@ -78,45 +93,134 @@ describe('OwnerPlansPage content', () => {
     await waitForPage()
     expect(screen.getByRole('note')).toBeInTheDocument()
   })
-})
 
-describe('OwnerPlansPage checkout', () => {
-  it('pay_Click_CreatesCheckoutAndRedirectsBrowserToPaymentUrl', async () => {
-    renderPage()
-    await waitForPage()
-    await screen.findByRole('article', { name: 'Nâng cao' })
-    await userEvent.click(within(plan('Nâng cao')).getByRole('button', { name: 'Thanh toán qua VNPay' }))
-    await vi.waitFor(() => expect(redirectTo).toHaveBeenCalledTimes(1))
-    expect(redirectTo.mock.calls[0][0]).toContain('/payment/mock-vnpay')
-    const stored = getDb().paymentTransactions
-    expect(stored).toHaveLength(1)
-    expect(stored[0]).toMatchObject({ planId: 2, status: 'Pending' })
-  })
-
-  it('pay_WhileProcessing_DisablesAllPayButtons', async () => {
+  it('render_FreePlan_ShowsFreeLabelAndOffersFreeSignUp', async () => {
     server.use(
-      http.post('*/api/payments/vnpay/checkout', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 150))
-        return HttpResponse.json({ transactionCode: 'T1', amount: 99000, paymentUrl: 'https://vnpay.example/pay' })
-      }),
+      http.get('*/api/payments/plans', () =>
+        HttpResponse.json([{ planId: 9, planName: 'Gói Miễn Phí', maxVaults: 1, maxStorageBytes: 1073741824, price: 0, durationDays: 30 }]),
+      ),
     )
     renderPage()
-    await waitForPage()
-    await screen.findByRole('article', { name: 'Cơ bản' })
-    await userEvent.click(within(plan('Cơ bản')).getByRole('button', { name: 'Thanh toán qua VNPay' }))
-    expect(within(plan('Cơ bản')).getByRole('button', { name: 'Đang chuyển tới VNPay...' })).toBeDisabled()
-    expect(within(plan('Gia đình')).getByRole('button', { name: 'Thanh toán qua VNPay' })).toBeDisabled()
-    await vi.waitFor(() => expect(redirectTo).toHaveBeenCalledWith('https://vnpay.example/pay'))
+    await screen.findByRole('article', { name: 'Gói Miễn Phí' })
+    expect(plan('Gói Miễn Phí')).toHaveTextContent('Miễn phí')
+    expect(within(plan('Gói Miễn Phí')).getByRole('button', { name: 'Dùng miễn phí' })).toHaveAttribute('href', '/owner/plans/9/checkout')
   })
 
-  it('pay_GatewayNotConfigured_ShowsErrorAndDoesNotRedirect', async () => {
-    server.use(http.post('*/api/payments/vnpay/checkout', () => HttpResponse.json({ status: 503, detail: 'VNPay is not configured.' }, { status: 503 })))
+  it('render_FreePlanIsCurrent_ShowsInUseAndNoAction', async () => {
+    seedSubscription(4)
     renderPage()
-    await waitForPage()
+    await screen.findByText('Đang dùng')
+    expect(within(plan('Miễn phí')).getByRole('button', { name: 'Đang sử dụng' })).toBeDisabled()
+    expect(within(plan('Cơ bản')).getByRole('button', { name: 'Mua gói' })).toBeInTheDocument()
+  })
+
+  it('render_NoticeFromCheckout_ShowsDismissibleSuccessAlert', async () => {
+    renderWithProviders(<OwnerPlansPage mockMode="off" />, { route: { pathname: '/', state: { notice: 'Đã kích hoạt Miễn phí thành công.' } } })
+    expect(screen.getByRole('alert')).toHaveTextContent('Đã kích hoạt Miễn phí thành công.')
+    await userEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: /close/i }))
+    expect(screen.queryByText('Đã kích hoạt Miễn phí thành công.')).not.toBeInTheDocument()
+  })
+})
+
+describe('OwnerPlansPage current subscription', () => {
+  it('render_NoActiveSubscription_ExplainsUserHasNoPaidPlan', async () => {
+    renderPage()
+    expect(await screen.findByText(/chưa có gói trả phí nào đang hiệu lực/)).toBeInTheDocument()
+  })
+
+  it('render_ActiveSubscription_ShowsPlanDaysLeftAndMarksCurrentCard', async () => {
+    seedSubscription(2)
+    renderPage()
+    const panel = (await screen.findByRole('heading', { name: 'Gói đang sử dụng' })).closest('section')
+    expect(await within(panel).findByText('Nâng cao')).toBeInTheDocument()
+    expect(panel).toHaveTextContent('Đang hiệu lực')
+    expect(panel).toHaveTextContent('Còn 20 ngày')
+    await screen.findByRole('article', { name: 'Nâng cao' })
+    expect(within(plan('Nâng cao')).getByText('Đang dùng')).toBeInTheDocument()
+    expect(within(plan('Nâng cao')).getByRole('button', { name: 'Gia hạn gói' })).toHaveAttribute('href', '/owner/plans/2/checkout')
+    expect(within(plan('Cơ bản')).queryByText('Đang dùng')).not.toBeInTheDocument()
+  })
+
+  it('render_NoSubscription_EveryPaidPlanOffersBuy', async () => {
+    renderPage()
     await screen.findByRole('article', { name: 'Cơ bản' })
-    await userEvent.click(within(plan('Cơ bản')).getByRole('button', { name: 'Thanh toán qua VNPay' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('chưa được cấu hình')
-    expect(redirectTo).not.toHaveBeenCalled()
-    expect(within(plan('Cơ bản')).getByRole('button', { name: 'Thanh toán qua VNPay' })).toBeEnabled()
+    for (const name of ['Cơ bản', 'Nâng cao', 'Gia đình']) {
+      expect(within(plan(name)).getByRole('button', { name: 'Mua gói' })).toHaveAttribute('href', expect.stringContaining('/checkout'))
+    }
+  })
+
+  it('render_ActiveSubscription_OffersUpgradeForPricierAndSwitchForCheaperPlans', async () => {
+    seedSubscription(2)
+    renderPage()
+    await screen.findByText('Đang dùng')
+    expect(within(plan('Gia đình')).getByRole('button', { name: 'Nâng cấp' })).toHaveAttribute('href', '/owner/plans/3/checkout')
+    expect(within(plan('Cơ bản')).getByRole('button', { name: 'Chuyển gói' })).toHaveAttribute('href', '/owner/plans/1/checkout')
+  })
+})
+
+describe('OwnerPlansPage navigation and history', () => {
+  it('choosePlan_Click_OpensCheckoutScreenForThatPlan', async () => {
+    renderPage()
+    await screen.findByRole('article', { name: 'Nâng cao' })
+    await userEvent.click(within(plan('Nâng cao')).getByRole('button', { name: 'Mua gói' }))
+    expect(await screen.findByText('Màn hình thanh toán')).toBeInTheDocument()
+  })
+
+  it('history_Empty_ShowsEmptyMessage', async () => {
+    renderPage()
+    expect(await screen.findByText('Bạn chưa có giao dịch thanh toán nào.')).toBeInTheDocument()
+  })
+
+  it('history_WithTransactions_ListsNewestFirstAndFiltersByStatus', async () => {
+    seedTransactions()
+    renderPage()
+    const table = await screen.findByRole('table', { name: 'Lịch sử thanh toán' })
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent('TXN-FAIL')
+    expect(rows[0]).toHaveTextContent('Thanh toán thất bại')
+    expect(rows[1]).toHaveTextContent('TXN-OK')
+    expect(rows[1]).toHaveTextContent('499.000 ₫')
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Lọc theo trạng thái giao dịch' }), 'Success')
+    await vi.waitFor(() => expect(within(screen.getByRole('table', { name: 'Lịch sử thanh toán' })).getAllByRole('row')).toHaveLength(2))
+    expect(screen.getByRole('table', { name: 'Lịch sử thanh toán' })).toHaveTextContent('TXN-OK')
+    expect(screen.getByRole('table', { name: 'Lịch sử thanh toán' })).not.toHaveTextContent('TXN-FAIL')
+  })
+
+  it('history_MultiplePendingTransactions_KeepsOnlyLatestPendingRow', async () => {
+    getDb().paymentTransactions = Array.from({ length: 12 }, (_, index) => ({
+      transactionId: index + 1,
+      transactionCode: index === 0 ? 'TXN-NEW' : `TXN-DUP-${index}`,
+      userId: demoUserId(),
+      planId: 2,
+      planName: 'Nâng cao',
+      amount: 499000,
+      paymentMethod: 'VNPay',
+      status: 'Pending',
+      createdAt: new Date(Date.now() - (index + 1) * 60 * 1000).toISOString(),
+    }))
+    renderPage()
+    const table = await screen.findByRole('table', { name: 'Lịch sử thanh toán' })
+    await screen.findByRole('article', { name: 'Cơ bản' })
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('TXN-NEW')
+    expect(rows[0]).toHaveTextContent('Đang chờ xác nhận')
+    expect(within(rows[0]).getByRole('button', { name: 'Tiếp tục thanh toán' })).toHaveAttribute('href', '/owner/plans/2/checkout')
+    expect(table).not.toHaveTextContent('TXN-DUP-1')
+    expect(screen.queryByRole('navigation', { name: 'Phân trang lịch sử thanh toán' })).not.toBeInTheDocument()
+  })
+
+  it('history_ExpiredPendingTransaction_MarksExpiredAndOffersRetry', async () => {
+    getDb().paymentTransactions = [
+      { transactionId: 2, transactionCode: 'TXN-OLD', userId: demoUserId(), planId: 1, planName: 'Cơ bản', amount: 99000, paymentMethod: 'VNPay', status: 'Pending', createdAt: new Date(Date.now() - DAY).toISOString() },
+    ]
+    renderPage()
+    const table = await screen.findByRole('table', { name: 'Lịch sử thanh toán' })
+    await screen.findByRole('article', { name: 'Cơ bản' })
+    const [old] = within(table).getAllByRole('row').slice(1)
+    expect(old).toHaveTextContent('Quá hạn thanh toán')
+    expect(within(old).getByRole('button', { name: 'Thanh toán lại' })).toHaveAttribute('href', '/owner/plans/1/checkout')
   })
 })
