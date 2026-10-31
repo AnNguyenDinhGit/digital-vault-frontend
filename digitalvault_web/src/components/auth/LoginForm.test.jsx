@@ -188,3 +188,10 @@ describe('LoginForm', () => {
     expect(onOpenRegister).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('LoginForm Google sign-in', () => {
+  it('render_Default_ShowsGoogleButtonBelowPasswordForm', () => {
+    renderForm()
+    expect(screen.getByRole('button', { name: 'Đăng nhập hoặc đăng ký bằng Google' })).toBeInTheDocument()
+  })
+})
