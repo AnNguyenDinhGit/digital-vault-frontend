@@ -2,6 +2,7 @@ import { Vault, X } from 'lucide-react'
 import { useState } from 'react'
 import { Alert, Button, Modal } from 'react-bootstrap'
 import { createVault } from '../../callapi/ownerApi'
+import { conflictMessage } from '../../utils/ownerErrors'
 import { validateVault } from '../../utils/validators'
 import TextField from '../common/TextField'
 
@@ -9,6 +10,8 @@ const EMPTY_FORM = { name: '', description: '' }
 
 function createVaultErrorMessage(error) {
   if (error?.status === 400) return 'Thông tin kho không hợp lệ. Vui lòng kiểm tra lại.'
+  // Vượt số kho tối đa của gói dịch vụ (BE trả 409 kèm lý do hạn mức)
+  if (error?.status === 409) return conflictMessage(error.message)
   return error?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
 }
 

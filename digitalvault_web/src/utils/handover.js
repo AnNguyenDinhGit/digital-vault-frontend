@@ -1,3 +1,5 @@
+import { parseQuotaError, quotaMessage } from './quota'
+
 // Trạng thái hồ sơ bàn giao (HANDOVER_REQUESTS của BE) và tông màu hiển thị
 const STATUS_INFO = {
   Pending_Executor: { text: 'Chờ Executor tiếp nhận', tone: 'info' },
@@ -82,7 +84,11 @@ export function handoverActionErrorMessage(error, action) {
   if (status === 413) return 'File quá lớn. Mỗi file tối đa 10 MB.'
   if (action === 'upload') {
     if (status === 400) return `Tệp hoặc chữ ký không hợp lệ.${SERVER_DETAIL(error)}`
-    if (status === 409) return 'Hồ sơ không còn ở trạng thái cho phép nộp thêm giấy tờ.'
+    if (status === 409) {
+      // Giấy tờ nộp cho hồ sơ tính vào dung lượng gói của chủ kho nên có thể bị chặn vì hạn mức
+      const quota = parseQuotaError(error?.message)
+      return quota ? quotaMessage(quota, { forOwner: false }) : 'Hồ sơ không còn ở trạng thái cho phép nộp thêm giấy tờ.'
+    }
   }
   if (action === 'legal') {
     if (status === 400) {

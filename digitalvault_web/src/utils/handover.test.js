@@ -196,3 +196,15 @@ describe('isVaultLockedByHandover', () => {
     expect(isVaultLockedByHandover(undefined, 1)).toBe(false)
   })
 })
+
+describe('handoverActionErrorMessage for plan storage limit', () => {
+  it('handoverActionErrorMessage_UploadHitsOwnerStorageLimit_TellsExecutorToAskOwnerToUpgrade', () => {
+    const message = handoverActionErrorMessage({ status: 409, message: 'Storage limit exceeded. Used 1048576000 bytes; limit is 1073741824 bytes.' }, 'upload')
+    expect(message).toContain('chủ kho')
+    expect(message).toContain('nâng cấp gói')
+  })
+
+  it('handoverActionErrorMessage_UploadOtherConflict_KeepsStatusMessage', () => {
+    expect(handoverActionErrorMessage({ status: 409, message: 'x' }, 'upload')).toBe('Hồ sơ không còn ở trạng thái cho phép nộp thêm giấy tờ.')
+  })
+})
