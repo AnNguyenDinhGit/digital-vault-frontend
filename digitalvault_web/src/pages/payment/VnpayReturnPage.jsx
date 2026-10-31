@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock, XCircle } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Button } from 'react-bootstrap'
 import { Link, useSearchParams } from 'react-router-dom'
 import { confirmVnpayReturn } from '../../callapi/paymentApi'
 import AdminResourceState from '../../components/admin/AdminResourceState'
@@ -14,6 +15,9 @@ const OUTCOME = {
   Pending: { icon: Clock, color: 'text-slate-500', title: 'Đang chờ xác nhận', note: 'Hệ thống đang chờ VNPay xác nhận giao dịch. Bạn có thể tải lại trang sau ít phút.' },
 }
 
+const PENDING_POLLING_NOTE = 'Hệ thống đang chờ VNPay xác nhận giao dịch. Trang sẽ tự kiểm tra lại, bạn không cần tải lại trang.'
+const PENDING_GAVE_UP_NOTE = 'VNPay chưa xác nhận giao dịch. Nếu bạn đã thanh toán, hãy bấm Kiểm tra lại sau ít phút; kết quả cuối cùng do VNPay thông báo cho hệ thống.'
+
 function ResultShell({ children }) {
   return (
     <main className="min-vh-100 d-flex align-items-center justify-content-center p-4">
@@ -26,7 +30,8 @@ function ResultShell({ children }) {
 }
 
 // Trang công khai VNPay đưa khách về sau khi thanh toán: chuyển nguyên tham số vnp_* cho BE kiểm tra chữ ký rồi hiện kết quả
-export default function VnpayReturnPage() {
+// Giao dịch còn Pending (VNPay chưa gọi IPN kịp) thì tự hỏi lại BE mỗi pollIntervalMs, tối đa maxPolls lần rồi nhường cho nút "Kiểm tra lại"
+export default function VnpayReturnPage({ pollIntervalMs = 3000, maxPolls = 10 }) {
   const [searchParams] = useSearchParams()
   const query = searchParams.toString()
   const params = useMemo(() => vnpayParams(new URLSearchParams(query)), [query])
@@ -34,6 +39,23 @@ export default function VnpayReturnPage() {
   // Không có tham số VNPay thì không gọi BE
   const fetcher = useMemo(() => () => (hasParams ? confirmVnpayReturn(params) : Promise.resolve(null)), [hasParams, params])
   const { data, error, errorStatus, loading, reload } = useAdminResource(fetcher)
+  const [polls, setPolls] = useState(0)
+  const polling = data?.status === 'Pending' && polls < maxPolls
+
+  // data đổi tham chiếu sau mỗi lần tải nên hiệu ứng này tự đặt lại hẹn giờ cho lần hỏi kế tiếp
+  useEffect(() => {
+    if (!polling) return undefined
+    const timer = setTimeout(() => {
+      setPolls((count) => count + 1)
+      reload()
+    }, pollIntervalMs)
+    return () => clearTimeout(timer)
+  }, [polling, data, pollIntervalMs, reload])
+
+  const handleRecheck = () => {
+    setPolls(0)
+    reload()
+  }
 
   if (error || (loading && !data)) {
     // Mã trạng thái của BE quyết định thông báo (400 chữ ký sai, 404 không có giao dịch, 409 kết quả mâu thuẫn...)
@@ -66,7 +88,18 @@ export default function VnpayReturnPage() {
         <h1 className="mb-0 fw-bold text-ink" style={{ fontSize: 22 }}>
           {outcome.title}
         </h1>
-        <p className="mb-0 fs-13 text-slate-500">{outcome.note}</p>
+        <p className="mb-0 fs-13 text-slate-500">{data.status === 'Pending' ? (polling ? PENDING_POLLING_NOTE : PENDING_GAVE_UP_NOTE) : outcome.note}</p>
+        {polling && (
+          <p role="status" className="mb-0 d-flex align-items-center gap-2 fs-12 text-slate-500">
+            <span className="spinner-border spinner-border-sm text-brand" aria-hidden="true" />
+            Đang tự động kiểm tra lại...
+          </p>
+        )}
+        {data.status === 'Pending' && !polling && (
+          <Button type="button" variant="light" size="sm" className="border" disabled={loading} onClick={handleRecheck}>
+            Kiểm tra lại
+          </Button>
+        )}
       </div>
       <dl className="mb-0 d-flex flex-column gap-2 fs-13">
         <div className="d-flex justify-content-between gap-3">
